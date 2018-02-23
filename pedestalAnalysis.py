@@ -4,6 +4,7 @@ from optparse import OptionParser
 # from numpy import array, floor, average, std
 import numpy as np
 import ROOT as ro
+import ipdb
 from copy import deepcopy
 from NoiseExtraction import NoiseExtraction
 import os
@@ -21,7 +22,7 @@ class PedestalAnalysis:
         self.rootFile = self.pedTree = None
         self.adc_vect = self.ped_vect = self.sigma_vect = self.cm_vect = self.ped_cmc_vect = self.sigma_cmc_vect = None
         self.adc_hist, self.ped_hist, self.sigma_hist, self.cm_hist, self.ped_cmc_hist, self.sigma_cmc_hist = ro.TH2D(), ro.TH2D(), ro.TH2D(), ro.TH1D(), ro.TH2D(), ro.TH2D()
-        self.dicBraNames = {'rawTree.DiaADC': 'adc_'+str(self.run), 'diaPedestalMean': 'ped_'+str(self.run), 'diaPedestalSigma': 'sigma_'+str(self.run), 'diaPedestalMeanCMN': 'ped_cmc_'+str(self.run), 'diaPedestaSigmaCMN': 'sig_cmc_'+str(self.run), 'commonModeNoise': 'cm_'+str(self.run)}
+        self.dicBraNames = {'rawTree.DiaADC': 'adc_'+str(self.run), 'diaPedestalMean': 'ped_'+str(self.run), 'diaPedestaSigma': 'sigma_'+str(self.run), 'diaPedestalMeanCMN': 'ped_cmc_'+str(self.run), 'diaPedestaSigmaCMN': 'sig_cmc_'+str(self.run), 'commonModeNoise': 'cm_'+str(self.run)}
         self.dicBraVectChs = {}
         self.dicBraVect1ch = {}
         self.allBranches = self.dicBraNames.keys()
@@ -31,9 +32,15 @@ class PedestalAnalysis:
             else:
                 self.dicBraVect1ch[key] = None
         self.entries = 0
-        self.dictBraHist = {'rawTree.DiaADC': self.adc_hist, 'diaPedestalMean': self.ped_hist, 'diaPedestalSigma': self.sigma_hist, 'diaPedestalMeanCMN': self.ped_cmc_hist, 'diaPedestaSigmaCMN': self.sigma_cmc_hist}
+        self.dictBraHist = {'rawTree.DiaADC': self.adc_hist, 'diaPedestalMean': self.ped_hist, 'diaPedestaSigma': self.sigma_hist, 'diaPedestalMeanCMN': self.ped_cmc_hist, 'diaPedestaSigmaCMN': self.sigma_cmc_hist}
         self.ev_axis = {'min':0, 'max': 0, 'bins': 1000}
         self.ch_axis = {'min': -0.5, 'max': diaChs - 0.5, 'bins': diaChs}
+
+        self.LoadROOTFile()
+        self.LoadVectorsFromBranches()
+        self.CreateHistogramsForVectors()
+        self.FillHistograms()
+
         # self.channels = range(28, 48) if connect==1 else range(75, 113) if connect == 0 else range(chL, chH + 1)
         # self.sourceDir = sourceDir
         # self.outputDir = outputDir
@@ -73,7 +80,7 @@ class PedestalAnalysis:
         if num_bra_chs < 1:
             print 'the dictionary of branches and vectors is empty! try again'
             return
-        channels = self.pedTree.GetLeaf(self.dicBraVectChs[self.dicBraVectChs.keys()[0]]).GetLen()
+        channels = self.pedTree.GetLeaf(self.dicBraVectChs.keys()[0]).GetLen()
         for branch in self.dicBraVectChs.iterkeys():
             if self.pedTree.GetLeaf(branch).GetLen() != channels:
                 print 'Given branches have different sizes! try again'
@@ -98,7 +105,7 @@ class PedestalAnalysis:
             return
         channel = 1
         for branch in self.dicBraVect1ch.iterkeys():
-            if self.pedTree.GetLeaf(branch).GetLen() != channels:
+            if self.pedTree.GetLeaf(branch).GetLen() != channel:
                 print 'Given branches have different sizes different to 1! try again'
                 return
         branches1ch = self.dicBraVect1ch.keys()
@@ -114,7 +121,7 @@ class PedestalAnalysis:
             self.dicBraVect1ch[branch] = self.pedTree.GetVal(pos)
             self.dicBraVect1ch[branch] = np.array([self.dicBraVect1ch[branch][ev] for ev in xrange(self.entries)], dtype=np.dtype(type))
 
-        self.adc_vect, self.ped_vect, self.sigma_vect, self.ped_cmc_vect, self.sigma_cmc_vect = self.dicBraVectChs['rawTree.DiaADC'], self.dicBraVectChs['diaPedestalMean'], self.dicBraVectChs['diaPedestalSigma'], self.dicBraVectChs['diaPedestalMeanCMN'], self.dicBraVectChs['diaPedestaSigmaCMN']
+        self.adc_vect, self.ped_vect, self.sigma_vect, self.ped_cmc_vect, self.sigma_cmc_vect = self.dicBraVectChs['rawTree.DiaADC'], self.dicBraVectChs['diaPedestalMean'], self.dicBraVectChs['diaPedestaSigma'], self.dicBraVectChs['diaPedestalMeanCMN'], self.dicBraVectChs['diaPedestaSigmaCMN']
         self.cm_vect = self.dicBraVect1ch['commonModeNoise']
 
 
