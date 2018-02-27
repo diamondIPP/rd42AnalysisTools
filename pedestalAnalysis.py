@@ -95,9 +95,9 @@ class PedestalAnalysis:
             leng = self.pedTree.Draw(':'.join(branchesChs), '', 'goff para', self.entries, first_ev)
         self.entries = leng / channels
         for pos, branch in enumerate(branchesChs):
-            type = dicTypes[self.pedTree.GetLeaf(branch).GetTypeName()]
+            typeBra = dicTypes[self.pedTree.GetLeaf(branch).GetTypeName()]
             self.dicBraVectChs[branch] = self.pedTree.GetVal(pos)
-            self.dicBraVectChs[branch] = np.array([[self.dicBraVectChs[branch][ev * channels + ch] for ch in xrange(channels)] for ev in xrange(self.entries)], dtype=np.dtype(type))
+            self.dicBraVectChs[branch] = np.array([[self.dicBraVectChs[branch][ev * channels + ch] for ch in xrange(channels)] for ev in xrange(self.entries)], dtype=np.dtype(typeBra))
 
         num_bra_1ch = len(self.dicBraVect1ch)
         if num_bra_1ch < 1:
@@ -117,9 +117,9 @@ class PedestalAnalysis:
             self.pedTree.SetEstimate(leng)
             leng = self.pedTree.Draw(':'.join(branches1ch), '', 'goff para', self.entries, first_ev)
         for pos, branch in enumerate(branches1ch):
-            type = dicTypes[self.pedTree.GetLeaf(branch).GetTypeName()]
+            typeBra = dicTypes[self.pedTree.GetLeaf(branch).GetTypeName()]
             self.dicBraVect1ch[branch] = self.pedTree.GetVal(pos)
-            self.dicBraVect1ch[branch] = np.array([self.dicBraVect1ch[branch][ev] for ev in xrange(self.entries)], dtype=np.dtype(type))
+            self.dicBraVect1ch[branch] = np.array([self.dicBraVect1ch[branch][ev] for ev in xrange(self.entries)], dtype=np.dtype(typeBra))
 
         self.adc_vect, self.ped_vect, self.sigma_vect, self.ped_cmc_vect, self.sigma_cmc_vect = self.dicBraVectChs['rawTree.DiaADC'], self.dicBraVectChs['diaPedestalMean'], self.dicBraVectChs['diaPedestaSigma'], self.dicBraVectChs['diaPedestalMeanCMN'], self.dicBraVectChs['diaPedestaSigmaCMN']
         self.cm_vect = self.dicBraVect1ch['commonModeNoise']
