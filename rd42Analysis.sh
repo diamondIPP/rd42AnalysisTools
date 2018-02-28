@@ -57,8 +57,9 @@ fi
 
 if [ -L "${scratch_out}/${run_no}_${suffix}" ]; then
     rm "${scratch_out}/${run_no}_${suffix}"
-    ln -s "${out_dir}/${suffix}/${run_no}" "${scratch_out}/${run_no}_${suffix}"
 fi
+ln -s "${out_dir}/${suffix}/${run_no}" "${scratch_out}/${run_no}_${suffix}"
+
 
 cp "${scratch_out}/index.php" "${out_dir}/${suffix}/${run_no}/"
 

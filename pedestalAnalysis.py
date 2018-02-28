@@ -9,13 +9,13 @@ import progressbar
 from copy import deepcopy
 from NoiseExtraction import NoiseExtraction
 import os, sys
+from Utils import *
 
 __author__ = 'DA'
 
 dicTypes = {'Char_t': 'int8', 'UChar_t': 'uint8', 'Short_t': 'short', 'UShort_t': 'ushort', 'Int_t': 'int32', 'UInt_t': 'uint32', 'Float_t': 'float32', 'Double_t': 'float64', 'Long64_t': 'int64',
             'ULong64_t': 'uint64', 'Bool_t': 'bool'}
 diaChs = 128
-maxEntries = 2000
 
 
 class PedestalAnalysis:
@@ -39,6 +39,7 @@ class PedestalAnalysis:
 		self.ev_axis = {'min': 0, 'max': 0, 'bins': 1000}
 		self.ch_axis = {'min': -0.5, 'max': diaChs - 0.5, 'bins': diaChs}
 		self.dicBraProf = {}
+		self.tcutg = None
 
 		self.dictHasHistos = {bra: False for bra in self.allBranches}
 		self.hasHistos = self.CheckHistograms()
@@ -53,17 +54,82 @@ class PedestalAnalysis:
 				self.CreateHistogramsForVectors()
 				self.FillHistograms()
 				self.SaveHistograms()
+				self.CreateProgressBar()
+				self.SaveProfiles()
 			else:
 				self.LoadHistograms()
 				self.CreateProfiles()
 				self.SaveProfiles()
+		else:
+			self.LoadHistograms()
+			self.LoadProfiles()
+
+	def SetTCutG(self, name='def', ch_ini=82, ch_end=82, ev_ini=0, ev_end=0, color=ro.kRed + 3):
+		self.tcutg = ro.TCutG(name, 5)
+		self.tcutg.SetVarX('xaxis')
+		self.tcutg.SetVarY('yaxis')
+		ev_fin = self.entries if ev_end == 0 else ev_end
+		self.tcutg.SetPoint(0, ev_ini, ch_ini - 0.5)
+		self.tcutg.SetPoint(1, ev_ini, ch_end + 0.5)
+		self.tcutg.SetPoint(2, ev_fin, ch_end + 0.5)
+		self.tcutg.SetPoint(3, ev_fin, ch_ini - 0.5)
+		self.tcutg.SetPoint(4, ev_ini, ch_ini - 0.5)
+		self.tcutg.SetLineWidth(3)
+		self.tcutg.SetLineStyle(7)
+		self.tcutg.SetLineColor(color)
+
+	def GetPlots(self):
+		cont = False
+		while not cont:
+			temp = raw_input('Type the channel for the GR (should be between 0 and 127): ')
+			if IsInt(temp):
+				if 0 <= int(temp) < diaChs:
+					gr = int(temp)
+					cont = True
+		cont = False
+		while not cont:
+			temp = raw_input('Type the lower channel to analyse (should be between 0 and 127): ')
+			if IsInt(temp):
+				if 0 <= int(temp) < diaChs:
+					lower = int(temp)
+					cont = True
+		cont = False
+		while not cont:
+			temp = raw_input('Type the upper channel to analyse (should be between 0 and 127): ')
+			if IsInt(temp):
+				if 0 <= int(temp) < diaChs:
+					upper = int(temp)
+					cont = True
+
+		self.SetTCutG('gr_fid', gr, gr, 0, self.entries)
+
+
+	def ProjectChannel(self, ch):
+		for branch, prof in self.dicBraProf.iteritems():
+			name = self.dicBraNames[branch]
+			temp = prof.ProjectionX(''+name[:-6]+'_ch_'+str(ch), ch, ch)
+			
+
+	def SetProfileDefaults(self):
+		for branch, prof in self.dicBraProf.iteritems():
+			prof.GetXaxis().SetTitle('event')
+			prof.GetYaxis().SetTitle('channel')
+			prof.GetZaxis().SetTitle(self.dicBraNames[branch][:-6])
+
+	def SetHistogramDefaults(self):
+		for branch, hist in self.dictBraHist.iteritems():
+			name = self.dicBraNames[branch]
+			hist.GetXaxis().SetTitle('event')
+			hist.GetYaxis().SetTitle('channel') if branch in self.listBraNamesChs else hist.GetYaxis().SetTitle(name[:-6])
+			if branch in self.listBraNamesChs:
+				hist.GetZaxis().SetTitle(name[:-6])
 
 	def CheckProfiles(self):
 		if not os.path.isdir('{d}/pedestalAnalysis/profiles'.format(d=self.dir)):
 			print 'Pedestal analysis directory "profiles" does not exist.'
 			return False
 		else:
-			for branch in self.allBranches:
+			for branch in self.listBraNamesChs:
 				name = self.dicBraNames[branch]
 				if not os.path.isfile('{d}/pedestalAnalysis/profiles/{n}_pyx.root'.format(d=self.dir, n=name)):
 					self.dictHasProfiles[branch] = False
@@ -101,6 +167,20 @@ class PedestalAnalysis:
 			self.dictBraHist[branch] = deepcopy(temp.Get(self.dicBraNames[branch]))
 			temp.Close()
 			del temp
+		self.entries = int(self.dictBraHist[self.listBraNamesChs[0]].GetXaxis().GetXmax())
+		self.SetHistogramDefaults()
+		print 'Done'
+
+	def LoadProfiles(self):
+		print 'Loading Profiles...',
+		sys.stdout.flush()
+		for branch in self.listBraNamesChs:
+			temp = ro.TFile('{d}/pedestalAnalysis/profiles/{n}_pyx.root'.format(d=self.dir, n=self.dicBraNames[branch]), 'read')
+			self.dicBraProf[branch] = deepcopy(temp.Get('{n}_pyx'.format(n=self.dicBraNames[branch])))
+			temp.Close()
+			del temp
+		self.entries = int(self.dicBraProf[self.listBraNamesChs[0]].GetXaxis().GetXmax())
+		self.SetProfileDefaults()
 		print 'Done'
 
 	def CreateProfiles(self):
@@ -173,10 +253,15 @@ class PedestalAnalysis:
 				ymin, ymax = self.dicBraVect1ch[branch].min(), self.dicBraVect1ch[branch].max()
 				ybins = 500
 				self.dictBraHist[branch] = ro.TH2D(name, name, self.ev_axis['bins'], self.ev_axis['min'], self.ev_axis['max'], ybins + 1, ymin, ymax + (ymax - ymin) / float(ybins))
+				self.dictBraHist[branch].GetXaxis().SetTitle('event')
+				self.dictBraHist[branch].GetYaxis().SetTitle(name[:-6])
 			elif branch in self.listBraNamesChs:
 				zmin, zmax = self.dicBraVectChs[branch].min(), self.dicBraVectChs[branch].max()
 				zbins = 500
 				self.dictBraHist[branch] = ro.TH3D(name, name, self.ev_axis['bins'], self.ev_axis['min'], self.ev_axis['max'], self.ch_axis['bins'], self.ch_axis['min'], self.ch_axis['max'], zbins + 1, zmin, zmax + (zmax - zmin) / float(zbins))
+				self.dictBraHist[branch].GetXaxis().SetTitle('event')
+				self.dictBraHist[branch].GetYaxis().SetTitle('channel')
+				self.dictBraHist[branch].GetZaxis().SetTitle(name[:-6])
 		self.adc_hist, self.ped_hist, self.sigma_hist, self.ped_cmc_hist, self.sigma_cmc_hist, self.cm_hist = self.dictBraHist['rawTree.DiaADC'], self.dictBraHist['diaPedestalMean'], self.dictBraHist['diaPedestaSigma'], self.dictBraHist['diaPedestalMeanCMN'], self.dictBraHist['diaPedestaSigmaCMN'], self.dictBraHist['commonModeNoise']
 		print 'Done'
 
