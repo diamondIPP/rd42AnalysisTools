@@ -25,12 +25,15 @@ adc_axis = {'min': 0, 'max': 2**12 - 1}
 ped_axis = {'min': 0, 'max': 2**12 - 1}
 cm_axis = {'min': -100, 'max': 100}
 
+scratch_path = '/scratch/strip_telescope_tests/runDiego/output'
+
 class RD42Analysis:
-	def __init__(self, run, input, output, numev, runlistdir, settings_dir, pedestal=False, cluster=False, selec=False, autom_all=False):
-		print 'Creating NoiseExtraction instance for run:', run
+	def __init__(self, run, source_dir, numev, runlistdir, settings_dir, pedestal=False, cluster=False, selec=False, autom_all=False):
+		print 'Creating RD42Analysis instance for run:', run
 		self.run = run
-		self.in_dir = input
-		self.out_dir = output
+		self.in_dir = source_dir + str(self.run)
+		self.out_dir = source_dir + 'output'
+		CreateDirectoryIfNecessary(self.out_dir)
 		self.num_ev = numev
 		self.runlist_dir = runlistdir
 		self.settings_dir = settings_dir
@@ -87,303 +90,176 @@ class RD42Analysis:
 						fnew.write(line)
 					else:
 						channel_str = line[line.find('{') + 1:line.find('}')].split(',')
-						channel_str_new = ''
-						for i in xrange(1, len(channel_str)):
-							if IsInt(channel_str[i - 1]):
-								prev = int(channel_str[i - 1])
-								if IsInt(channel_str[i]):
-									th = int(channel_str[i])
-									if th - prev < 2:
-										channel_str_new += str(prev) + ','
-									elif prev % 2 == 0:
-										for ch in xrange(prev, th + 1):
-											channel_str_new += str(ch) + ','
-										if th
-										channel_str_new += str()
+						channel_str_new = self.ModifyString(channel_str, 'even')
+						fnew.write('Dia_channel_screen_channels = {' + channel_str_new + '}\n')
+		os.remove(self.settings_dir + '/even/settings.{r}.ini'.format(r=self.run))
+		shutil.move(self.settings_dir + '/even/settings.new.{r}.ini.'.format(r=self.run), self.settings_dir + '/even/settings.{r}.ini'.format(r=self.run))
+
 	def Modify_odd(self):
+		with open(self.settings_dir + '/odd/settings.{r}.ini'.format(r=self.run), 'r') as fin:
+			with open(self.settings_dir + '/odd/settings.new.{r}.ini.'.format(r=self.run), 'w') as fnew:
+				for line in fin:
+					if not line.startswith('Dia_channel_screen_channels'):
+						fnew.write(line)
+					else:
+						channel_str = line[line.find('{') + 1:line.find('}')].split(',')
+						channel_str_new = self.ModifyString(channel_str, 'odd')
+						fnew.write('Dia_channel_screen_channels = {' + channel_str_new + '}\n')
+		os.remove(self.settings_dir + '/odd/settings.{r}.ini'.format(r=self.run))
+		shutil.move(self.settings_dir + '/odd/settings.new.{r}.ini.'.format(r=self.run), self.settings_dir + '/odd/settings.{r}.ini'.format(r=self.run))
+		
+	def ModifyString(self, channel_old, type='even'):
+		modulo = 1 if type == 'even' else 0
+		channel_new = ''
+		for i in xrange(1, len(channel_old)):
+			if IsInt(channel_old[i - 1]):
+				prev = int(channel_old[i - 1])
+				if IsInt(channel_old[i]):
+					th = int(channel_old[i])
+					if th - prev < 2:
+						channel_new += str(prev) + ','
+					elif prev % 2 == modulo:
+						for ch in xrange(prev, th, 2):
+							channel_new += str(ch) + ','
+					else:
+						channel_new += str(prev) + ','
+						for ch in xrange(prev + 1, th, 2):
+							channel_new += str(ch) + ','
+				else:
+					temp = channel_old[i].split('-')
+					if IsInt(temp[0]):
+						th = int(temp[0])
+						if th - prev < 2:
+							channel_new += str(prev) + ','
+						elif prev % 2 == modulo:
+							for ch in xrange(prev, th, 2):
+								channel_new += str(ch) + ','
+						else:
+							channel_new += str(prev) + ','
+							for ch in xrange(prev + 1, th, 2):
+								channel_new += str(ch) + ','
+			else:
+				channel_new += channel_old[i - 1] + ','
+		channel_new = channel_new[:-1]
+		return channel_new
+
+	def ModifySettingsOneChannel(self, ch=0):
+		CreateDirectoryIfNecessary(self.settings_dir + '/no_mask/channels')
+		CreateDirectoryIfNecessary(self.settings_dir + '/no_mask/channels/{c}'.format(c=ch))
+		with open(self.settings_dir + '/no_mask/settings.{r}.ini'.format(r=self.run), 'r') as fin:
+			with open(self.settings_dir + '/no_mask/channels/{c}/settings.{r}.ini'.format(c=ch, r=self.run), 'w') as fch:
+				for line in fin:
+					if not line.startswith('Dia_channel_screen_channels'):
+						fch.write(line)
+					else:
+						channel_str_new = self.ModifyStringOneChannel(ch)
+						fch.write('Dia_channel_screen_channels = {' + channel_str_new + '}\n')
+
+	def ModifyStringOneChannel(self, ch=0):
+		if ch==0:
+			return '1-{d}'.format(d=diaChs - 1)
+		elif ch == diaChs - 1:
+			return '0-{d}'.format(d=diaChs - 2)
+		else:
+			return '0-{cp},{cn}-{d}'.format(cp=ch - 1, cn = ch + 1, d=diaChs - 1)
 
 	def First_analysis(self):
-		if not os.path.isdir(self.runlist_dir):
-			os.makedirs(self.runlist_dir)
-		with open(self.runlist_dir + '/RunList_'+self.run+'.ini', 'w') as rlf:
-			rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n'.format(r=self.run, n=self.num_ev))
-		CreateDefaultSettingsFile(self.settings_dir + '/no_mask', self.run, self.num_ev)
-		self.process_f = subp.Popen(['diamondAnalysis', '-r {d}/RunList_{r}.ini'.format(d=self.runlist_dir, r=self.run), '-s ' + self.settings_dir + '/no_mask', '-o ' + self.out_dir, '-i ' + self.in_dir], bufsize=-1, stdin=subp.PIPE, close_fds=True)
-		while self.process_f.poll() is None:
-			pass
-		CloseSubprocess(self.process_f, stdin=True, stdout=False)
-
-	def ClearOldAnalysis(self):
-		if os.path.isdir('{d}/pedestalAnalysis/histos'.format(d=self.dir)):
-			shutil.rmtree('{d}/pedestalAnalysis/histos'.format(d=self.dir))
-		if os.path.isdir('{d}/pedestalAnalysis/profiles'.format(d=self.dir)):
-			shutil.rmtree('{d}/pedestalAnalysis/profiles'.format(d=self.dir))
-
-	def SetTCutG(self, name='def', ch_ini=82, ch_end=82, ev_ini=0, ev_end=0, color=ro.kRed + 3):
-		self.tcutg = ro.TCutG(name, 5)
-		self.tcutg.SetVarX('xaxis')
-		self.tcutg.SetVarY('yaxis')
-		ev_fin = self.entries if ev_end == 0 else ev_end
-		self.tcutg.SetPoint(0, ev_ini, ch_ini - 0.5)
-		self.tcutg.SetPoint(1, ev_ini, ch_end + 0.5)
-		self.tcutg.SetPoint(2, ev_fin, ch_end + 0.5)
-		self.tcutg.SetPoint(3, ev_fin, ch_ini - 0.5)
-		self.tcutg.SetPoint(4, ev_ini, ch_ini - 0.5)
-		self.tcutg.SetLineWidth(3)
-		self.tcutg.SetLineStyle(7)
-		self.tcutg.SetLineColor(color)
-
-	def GetPlots(self):
-		cont = False
-		while not cont:
-			temp = raw_input('Type the channel for the GR (should be between 0 and 127): ')
-			if IsInt(temp):
-				if 0 <= int(temp) < diaChs:
-					gr = int(temp)
-					cont = True
-		cont = False
-		while not cont:
-			temp = raw_input('Type the lower channel to analyse (should be between 0 and 127): ')
-			if IsInt(temp):
-				if 0 <= int(temp) < diaChs:
-					lower = int(temp)
-					cont = True
-		cont = False
-		while not cont:
-			temp = raw_input('Type the upper channel to analyse (should be between 0 and 127): ')
-			if IsInt(temp):
-				if 0 <= int(temp) < diaChs:
-					upper = int(temp)
-					cont = True
-
-		self.SetTCutG('gr_fid', gr, gr, 0, self.entries)
-
-	def ProjectChannel(self, ch):
-		for branch, prof in self.dicBraProf.iteritems():
-			name = self.dicBraNames[branch]
-			temp = prof.ProjectionX(''+name[:-6]+'_ch_'+str(ch), ch, ch)
-			temp.SetTitle(''+name[:-6]+'_ch_'+str(ch))
-			temp.GetXaxis().SetTitle('event')
-			temp.GetYaxis().SetTitle(name[:-6])
-			temp.SetFilColor(fillColor)
-			temp.GetYaxis().SetRangeUser(prof.GetZaxis().GetXmin(), prof.GetZaxis().GetXmax())
-
-
-	def SetProfileDefaults(self):
-		for branch, prof in self.dicBraProf.iteritems():
-			prof.GetXaxis().SetTitle('event')
-			prof.GetYaxis().SetTitle('channel')
-			prof.GetZaxis().SetTitle(self.dicBraNames[branch][:-6])
-			prof.GetZaxis().SetRangeUser(self.dicBraHist[branch].GetZaxis().GetXmin(), self.dicBraHist[branch].GetZaxis().GetXmax())
-
-	def SetHistogramDefaults(self):
-		for branch, hist in self.dicBraHist.iteritems():
-			name = self.dicBraNames[branch]
-			hist.GetXaxis().SetTitle('event')
-			hist.GetYaxis().SetTitle('channel') if branch in self.listBraNamesChs else hist.GetYaxis().SetTitle(name[:-6])
-			if branch in self.listBraNamesChs:
-				hist.GetZaxis().SetTitle(name[:-6])
-
-	def CheckProfiles(self):
-		if not os.path.isdir('{d}/pedestalAnalysis/profiles'.format(d=self.dir)):
-			print 'Pedestal analysis directory "profiles" does not exist.'
-			return False
+		CreateDirectoryIfNecessary(self.runlist_dir)
+		if not self.IsMaskRunDone():
+			print 'Starting first analysis...'
+			with open(self.runlist_dir + '/RunList_'+self.run+'.ini', 'w') as rlf:
+				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n'.format(r=self.run, n=self.num_ev))
+			CreateDefaultSettingsFile(self.settings_dir + '/no_mask', self.run, self.num_ev)
+			CreateDirectoryIfNecessary(self.out_dir + '/no_mask')
+			self.process_f = subp.Popen(['diamondAnalysis', '-r', '{d}/RunList_{r}.ini'.format(d=self.runlist_dir, r=self.run), '-s', self.settings_dir + '/no_mask', '-o', self.out_dir + '/no_mask', '-i', self.in_dir], bufsize=-1, stdin=subp.PIPE, close_fds=True)
+			while self.process_f.poll() is None:
+				continue
+			CloseSubprocess(self.process_f, stdin=True, stdout=False)
+			RecreateLink(self.out_dir + '/no_mask/' + str(self.run), scratch_path, str(self.run) + '_no_mask')
+			print 'Finish first analysis :)'
+		if not os.path.isdir(self.out_dir + '/no_mask/{r}/channel_sweep'.format(r=self.run)):
+			self.GetIndividualChannelHitmap()
 		else:
-			for branch in self.listBraNamesChs:
-				name = self.dicBraNames[branch]
-				if not os.path.isfile('{d}/pedestalAnalysis/profiles/{n}_pyx.root'.format(d=self.dir, n=name)):
-					self.dicHasProfiles[branch] = False
-				else:
-					self.dicHasProfiles[branch] = True
-			return np.array(self.dicHasProfiles.values(), '?').all()
-
-	def CheckHistograms(self):
-		if not os.path.isdir('{d}/pedestalAnalysis/histos'.format(d=self.dir)):
-			print 'Pedestal analysis directory "histos" does not exist. All the vectors for the analysis will be created'
-			return False
-		else:
-			for branch in self.allBranches:
-				name = self.dicBraNames[branch]
-				if not os.path.isfile('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=name)):
-					self.dicHasHistos[branch] = False
-				else:
-					self.dicHasHistos[branch] = True
-			return np.array(self.dicHasHistos.values(), '?').all()
-
-	def LoadROOTFile(self):
-		print 'Loading ROOT file...',
-		sys.stdout.flush()
-		self.rootFile = ro.TFile('{d}/pedestalData.{r}.root'.format(d=self.dir, r=self.run), 'READ')
-		self.pedTree = self.rootFile.Get('pedestalTree')
-		self.entries = self.pedTree.GetEntries()
-		# self.entries = int(maxEntries)
-		print 'Done'
-
-	def LoadHistograms(self):
-		print 'Loading Histograms...',
-		sys.stdout.flush()
-		for branch in self.allBranches:
-			temp = ro.TFile('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=self.dicBraNames[branch]), 'read')
-			self.dicBraHist[branch] = deepcopy(temp.Get(self.dicBraNames[branch]))
-			temp.Close()
-			del temp
-		self.entries = int(self.dicBraHist[self.listBraNamesChs[0]].GetXaxis().GetXmax())
-		self.SetHistogramDefaults()
-		print 'Done'
-
-	def LoadProfiles(self):
-		print 'Loading Profiles...',
-		sys.stdout.flush()
-		for branch in self.listBraNamesChs:
-			temp = ro.TFile('{d}/pedestalAnalysis/profiles/{n}_pyx.root'.format(d=self.dir, n=self.dicBraNames[branch]), 'read')
-			self.dicBraProf[branch] = deepcopy(temp.Get('{n}_pyx'.format(n=self.dicBraNames[branch])))
-			temp.Close()
-			del temp
-		self.entries = int(self.dicBraProf[self.listBraNamesChs[0]].GetXaxis().GetXmax())
-		self.SetProfileDefaults()
-		print 'Done'
-
-	def CreateProfiles(self):
-		print 'Creating profiles:'
-		for branch, histo in self.dicBraHist.iteritems():
-			if branch in self.listBraNamesChs:
-				self.dicBraProf[branch] = histo.Project3DProfile('yx')
-		self.SetProfileDefaults()
-
-	def LoadVectorsFromBranches(self, first_ev=0):
-		print 'Loading vectors from branches...',
-		sys.stdout.flush()
-		if self.pedTree is None:
-			self.LoadROOTFile()
-
-		num_bra_chs = len(self.listBraNamesChs)
-		if num_bra_chs < 1:
-			print 'The dictionary of branches and vectors is empty! try again'
-			return
-		channels = self.pedTree.GetLeaf(self.listBraNamesChs[0]).GetLen()
-		for branch in self.listBraNamesChs:
-			if self.pedTree.GetLeaf(branch).GetLen() != channels:
-				print 'The given branches have different sizes! try again'
-				return
-		leng = self.pedTree.Draw(':'.join(self.listBraNamesChs), '', 'goff para', self.entries, first_ev)
-		if leng == -1:
-			print 'Error, could not load the branches. try again'
-			return
-		while leng > self.pedTree.GetEstimate():
-			self.pedTree.SetEstimate(leng)
-			leng = self.pedTree.Draw(':'.join(self.listBraNamesChs), '', 'goff para', self.entries, first_ev)
-		self.entries = leng / channels
-		for pos, branch in enumerate(self.listBraNamesChs):
-			temp = self.pedTree.GetVal(pos)
-			self.dicBraVectChs[branch] = np.array([[temp[ev * channels + ch] for ch in xrange(channels)] for ev in xrange(self.entries)], dtype='f8')
-			del temp
-
-		num_bra_1ch = len(self.listBraNames1ch)
-		if num_bra_1ch < 1:
-			print 'The dictionary of branches and vectors is empty! try again'
-			return
-		channel = 1
-		for branch in self.listBraNames1ch:
-			if self.pedTree.GetLeaf(branch).GetLen() != channel:
-				print 'The given branches have different sizes different to 1! try again'
-				return
-		leng = self.pedTree.Draw(':'.join(self.listBraNames1ch), '', 'goff para', self.entries, first_ev)
-		if leng == -1:
-			print 'Error, could not load the branches. try again'
-			return
-		while leng > self.pedTree.GetEstimate():
-			self.pedTree.SetEstimate(leng)
-			leng = self.pedTree.Draw(':'.join(self.listBraNames1ch), '', 'goff para', self.entries, first_ev)
-		for pos, branch in enumerate(self.listBraNames1ch):
-			temp = self.pedTree.GetVal(pos)
-			self.dicBraVect1ch[branch] = np.array([temp[ev] for ev in xrange(self.entries)], dtype='f8')
-			del temp
-
-		self.adc_vect, self.ped_vect, self.sigma_vect, self.ped_cmc_vect, self.sigma_cmc_vect = self.dicBraVectChs['rawTree.DiaADC'], self.dicBraVectChs['diaPedestalMean'], self.dicBraVectChs[
-			'diaPedestaSigma'], self.dicBraVectChs['diaPedestalMeanCMN'], self.dicBraVectChs['diaPedestaSigmaCMN']
-		self.cm_vect = self.dicBraVect1ch['commonModeNoise']
-		self.ev_axis['max'] = self.entries
-		print 'Done'
-
-	def SetHistogramLimits(self):
-		for branch, vect in self.dicBraVect1ch.iteritems():
-			name = self.dicBraNames[branch]
-			if name.startswith('cm'):
-				ymin, ymax = min(cm_axis['min'], vect.min()), max(cm_axis['max'], vect.max())
-				cm_axis['min'], cm_axis['max'] = ymin, ymax
-		for branch, vect in self.dicBraVectChs.iteritems():
-			name = self.dicBraNames[branch]
-			if name.startswith('ped'):
-				zmin, zmax = min(ped_axis['min'], vect.min()), max(ped_axis['max'], vect.max())
-				ped_axis['min'], ped_axis['max'] = zmin, zmax
-			elif name.startswith('sigm'):
-				zmin, zmax = min(sigma_axis['min'], vect.min()), max(sigma_axis['max'], vect.max())
-				sigma_axis['min'], sigma_axis['max'] = zmin, zmax
-			elif name.startswith('adc'):
-				zmin, zmax = min(adc_axis['min'], vect.min()), max(adc_axis['max'], vect.max())
-				adc_axis['min'], adc_axis['max'] = zmin, zmax
-
-	def CreateHistograms(self):
-		print 'Creating histograms...',
-		sys.stdout.flush()
-		self.SetHistogramLimits()
-		for branch in self.allBranches:
-			name = self.dicBraNames[branch]
-			if branch in self.listBraNames1ch:
-				ymin, ymax, ybins = 0, 0, 0
-				if name.startswith('cm'):
-					ymin, ymax, ybins = cm_axis['min'], cm_axis['max'], int((cm_axis['max'] - cm_axis['min'])/0.5)
-				self.dicBraHist[branch] = ro.TH2D(name, name, self.ev_axis['bins'], self.ev_axis['min'], self.ev_axis['max'], ybins + 1, ymin, ymax + (ymax - ymin) / float(ybins))
-				self.dicBraHist[branch].GetXaxis().SetTitle('event')
-				self.dicBraHist[branch].GetYaxis().SetTitle(name[:-6])
-			elif branch in self.listBraNamesChs:
-				zmin, zmax, zbins = 0, 0, 0
-				if name.startswith('ped'):
-					zmin, zmax, zbins = ped_axis['min'], ped_axis['max'], int((ped_axis['max'] - ped_axis['min'])/10.0)
-				elif name.startswith('adc'):
-					zmin, zmax, zbins = adc_axis['min'], adc_axis['max'], int((adc_axis['max'] - adc_axis['min'])/10.0)
-				elif name.startswith('sigma'):
-					zmin, zmax, zbins = sigma_axis['min'], sigma_axis['max'], int((sigma_axis['max'] - sigma_axis['min'])/0.1)
-				self.dicBraHist[branch] = ro.TH3D(name, name, self.ev_axis['bins'], self.ev_axis['min'], self.ev_axis['max'], self.ch_axis['bins'], self.ch_axis['min'], self.ch_axis['max'], zbins + 1, zmin, zmax + (zmax - zmin) / float(zbins))
-				self.dicBraHist[branch].GetXaxis().SetTitle('event')
-				self.dicBraHist[branch].GetYaxis().SetTitle('channel')
-				self.dicBraHist[branch].GetZaxis().SetTitle(name[:-6])
-		self.adc_hist, self.ped_hist, self.sigma_hist, self.ped_cmc_hist, self.sigma_cmc_hist, self.cm_hist = self.dicBraHist['rawTree.DiaADC'], self.dicBraHist['diaPedestalMean'], self.dicBraHist['diaPedestaSigma'], self.dicBraHist['diaPedestalMeanCMN'], self.dicBraHist['diaPedestaSigmaCMN'], self.dicBraHist['commonModeNoise']
-		print 'Done'
-
-	def FillHistograms(self):
-		print 'Filling histograms:'
-		self.CreateProgressBar(self.entries)
-		if self.bar is not None:
-			self.bar.start()
-		for ev in xrange(self.entries):
+			skip = True
 			for ch in xrange(diaChs):
-				self.adc_hist.Fill(ev, ch, self.adc_vect[ev, ch])
-				self.ped_hist.Fill(ev, ch, self.ped_vect[ev, ch])
-				self.sigma_hist.Fill(ev, ch, self.sigma_vect[ev, ch])
-				self.ped_cmc_hist.Fill(ev, ch, self.ped_cmc_vect[ev, ch])
-				self.sigma_cmc_hist.Fill(ev, ch, self.sigma_cmc_vect[ev, ch])
-			self.cm_hist.Fill(ev, self.cm_vect[ev])
-			if self.bar is not None:
-				self.bar.update(ev + 1)
-		if self.bar is not None:
-			self.bar.finish()
+				if not os.path.isfile(self.out_dir + '/no_mask/{r}/channel_sweep/{c}/{r}/selectionData.{r}.root'.format(r=self.run, c=ch)):
+					skip = False
+					break
+			if not skip:
+				self.GetIndividualChannelHitmap()
 
-	def SaveHistograms(self):
-		print 'Saving histograms:'
-		if not os.path.isdir('{d}/pedestalAnalysis/histos'.format(d=self.dir)):
-			os.makedirs('{d}/pedestalAnalysis/histos'.format(d=self.dir))
-		for branch, histo in self.dicBraHist.iteritems():
-			name = self.dicBraNames[branch]
-			histo.SaveAs('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=name))
+	def GetIndividualChannelHitmap(self):
+		print 'Starting channel occupancy plots...'
+		CreateDirectoryIfNecessary(self.out_dir + '/no_mask/{r}/channel_sweep'.format(r=self.run))
+		for ch in xrange(diaChs):
+			CreateDirectoryIfNecessary(self.out_dir + '/no_mask/{r}/channel_sweep/{c}'.format(c=ch, r=self.run))
+			CreateDirectoryIfNecessary(self.out_dir + '/no_mask/{r}/channel_sweep/{c}/{r}'.format(c=ch, r=self.run))
+			self.LinkRootFiles(self.out_dir + '/no_mask/' + str(self.run), self.out_dir + '/no_mask/{r}/channel_sweep/{c}/{r}'.format(c=ch, r=self.run), 'cluster')
+			self.ModifySettingsOneChannel(ch)
+		channel_runs = np.arange(diaChs).reshape([16, 8])
+		for bat in xrange(channel_runs.shape[0]):
+			procx = []
+			for proc in xrange(channel_runs.shape[1]):
+				print 'Getting channel:', channel_runs[bat, proc], '...'
+				procx.append(subp.Popen(
+					['diamondAnalysis', '-r', '{d}/RunList_{r}.ini'.format(d=self.runlist_dir, r=self.run), '-s', self.settings_dir + '/no_mask/channels/{c}'.format(c=channel_runs[bat, proc]),
+					 '-o', self.out_dir + '/no_mask/{r}/channel_sweep/{c}'.format(c=channel_runs[bat, proc], r=self.run), '-i', self.in_dir], bufsize=-1, stdin=subp.PIPE,
+					stdout=open('/dev/null', 'w'), stderr=subp.STDOUT, close_fds=True))
+			for proc in xrange(channel_runs.shape[1]):
+				while procx[proc].poll() is None:
+					# procx[proc].stdout.
+					continue
+			for proc in xrange(channel_runs.shape[1]):
+				CloseSubprocess(procx[proc], stdin=True, stdout=False)
+				print 'Done with channel:', channel_runs[bat, proc], ':)'
+			del procx
 
-	def SaveProfiles(self):
-		print 'Saving profiles:'
-		if not os.path.isdir('{d}/pedestalAnalysis/profiles'.format(d=self.dir)):
-			os.makedirs('{d}/pedestalAnalysis/profiles'.format(d=self.dir))
-		for branch, prof in self.dicBraProf.iteritems():
-			name = self.dicBraNames[branch]
-			prof.SaveAs('{d}/pedestalAnalysis/profiles/{n}_pyx.root'.format(d=self.dir, n=name))
+	def IsMaskRunDone(self):
+		no_mask_dir = self.out_dir + '/no_mask/' + str(self.run)
+		if os.path.isdir(no_mask_dir):
+			if os.path.isfile(no_mask_dir + '/pedestalData.{r}.root'.format(r=self.run)):
+				tempf = ro.TFile(no_mask_dir + '/pedestalData.{r}.root'.format(r=self.run), 'read')
+				tempt = tempf.Get('pedestalTree')
+				if tempt:
+					if tempt.GetEntries() >= 10000:
+						return True
+		return False
+
+	def LinkRootFiles(self, source, dest, upto='selection'):
+		steps = ['pedestal', 'cluster', 'selection', 'align', 'transparent']
+		cummulative = []
+		for elem in steps:
+			cummulative.append(elem)
+			if elem == upto:
+				break
+		if 'pedestal' in cummulative:
+			RecreateLink(source + '/rawData.{r}.root'.format(r=self.run), dest, 'rawData.{r}.root'.format(r=self.run))
+			RecreateLink(source + '/pedestalData.{r}.root'.format(r=self.run), dest, 'pedestalData.{r}.root'.format(r=self.run))
+			RecreateLink(source + '/pedestalAnalysis', dest, 'pedestalAnalysis')
+		if 'cluster' in cummulative:
+			RecreateLink(source + '/clusterData.{r}.root'.format(r=self.run), dest, 'clusterData.{r}.root'.format(r=self.run))
+			RecreateLink(source + '/etaCorrection.{r}.root'.format(r=self.run), dest, 'etaCorrection.{r}.root'.format(r=self.run))
+			RecreateLink(source + '/clustering', dest, 'clustering')
+			if os.path.isfile(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run)):
+				shutil.copy(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run), dest + '/')
+		if 'selection' in cummulative:
+			RecreateLink(source + '/selectionData.{r}.root'.format(r=self.run), dest, 'selectionData.{r}.root'.format(r=self.run))
+			RecreateLink(source + '/selectionAnalysis', dest, 'selectionAnalysis')
+			RecreateLink(source + '/selections', dest, 'selections')
+		if 'align' in cummulative:
+			RecreateLink(source + '/alignment.{r}.root'.format(r=self.run), dest, 'alignment.{r}.root'.format(r=self.run))
+			RecreateLink(source + '/alignment', dest, 'alignment')
+		if 'transparent' in cummulative:
+			RecreateLink(source + '/transparentAnalysis', dest, 'transparentAnalysis')
+		if os.path.isfile(source + '/index.php'):
+			shutil.copyfile(source + '/index.php', dest + '/index.php')
+		if os.path.isfile(source + '/overview.html'):
+			shutil.copyfile(source + '/overview.html', dest + '/overview.html')
+		if os.path.isfile(source + '/results_{r}.res'.format(r=self.run)):
+			shutil.copyfile(source + '/results_{r}.res'.format(r=self.run), dest + '/results_{r}.res'.format(r=self.run))
+		if os.path.isfile(source + '/results_{r}.txt'.format(r=self.run)):
+			shutil.copyfile(source + '/results_{r}.txt'.format(r=self.run), dest + '/results_{r}.txt'.format(r=self.run))
+		RecreateLink(source + '/Results.{r}.root'.format(r=self.run), dest, 'Results.{r}.root'.format(r=self.run))
 
 	def CreateProgressBar(self, maxVal=1):
 		widgets = [
@@ -401,8 +277,8 @@ class RD42Analysis:
 if __name__ == '__main__':
 	parser = OptionParser()
 	parser.add_option('-r', '--run', dest='run', default=22011, type='int', help='Run to be analysed (e.g. 22011)')
-	parser.add_option('-i', '--input', dest='input', default='.', type='string', help='source folder containing the run\'s binraries files')
-	parser.add_option('-o', '--output', dest='output', default='.', type='string', help='foler where to save the structures (will contain, full, even and odd subfolders)')
+	parser.add_option('-i', '--input', dest='input', default='.', type='string', help='folder containing the different folder runs')
+	# parser.add_option('-o', '--output', dest='output', default='.', type='string', help='foler where to save the structures (will contain, full, even and odd subfolders)')
 	parser.add_option('-l', '--runlistdir', dest='runlist', default='~/RunLists', help='folder which contains the RunLists files')
 	parser.add_option('-s', '--settingsdir', dest='sett', default='~/settings', help='folder which contains the settings files')
 	parser.add_option('-n', '--numevents', dest='numevents', default=400000, type='int', help='number of events to analyse')
@@ -415,7 +291,7 @@ if __name__ == '__main__':
 	(options, args) = parser.parse_args()
 	run = int(options.run)
 	input = str(options.input)
-	output = bool(options.output)
+	# output = bool(options.output)
 	numev = int(options.numevents)
 	runlist = str(options.runlist)
 	settings_dir = str(options.sett)
@@ -425,7 +301,7 @@ if __name__ == '__main__':
 	autom_all = bool(options.all)
 	first_ana = bool(options.first)
 
-	rd42 = RD42Analysis(run=run, input=input, output=output, numev=numev, runlistdir=runlist, settings_dir=settings_dir, pedestal=pedestal, cluster=cluster, selec=selec, autom_all=autom_all)
+	rd42 = RD42Analysis(run=run, source_dir=input, numev=numev, runlistdir=runlist, settings_dir=settings_dir, pedestal=pedestal, cluster=cluster, selec=selec, autom_all=autom_all)
 
 	if first_ana:
 		rd42.First_analysis()

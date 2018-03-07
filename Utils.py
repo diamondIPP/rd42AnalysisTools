@@ -1,4 +1,5 @@
 import os, shutil
+import ipdb
 
 def IsInt(i):
 	try:
@@ -55,6 +56,19 @@ def CreateDefaultSettingsFile(dir, run_no, events):
 		f.write('3dShortAnalysis = 0;\n')
 		f.write('3dLongAnalysis = 0;\n')
 		f.write('3dTransparentAnalysis = 0;\n')
+
+def CreateDirectoryIfNecessary(dir):
+	if not os.path.isdir(dir):
+		os.makedirs(dir)
+
+
+def RecreateLink(source, dest, name):
+	# if os.path.isfile(source) or os.path.isdir(source):
+	if os.path.isfile(source):
+		if os.path.islink(dest + '/' + name):
+			os.unlink(dest + '/' + name)
+		os.link(source, dest + '/' + name)
+		# os.symlink(source, dest + '/' + name)
 
 def CloseSubprocess(p, stdin=False, stdout=False):
 	pid = p.pid
