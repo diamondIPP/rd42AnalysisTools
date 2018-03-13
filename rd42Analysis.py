@@ -167,7 +167,7 @@ class RD42Analysis:
 		CreateDirectoryIfNecessary(self.runlist_dir)
 		if not self.IsMaskRunDone():
 			print 'Starting first analysis...'
-			with open(self.runlist_dir + '/RunList_'+self.run+'.ini', 'w') as rlf:
+			with open(self.runlist_dir + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
 				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n'.format(r=self.run, n=self.num_ev))
 			CreateDefaultSettingsFile(self.settings_dir + '/no_mask', self.run, self.num_ev)
 			CreateDirectoryIfNecessary(self.out_dir + '/no_mask')
@@ -175,7 +175,7 @@ class RD42Analysis:
 			while self.process_f.poll() is None:
 				continue
 			CloseSubprocess(self.process_f, stdin=True, stdout=False)
-			RecreateLink(self.out_dir + '/no_mask/' + str(self.run), scratch_path, str(self.run) + '_no_mask')
+			RecreateSoftLink(self.out_dir + '/no_mask/' + str(self.run), scratch_path, str(self.run) + '_no_mask')
 			print 'Finish first analysis :)'
 		if not os.path.isdir(self.out_dir + '/no_mask/{r}/channel_sweep'.format(r=self.run)):
 			self.GetIndividualChannelHitmap()

@@ -15,10 +15,10 @@ def IsFloat(f):
 	except ValueError:
 		return False
 
-def CreateDefaultSettingsFile(dir, run_no, events):
-	if not os.path.isdir(dir):
-		os.makedirs(dir)
-	with open('settings.{r}.ini'.format(r=run_no), 'w') as f:
+def CreateDefaultSettingsFile(diri, run_no, events):
+	if not os.path.isdir(diri):
+		os.makedirs(diri)
+	with open(diri + '/settings.{r}.ini'.format(r=run_no), 'w') as f:
 		f.write('runNo = {r}\n'.format(r=run_no))
 		f.write('Events = {e}\n'.format(e=events))
 		f.write('repeaterCardNo = 2\n')
@@ -70,6 +70,14 @@ def RecreateLink(source, dest, name):
 		os.link(source, dest + '/' + name)
 		# os.symlink(source, dest + '/' + name)
 
+def RecreateSoftLink(source, dest, name):
+	# if os.path.isfile(source) or os.path.isdir(source):
+	if os.path.isfile(source):
+		if os.path.islink(dest + '/' + name):
+			os.unlink(dest + '/' + name)
+		# os.link(source, dest + '/' + name)
+		os.symlink(source, dest + '/' + name)
+
 def CloseSubprocess(p, stdin=False, stdout=False):
 	pid = p.pid
 	if stdin:
@@ -98,3 +106,24 @@ def CloseSubprocess(p, stdin=False, stdout=False):
 			exit()
 	del p, pid
 	p = None
+
+def ReturnRGB(val, min, max):
+		hue = (val - min) * 1.0 / (max - min)
+		huep = hue * 6.0
+		i = int(huep)
+		v1 = 0.
+		v2 = 1. - huep + i
+		v3 = huep - i
+		if i == 0:
+			r, g, b = 1., v3, v1
+		elif i == 1:
+			r, g, b = v2, 1., v1
+		elif i == 2:
+			r, g, b = v1, 1., v3
+		elif i == 3:
+			r, g, b = v1, v2, 1.
+		elif i == 4:
+			r, g, b = v3, v1, 1.
+		else:
+			r, g, b = 1., v1, v2
+		return r, g, b

@@ -7,6 +7,7 @@ import ROOT as ro
 import ipdb  # set_trace, launch_ipdb_on_exception
 import progressbar
 from copy import deepcopy
+from collections import OrderedDict
 from NoiseExtraction import NoiseExtraction
 import os, sys, shutil
 from Utils import *
@@ -27,9 +28,9 @@ cm_axis = {'min': -100, 'max': 100}
 
 class PedestalAnalysis:
 	def __init__(self, run=22011, dir='', force=False):
-		print 'Creating NoiseExtraction instance for run:', run
+		print 'Creating PedestalAnalysis instance for run:', run
 		self.run = run
-		self.dir = dir
+		self.dir = dir + '/{r}'.format(r=self.run)
 		self.force = force
 		self.bar = None
 		self.rootFile = self.pedTree = None
@@ -56,6 +57,8 @@ class PedestalAnalysis:
 		self.event_list = None
 		self.dia_channel_list = None
 		self.nc_channel_list = None
+		self.dic_bra_mean_ped_chs = {}
+		self.dic_bra_sigma_ped_chs = {}
 
 		if self.force:
 			self.ClearOldAnalysis()
@@ -82,6 +85,7 @@ class PedestalAnalysis:
 		else:
 			self.LoadHistograms()
 			self.LoadProfiles()
+			self.GetMeanSigmaPerChannel()
 
 	def ClearOldAnalysis(self):
 		if os.path.isdir('{d}/pedestalAnalysis/histos'.format(d=self.dir)):
@@ -160,15 +164,17 @@ class PedestalAnalysis:
 			name = self.dicBraNames[branch]
 			self.gr_plots[branch] = self.ProjectChannel(self.gr, prof, name)
 		for ch in self.dia_channel_list:
-			self.dia_channels_plots[ch] = {}
-			for branch, prof in self.dicBraProf.iteritems():
-				name = self.dicBraNames[branch]
-				self.dia_channels_plots[ch][branch] = self.ProjectChannel(ch, prof, name)
+			# self.dia_channels_plots[ch] = {}
+			self.dia_channels_plots[ch] = {branch: self.ProjectChannel(ch, prof, self.dicBraNames[branch]) for branch, prof in self.dicBraProf.iteritems()}
+			# for branch, prof in self.dicBraProf.iteritems():
+			# 	name = self.dicBraNames[branch]
+			# 	self.dia_channels_plots[ch][branch] = self.ProjectChannel(ch, prof, name)
 		for ch in self.nc_channel_list:
-			self.nc_channels_plots[ch] = {}
-			for branch, prof in self.dicBraProf.iteritems():
-				name = self.dicBraNames[branch]
-				self.nc_channels_plots[ch][branch] = self.ProjectChannel(ch, prof, name)
+			# self.nc_channels_plots[ch] = {}
+			self.nc_channels_plots[ch] = {branch: self.ProjectChannel(ch, prof, self.dicBraNames[branch]) for branch, prof in self.dicBraProf.iteritems()}
+			# for branch, prof in self.dicBraProf.iteritems():
+			# 	name = self.dicBraNames[branch]
+			# 	self.nc_channels_plots[ch][branch] = self.ProjectChannel(ch, prof, name)
 
 	def GetEventsHistos(self):
 		for branch, prof in self.dicBraProf.iteritems():
@@ -216,6 +222,14 @@ class PedestalAnalysis:
 		temp.GetYaxis().SetRangeUser(prof.GetMinimum(), prof.GetMaximum())
 		return temp
 
+	def GetMeanSigmaPerChannel(self):
+		for branch, prof in self.dicBraProf.iteritems():
+			# ipdb.set_trace()
+			temp1 = prof.ProfileY(prof.GetTitle() + '_py')
+			self.dic_bra_mean_ped_chs[branch] = np.array([temp1.GetBinContent(ch + 1) for ch in xrange(diaChs + 1)], dtype='f8')
+			self.dic_bra_sigma_ped_chs[branch] = np.array([temp1.GetBinError(ch + 1) for ch in xrange(diaChs + 1)], dtype='f8')
+			del temp1
+
 	def SetProfileDefaults(self):
 		for branch, prof in self.dicBraProf.iteritems():
 			prof.GetXaxis().SetTitle('event')
@@ -261,6 +275,7 @@ class PedestalAnalysis:
 	def LoadROOTFile(self):
 		print 'Loading ROOT file...',
 		sys.stdout.flush()
+		# ipdb.set_trace()
 		self.rootFile = ro.TFile('{d}/pedestalData.{r}.root'.format(d=self.dir, r=self.run), 'READ')
 		self.pedTree = self.rootFile.Get('pedestalTree')
 		self.entries = self.pedTree.GetEntries()
@@ -293,9 +308,10 @@ class PedestalAnalysis:
 
 	def CreateProfiles(self):
 		print 'Creating profiles:'
-		for branch, histo in self.dicBraHist.iteritems():
-			if branch in self.listBraNamesChs:
-				self.dicBraProf[branch] = histo.Project3DProfile('yx')
+		self.dicBraProf = {branch: histo.Project3DProfile('yx') for branch, histo in self.dicBraHist.iteritems() if branch in self.listBraNamesChs}
+		# for branch, histo in self.dicBraHist.iteritems():
+		# 	if branch in self.listBraNamesChs:
+		# 		self.dicBraProf[branch] = histo.Project3DProfile('yx')
 		self.SetProfileDefaults()
 
 	def LoadVectorsFromBranches(self, first_ev=0):
@@ -387,11 +403,11 @@ class PedestalAnalysis:
 			elif branch in self.listBraNamesChs:
 				zmin, zmax, zbins = 0, 0, 0
 				if name.startswith('ped'):
-					zmin, zmax, zbins = ped_axis['min'], ped_axis['max'], int((ped_axis['max'] - ped_axis['min']) / 10.0)
+					zmin, zmax, zbins = ped_axis['min'], ped_axis['max'], int(min((ped_axis['max'] - ped_axis['min']) / 10.0, 500))
 				elif name.startswith('adc'):
-					zmin, zmax, zbins = adc_axis['min'], adc_axis['max'], int((adc_axis['max'] - adc_axis['min']) / 10.0)
+					zmin, zmax, zbins = adc_axis['min'], adc_axis['max'], int(min((adc_axis['max'] - adc_axis['min']) / 10.0, 500))
 				elif name.startswith('sigma'):
-					zmin, zmax, zbins = sigma_axis['min'], sigma_axis['max'], int((sigma_axis['max'] - sigma_axis['min']) / 0.1)
+					zmin, zmax, zbins = sigma_axis['min'], sigma_axis['max'], int(min((sigma_axis['max'] - sigma_axis['min']) / 0.2, 500))
 				self.dicBraHist[branch] = ro.TH3D(name, name, self.ev_axis['bins'], self.ev_axis['min'], self.ev_axis['max'], self.ch_axis['bins'], self.ch_axis['min'], self.ch_axis['max'], zbins + 1,
 				                                  zmin, zmax + (zmax - zmin) / float(zbins))
 				self.dicBraHist[branch].GetXaxis().SetTitle('event')
@@ -447,16 +463,11 @@ class PedestalAnalysis:
 		]
 		self.bar = progressbar.ProgressBar(widgets=widgets, maxval=maxVal)
 
-
 if __name__ == '__main__':
 	parser = OptionParser()
-	parser.add_option('-r', '--run', dest='run', default=22011, type='int', help='Run to be analysed (e.g. 22011)')
+	parser.add_option('-r', '--run', dest='run', default=22022, type='int', help='Run to be analysed (e.g. 22022)')
 	parser.add_option('-d', '--dir', dest='dir', default='.', type='string', help='source folder containing processed data of different runs')
 	parser.add_option('-f', '--force', dest='force', default=False, action='store_true')
-	# parser.add_option('-o', '--outputDir', dest='output', default='', type='string', help='output folder containing the analysed results')
-	# parser.add_option('-c', '--connected', dest='connect', default=1, type='int', help='do connected channels (1) or disconnected (0). Other integer value you would have to specify the range using -l and -H')
-	# parser.add_option('-l', '--lowChannel', dest='low', default=0, type='int', help='lower channel to analyse e.g. 1')
-	# parser.add_option('-H', '--highChannel', dest='high', default=0, type='int', help='higher channel to analyse e.g. 2')
 
 	(options, args) = parser.parse_args()
 	run = int(options.run)
@@ -467,4 +478,4 @@ if __name__ == '__main__':
 	# low = int(options.low)
 	# high = int(options.high)
 
-	z = PedestalAnalysis(run, dir, force)
+	pedAna = PedestalAnalysis(run, dir, force)
