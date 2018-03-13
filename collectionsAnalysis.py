@@ -50,7 +50,10 @@ class CollectionAnalysis:
 			self.GetGraphsPedAnaChannels()
 
 	def CreatePedestalAnalysisInstances(self):
-		self.runs_pedAna = OrderedDict({runi: PedestalAnalysis(runi, self.dir, force) for runi in self.runs})
+		# self.runs_pedAna = OrderedDict({runi: PedestalAnalysis(runi, self.dir, force) for runi in self.runs})
+		self.runs_pedAna = OrderedDict()
+		for runi in self.runs:
+			self.runs_pedAna[runi] = PedestalAnalysis(runi, self.dir, self.force)
 
 	def GetGraphsPedAnaChannels(self):
 		branches = self.runs_pedAna[self.runs[0]].listBraNamesChs
@@ -59,6 +62,13 @@ class CollectionAnalysis:
 		for branch in branches:
 			self.graphs_pedAna[branch] = OrderedDict()
 			for ch in xrange(diaChs + 1):
+				# x, y, ye = [], [], []
+				# for runi, run in self.runs_pedAna.iteritems():
+				# 	x.append(runi)
+				# 	y.append(run.dic_bra_mean_ped_chs[branch][ch])
+				# 	ye.append(run.dic_bra_sigma_ped_chs[branch][ch])
+				# x, y, ye = np.array(x, 'f8'), np.array(y, 'f8'), np.array(ye, 'f8')
+				# self.graphs_pedAna[branch][ch] = ro.TGraphErrors(len(self.runs), x, y, np.zeros(len(self.runs), dtype='f8'), ye)
 				self.graphs_pedAna[branch][ch] = ro.TGraphErrors(len(self.runs), np.array(self.runs, dtype='f8'), np.array([runi.dic_bra_mean_ped_chs[branch][ch] for runi in self.runs_pedAna.itervalues()], dtype='f8'), np.zeros(len(self.runs), dtype='f8'), np.array([runi.dic_bra_sigma_ped_chs[branch][ch] for runi in self.runs_pedAna.itervalues()], dtype='f8'))
 				self.graphs_pedAna[branch][ch].SetNameTitle(dicBraNames[branch] + '_ch_' + str(ch), dicBraNames[branch] + '_ch_' + str(ch))
 				self.graphs_pedAna[branch][ch].GetXaxis().SetTitle('run')
@@ -66,7 +76,7 @@ class CollectionAnalysis:
 				self.graphs_pedAna[branch][ch].SetMarkerStyle(7)
 				self.graphs_pedAna[branch][ch].SetMarkerColor(ro.kBlack)
 
-	def GetPedAnaBranchChannelsGraphs(self, branch='', chi=0, chf=diaChs-1, cmc=False):
+	def Get_Ped_Ana_Graphs(self, branch='', chi=0, chf=diaChs-1, cmc=False):
 		if 'ped' in branch.lower():
 			if cmc or 'cmc' in branch.lower() or 'cm' in branch.lower():
 				self.Get_Plot_Ped_CMC_Channels(chi, chf)
@@ -77,6 +87,8 @@ class CollectionAnalysis:
 				self.Get_Plot_Sigma_CMC_Channels(chi, chf)
 			else:
 				self.Get_Plot_Sigma_Channels(chi, chf)
+		if 'adc' in branch.lower():
+			self.Get_Plot_ADC_Channels(chi, chf)
 
 	def Get_Plot_Ped_CMC_Channels(self, chi=0, chf=diaChs - 1):
 		self.Create_multi_graph_channels('Ped_CMC_chs:[{i},{f}];run;ped_cmc'.format(i=chi, f=chf), self.graphs_pedAna['diaPedestalMeanCMN'], chi, chf)
@@ -89,6 +101,9 @@ class CollectionAnalysis:
 
 	def Get_Plot_Sigma_Channels(self, chi=0, chf=diaChs - 1):
 		self.Create_multi_graph_channels('Sigma_chs:[{i},{f}];run;sigma'.format(i=chi, f=chf), self.graphs_pedAna['diaPedestaSigma'], chi, chf)
+
+	def Get_Plot_ADC_Channels(self, chi=0, chf=diaChs - 1):
+		self.Create_multi_graph_channels('ADC_chs:[{i},{f}];run;adc'.format(i=chi, f=chf), self.graphs_pedAna['rawTree.DiaADC'], chi, chf)
 
 	def Create_multi_graph_channels(self, title, graphs, chi, chf):
 		if self.multi_graph_pedAna:
