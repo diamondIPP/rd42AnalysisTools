@@ -34,9 +34,21 @@ class RD42Analysis:
 		self.in_dir = source_dir + str(self.run)
 		self.out_dir = source_dir + 'output'
 		CreateDirectoryIfNecessary(self.out_dir)
-		self.num_ev = numev
-		self.runlist_dir = runlistdir
-		self.settings_dir = settings_dir
+		if numev != 0:
+			self.num_ev = numev
+		else:
+			cont = False
+			while not cont:
+				temp = raw_input('Enter the number of events to analyse: ')
+				if IsInt(temp):
+					if 0 < temp < 100e6:
+						cont = True
+				else:
+					print 'What you entered is not valid. Try again'
+			self.num_ev = deepcopy(temp)
+			del temp
+		self.runlist_dir = Correct_Path(runlistdir)
+		self.settings_dir = Correct_Path(settings_dir)
 		self.do_pedestal_ana = pedestal
 		self.do_cluster_ana = cluster
 		self.do_selec_ana = selec
@@ -45,22 +57,26 @@ class RD42Analysis:
 		self.process_f = None
 		self.process_e = None
 		self.process_o = None
+		ro.gStyle.SetPalette(55)
+		ro.gStyle.SetNumberContours(999)
 
-	def Create_Run_List(self):
+	def Create_Run_List_full(self):
 		if not os.path.isdir(self.runlist_dir):
 			os.makedirs(self.runlist_dir)
 		ped = 1 if self.do_pedestal_ana else 0
 		clu = 1 if self.do_cluster_ana else 0
 		sele = 1 if self.do_selec_ana else 0
-		with open(self.runlist_dir + '/RunList_'+self.run+'.ini', 'w') as rlf:
+		if not os.path.isdir(self.runlist_dir+'/full'):
+			os.makedirs(self.runlist_dir+'/full')
+		with open(self.runlist_dir + '/full/RunList_'+str(self.run)+'.ini', 'w') as rlf:
 			rlf.write('{r}\t0\t0\t{n}\t0\t{p}\t{c}\t{s}\t1\t0\t1\n'.format(r=self.run, n=self.num_ev, p=ped, c=clu, s=sele))
 		if not os.path.isdir(self.runlist_dir+'/odd'):
 			os.makedirs(self.runlist_dir+'/odd')
-		with open(self.runlist_dir+'/odd' + '/RunList_'+self.run+'.ini', 'w') as rlf:
+		with open(self.runlist_dir+'/odd' + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
 			rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n'.format(r=self.run, n=self.num_ev, p=ped, c=clu, s=sele))
 		if not os.path.isdir(self.runlist_dir+'/even'):
 			os.makedirs(self.runlist_dir+'/even')
-		with open(self.runlist_dir+'/even' + '/RunList_'+self.run+'.ini', 'w') as rlf:
+		with open(self.runlist_dir+'/even' + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
 			rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n'.format(r=self.run, n=self.num_ev, p=ped, c=clu, s=sele))
 
 	def Copy_settings_to_even_odd(self):
@@ -77,71 +93,78 @@ class RD42Analysis:
 			os.makedirs(self.settings_dir + '/full')
 		if not os.path.isfile(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run)):
 			CreateDefaultSettingsFile(self.settings_dir + '/full', self.run, self.num_ev)
+		Set_Diamond_pattern(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
+		Mark_channels_as_NC(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
+		Mark_channels_as_Screened(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
+		Mark_channels_as_Noisy(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
+		Select_fiducial_region(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 
 	def Modify_even_odd(self):
 		self.Modify_even()
 		self.Modify_odd()
 
 	def Modify_even(self):
-		with open(self.settings_dir + '/even/settings.{r}.ini'.format(r=self.run), 'r') as fin:
-			with open(self.settings_dir + '/even/settings.new.{r}.ini.'.format(r=self.run), 'w') as fnew:
-				for line in fin:
-					if not line.startswith('Dia_channel_screen_channels'):
-						fnew.write(line)
-					else:
-						channel_str = line[line.find('{') + 1:line.find('}')].split(',')
-						channel_str_new = self.ModifyString(channel_str, 'even')
-						fnew.write('Dia_channel_screen_channels = {' + channel_str_new + '}\n')
-		os.remove(self.settings_dir + '/even/settings.{r}.ini'.format(r=self.run))
-		shutil.move(self.settings_dir + '/even/settings.new.{r}.ini.'.format(r=self.run), self.settings_dir + '/even/settings.{r}.ini'.format(r=self.run))
+		Replace_Settings_Line(self.settings_dir + '/even/settings.{r}.ini'.format(r=self.run), 'Dia_channel_screen_channels', 'even')
+		# with open(self.settings_dir + '/even/settings.{r}.ini'.format(r=self.run), 'r') as fin:
+		# 	with open(self.settings_dir + '/even/settings.new.{r}.ini.'.format(r=self.run), 'w') as fnew:
+		# 		for line in fin:
+		# 			if not line.startswith('Dia_channel_screen_channels'):
+		# 				fnew.write(line)
+		# 			else:
+		# 				channel_str = line[line.find('{') + 1:line.find('}')].split(',')
+		# 				channel_str_new = self.ModifyString(channel_str, 'even')
+		# 				fnew.write('Dia_channel_screen_channels = {' + channel_str_new + '}\n')
+		# os.remove(self.settings_dir + '/even/settings.{r}.ini'.format(r=self.run))
+		# shutil.move(self.settings_dir + '/even/settings.new.{r}.ini.'.format(r=self.run), self.settings_dir + '/even/settings.{r}.ini'.format(r=self.run))
 
 	def Modify_odd(self):
-		with open(self.settings_dir + '/odd/settings.{r}.ini'.format(r=self.run), 'r') as fin:
-			with open(self.settings_dir + '/odd/settings.new.{r}.ini.'.format(r=self.run), 'w') as fnew:
-				for line in fin:
-					if not line.startswith('Dia_channel_screen_channels'):
-						fnew.write(line)
-					else:
-						channel_str = line[line.find('{') + 1:line.find('}')].split(',')
-						channel_str_new = self.ModifyString(channel_str, 'odd')
-						fnew.write('Dia_channel_screen_channels = {' + channel_str_new + '}\n')
-		os.remove(self.settings_dir + '/odd/settings.{r}.ini'.format(r=self.run))
-		shutil.move(self.settings_dir + '/odd/settings.new.{r}.ini.'.format(r=self.run), self.settings_dir + '/odd/settings.{r}.ini'.format(r=self.run))
-		
-	def ModifyString(self, channel_old, type='even'):
-		modulo = 1 if type == 'even' else 0
-		channel_new = ''
-		for i in xrange(1, len(channel_old)):
-			if IsInt(channel_old[i - 1]):
-				prev = int(channel_old[i - 1])
-				if IsInt(channel_old[i]):
-					th = int(channel_old[i])
-					if th - prev < 2:
-						channel_new += str(prev) + ','
-					elif prev % 2 == modulo:
-						for ch in xrange(prev, th, 2):
-							channel_new += str(ch) + ','
-					else:
-						channel_new += str(prev) + ','
-						for ch in xrange(prev + 1, th, 2):
-							channel_new += str(ch) + ','
-				else:
-					temp = channel_old[i].split('-')
-					if IsInt(temp[0]):
-						th = int(temp[0])
-						if th - prev < 2:
-							channel_new += str(prev) + ','
-						elif prev % 2 == modulo:
-							for ch in xrange(prev, th, 2):
-								channel_new += str(ch) + ','
-						else:
-							channel_new += str(prev) + ','
-							for ch in xrange(prev + 1, th, 2):
-								channel_new += str(ch) + ','
-			else:
-				channel_new += channel_old[i - 1] + ','
-		channel_new = channel_new[:-1]
-		return channel_new
+		Replace_Settings_Line(self.settings_dir + '/odd/settings.{r}.ini'.format(r=self.run), 'Dia_channel_screen_channels', 'odd')
+		# with open(self.settings_dir + '/odd/settings.{r}.ini'.format(r=self.run), 'r') as fin:
+		# 	with open(self.settings_dir + '/odd/settings.new.{r}.ini.'.format(r=self.run), 'w') as fnew:
+		# 		for line in fin:
+		# 			if not line.startswith('Dia_channel_screen_channels'):
+		# 				fnew.write(line)
+		# 			else:
+		# 				channel_str = line[line.find('{') + 1:line.find('}')].split(',')
+		# 				channel_str_new = self.ModifyString(channel_str, 'odd')
+		# 				fnew.write('Dia_channel_screen_channels = {' + channel_str_new + '}\n')
+		# os.remove(self.settings_dir + '/odd/settings.{r}.ini'.format(r=self.run))
+		# shutil.move(self.settings_dir + '/odd/settings.new.{r}.ini.'.format(r=self.run), self.settings_dir + '/odd/settings.{r}.ini'.format(r=self.run))
+
+	# def ModifyString(self, channel_old, type='even'):
+	# 	modulo = 1 if type == 'even' else 0
+	# 	channel_new = ''
+	# 	for i in xrange(1, len(channel_old)):
+	# 		if IsInt(channel_old[i - 1]):
+	# 			prev = int(channel_old[i - 1])
+	# 			if IsInt(channel_old[i]):
+	# 				th = int(channel_old[i])
+	# 				if th - prev < 2:
+	# 					channel_new += str(prev) + ','
+	# 				elif prev % 2 == modulo:
+	# 					for ch in xrange(prev, th, 2):
+	# 						channel_new += str(ch) + ','
+	# 				else:
+	# 					channel_new += str(prev) + ','
+	# 					for ch in xrange(prev + 1, th, 2):
+	# 						channel_new += str(ch) + ','
+	# 			else:
+	# 				temp = channel_old[i].split('-')
+	# 				if IsInt(temp[0]):
+	# 					th = int(temp[0])
+	# 					if th - prev < 2:
+	# 						channel_new += str(prev) + ','
+	# 					elif prev % 2 == modulo:
+	# 						for ch in xrange(prev, th, 2):
+	# 							channel_new += str(ch) + ','
+	# 					else:
+	# 						channel_new += str(prev) + ','
+	# 						for ch in xrange(prev + 1, th, 2):
+	# 							channel_new += str(ch) + ','
+	# 		else:
+	# 			channel_new += channel_old[i - 1] + ','
+	# 	channel_new = channel_new[:-1]
+	# 	return channel_new
 
 	def ModifySettingsOneChannel(self, ch=0):
 		CreateDirectoryIfNecessary(self.settings_dir + '/no_mask/channels')
@@ -156,14 +179,14 @@ class RD42Analysis:
 						fch.write('Dia_channel_screen_channels = {' + channel_str_new + '}\n')
 
 	def ModifyStringOneChannel(self, ch=0):
-		if ch==0:
+		if ch == 0:
 			return '1-{d}'.format(d=diaChs - 1)
 		elif ch == diaChs - 1:
 			return '0-{d}'.format(d=diaChs - 2)
 		else:
 			return '0-{cp},{cn}-{d}'.format(cp=ch - 1, cn = ch + 1, d=diaChs - 1)
 
-	def First_analysis(self):
+	def First_Analysis(self):
 		CreateDirectoryIfNecessary(self.runlist_dir)
 		if not self.IsMaskRunDone():
 			print 'Starting first analysis...'
@@ -171,11 +194,11 @@ class RD42Analysis:
 				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n'.format(r=self.run, n=self.num_ev))
 			CreateDefaultSettingsFile(self.settings_dir + '/no_mask', self.run, self.num_ev)
 			CreateDirectoryIfNecessary(self.out_dir + '/no_mask')
+			RecreateSoftLink(self.out_dir + '/no_mask/' + str(self.run), scratch_path, str(self.run) + '_no_mask')
 			self.process_f = subp.Popen(['diamondAnalysis', '-r', '{d}/RunList_{r}.ini'.format(d=self.runlist_dir, r=self.run), '-s', self.settings_dir + '/no_mask', '-o', self.out_dir + '/no_mask', '-i', self.in_dir], bufsize=-1, stdin=subp.PIPE, close_fds=True)
 			while self.process_f.poll() is None:
 				continue
 			CloseSubprocess(self.process_f, stdin=True, stdout=False)
-			RecreateSoftLink(self.out_dir + '/no_mask/' + str(self.run), scratch_path, str(self.run) + '_no_mask')
 			print 'Finish first analysis :)'
 		if not os.path.isdir(self.out_dir + '/no_mask/{r}/channel_sweep'.format(r=self.run)):
 			self.GetIndividualChannelHitmap()
@@ -214,6 +237,52 @@ class RD42Analysis:
 				print 'Done with channel:', channel_runs[bat, proc], ':)'
 			del procx
 
+	def Full_Analysis(self):
+		CreateDirectoryIfNecessary(self.runlist_dir)
+		self.Create_Run_List_full()
+		self.Copy_settings_to_even_odd()
+		self.Modify_even_odd()
+		CreateDirectoryIfNecessary(self.out_dir + '/full/' + str(self.run))
+		CreateDirectoryIfNecessary(self.out_dir + '/even/' + str(self.run))
+		CreateDirectoryIfNecessary(self.out_dir + '/odd/' + str(self.run))
+		RecreateSoftLink(self.out_dir + '/full/' + str(self.run), scratch_path, str(self.run) + '_full')
+		RecreateSoftLink(self.out_dir + '/even/' + str(self.run), scratch_path, str(self.run) + '_even')
+		RecreateSoftLink(self.out_dir + '/odd/' + str(self.run), scratch_path, str(self.run) + '_odd')
+		if os.path.isfile(self.out_dir + '/no_mask/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run)):
+			self.LinkRootFiles(self.out_dir + '/no_mask/' + str(self.run), self.out_dir + '/full/' + str(self.run), 'raw')
+		self.process_f = subp.Popen(['diamondAnalysis', '-r', '{d}/full/RunList_{r}.ini'.format(d=self.runlist_dir, r=self.run), '-s', self.settings_dir + '/full', '-o', self.out_dir + '/full', '-i', self.in_dir], bufsize=-1, stdin=subp.PIPE, close_fds=True)
+		is_finished_cluster = False
+		is_even_odd_started = False
+		while self.process_f.poll() is None:
+			if not is_even_odd_started:
+				is_finished_cluster = self.Check_if_clustering_finished()
+				if is_finished_cluster:
+					self.LinkRootFiles(self.out_dir + '/full/' + str(self.run), self.out_dir + '/even/' + str(self.run), 'cluster', doCopy=False)
+					self.LinkRootFiles(self.out_dir + '/full/' + str(self.run), self.out_dir + '/odd/' + str(self.run), 'cluster', doCopy=False)
+					self.process_e = subp.Popen(['diamondAnalysis', '-r', '{d}/even/RunList_{r}.ini'.format(d=self.runlist_dir, r=self.run), '-s', self.settings_dir + '/even', '-o', self.out_dir + '/even', '-i', self.in_dir], bufsize=-1, stdin=subp.PIPE, stdout=open('/dev/null', 'w'), stderr=subp.STDOUT, close_fds=True)
+					self.process_o = subp.Popen(['diamondAnalysis', '-r', '{d}/odd/RunList_{r}.ini'.format(d=self.runlist_dir, r=self.run), '-s', self.settings_dir + '/odd', '-o', self.out_dir + '/odd', '-i', self.in_dir], bufsize=-1, stdin=subp.PIPE, stdout=open('/dev/null', 'w'), stderr=subp.STDOUT, close_fds=True)
+					is_even_odd_started = True
+		print 'Full process finished'
+		CloseSubprocess(self.process_f, True, False)
+		temp_flag = True
+		while self.process_e.poll() is None:
+			if temp_flag:
+				print 'waiting for even events to finish...'
+				temp_flag = False
+		CloseSubprocess(self.process_e, True, True)
+		temp_flag = True
+		while self.process_o.poll() is None:
+			if temp_flag:
+				print 'waiting for even events to finish...'
+				temp_flag = False
+		CloseSubprocess(self.process_e, True, True)
+		print 'Finished :)'
+
+	def Check_if_clustering_finished(self):
+		if os.path.isdir(self.out_dir + '/full/{r}/selections'.format(r=self.run)):
+			return True
+		return False
+
 	def IsMaskRunDone(self):
 		no_mask_dir = self.out_dir + '/no_mask/' + str(self.run)
 		if os.path.isdir(no_mask_dir):
@@ -225,22 +294,23 @@ class RD42Analysis:
 						return True
 		return False
 
-	def LinkRootFiles(self, source, dest, upto='selection'):
-		steps = ['pedestal', 'cluster', 'selection', 'align', 'transparent']
+	def LinkRootFiles(self, source, dest, upto='selection', doCopy=True):
+		steps = ['raw', 'pedestal', 'cluster', 'selection', 'align', 'transparent']
 		cummulative = []
 		for elem in steps:
 			cummulative.append(elem)
 			if elem == upto:
 				break
-		if 'pedestal' in cummulative:
+		if 'raw' in cummulative:
 			RecreateLink(source + '/rawData.{r}.root'.format(r=self.run), dest, 'rawData.{r}.root'.format(r=self.run))
+		if 'pedestal' in cummulative:
 			RecreateLink(source + '/pedestalData.{r}.root'.format(r=self.run), dest, 'pedestalData.{r}.root'.format(r=self.run))
 			RecreateLink(source + '/pedestalAnalysis', dest, 'pedestalAnalysis')
 		if 'cluster' in cummulative:
 			RecreateLink(source + '/clusterData.{r}.root'.format(r=self.run), dest, 'clusterData.{r}.root'.format(r=self.run))
 			RecreateLink(source + '/etaCorrection.{r}.root'.format(r=self.run), dest, 'etaCorrection.{r}.root'.format(r=self.run))
 			RecreateLink(source + '/clustering', dest, 'clustering')
-			if os.path.isfile(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run)):
+			if os.path.isfile(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run)) and doCopy:
 				shutil.copy(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run), dest + '/')
 		if 'selection' in cummulative:
 			RecreateLink(source + '/selectionData.{r}.root'.format(r=self.run), dest, 'selectionData.{r}.root'.format(r=self.run))
@@ -255,9 +325,9 @@ class RD42Analysis:
 			shutil.copyfile(source + '/index.php', dest + '/index.php')
 		if os.path.isfile(source + '/overview.html'):
 			shutil.copyfile(source + '/overview.html', dest + '/overview.html')
-		if os.path.isfile(source + '/results_{r}.res'.format(r=self.run)):
+		if os.path.isfile(source + '/results_{r}.res'.format(r=self.run)) and doCopy:
 			shutil.copyfile(source + '/results_{r}.res'.format(r=self.run), dest + '/results_{r}.res'.format(r=self.run))
-		if os.path.isfile(source + '/results_{r}.txt'.format(r=self.run)):
+		if os.path.isfile(source + '/results_{r}.txt'.format(r=self.run)) and doCopy:
 			shutil.copyfile(source + '/results_{r}.txt'.format(r=self.run), dest + '/results_{r}.txt'.format(r=self.run))
 		RecreateLink(source + '/Results.{r}.root'.format(r=self.run), dest, 'Results.{r}.root'.format(r=self.run))
 
@@ -281,7 +351,7 @@ if __name__ == '__main__':
 	# parser.add_option('-o', '--output', dest='output', default='.', type='string', help='foler where to save the structures (will contain, full, even and odd subfolders)')
 	parser.add_option('-l', '--runlistdir', dest='runlist', default='~/RunLists', help='folder which contains the RunLists files')
 	parser.add_option('-s', '--settingsdir', dest='sett', default='~/settings', help='folder which contains the settings files')
-	parser.add_option('-n', '--numevents', dest='numevents', default=400000, type='int', help='number of events to analyse')
+	parser.add_option('-n', '--numevents', dest='numevents', default=0, type='int', help='number of events to analyse')
 	parser.add_option('-p', '--pedestal', dest='pedestal', default=False, action='store_true', help='enables pedestal analysis')
 	parser.add_option('-c', '--cluster', dest='cluster', default=False, action='store_true', help='enables cluster analysis')
 	parser.add_option('-e', '--selection', dest='selection', default=False, action='store_true', help='enables selection analysis')
@@ -304,9 +374,9 @@ if __name__ == '__main__':
 	rd42 = RD42Analysis(run=run, source_dir=input, numev=numev, runlistdir=runlist, settings_dir=settings_dir, pedestal=pedestal, cluster=cluster, selec=selec, autom_all=autom_all)
 
 	if first_ana:
-		rd42.First_analysis()
+		rd42.First_Analysis()
 	elif autom_all:
-		pass
+		rd42.Full_Analysis()
 	else:
 		pass # run analysis for full with existing runlist file
 	# output = str(options.output)

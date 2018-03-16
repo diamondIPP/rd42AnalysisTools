@@ -50,10 +50,10 @@ class CollectionAnalysis:
 			self.GetGraphsPedAnaChannels()
 
 	def CreatePedestalAnalysisInstances(self):
-		# self.runs_pedAna = OrderedDict({runi: PedestalAnalysis(runi, self.dir, force) for runi in self.runs})
-		self.runs_pedAna = OrderedDict()
-		for runi in self.runs:
-			self.runs_pedAna[runi] = PedestalAnalysis(runi, self.dir, self.force)
+		self.runs_pedAna = OrderedDict(sorted({runi: PedestalAnalysis(runi, self.dir, force) for runi in self.runs}.iteritems()))
+		# self.runs_pedAna = OrderedDict()
+		# for runi in self.runs:
+		# 	self.runs_pedAna[runi] = PedestalAnalysis(runi, self.dir, self.force)
 
 	def GetGraphsPedAnaChannels(self):
 		branches = self.runs_pedAna[self.runs[0]].listBraNamesChs
@@ -120,7 +120,7 @@ class CollectionAnalysis:
 			graphs_copy[ch].SetMarkerColor(ro.kBlack)
 			self.multi_graph_pedAna.Add(graphs_copy[ch])
 
-	def PlotGraph(self, graph, options='ALP'):
+	def PlotGraph(self, graph, options='ALP', yrange=[]):
 		if self.canvas:
 			self.canvas.Clear()
 			self.canvas.Close()
@@ -128,6 +128,8 @@ class CollectionAnalysis:
 			self.canvas = None
 		self.canvas = ro.TCanvas('ca0', 'ca0', 1)
 		self.canvas.cd()
+		if len(yrange) == 2:
+			graph.GetYaxis().SetRangeUser(yrange[0], yrange[1])
 		graph.Draw(options)
 
 	def CreateProgressBar(self, maxVal=1):

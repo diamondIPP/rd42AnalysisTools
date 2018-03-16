@@ -59,6 +59,7 @@ class PedestalAnalysis:
 		self.nc_channel_list = None
 		self.dic_bra_mean_ped_chs = {}
 		self.dic_bra_sigma_ped_chs = {}
+		self.cm_adc = None
 
 		if self.force:
 			self.ClearOldAnalysis()
@@ -369,6 +370,22 @@ class PedestalAnalysis:
 		self.ev_axis['max'] = self.entries
 		print 'Done'
 
+	def LoadVectorFromBranch(self, branch):
+		channels = self.pedTree.GetLeaf(branch).GetLen()
+		leng = self.pedTree.Draw(branch, '', 'goff', self.entries, 0)
+		if leng == -1:
+			print 'Error, could not load the branches. try again'
+			return
+		while leng > self.pedTree.GetEstimate():
+			self.pedTree.SetEstimate(leng)
+			leng = self.pedTree.Draw(branch, '', 'goff', self.entries, 0)
+		temp = self.pedTree.GetVal(0)
+		if branch in self.listBraNamesChs:
+			self.dicBraVectChs[branch] = np.array([[temp[ev * channels + ch] for ch in xrange(channels)] for ev in xrange(self.entries)], dtype='f8')
+		elif branch in self.listBraNames1ch:
+			self.dicBraVect1ch[branch] = np.array([temp[ev] for ev in xrange(self.entries)], dtype='f8')
+		del temp
+
 	def SetHistogramLimits(self):
 		for branch, vect in self.dicBraVect1ch.iteritems():
 			name = self.dicBraNames[branch]
@@ -434,6 +451,28 @@ class PedestalAnalysis:
 				self.bar.update(ev + 1)
 		if self.bar is not None:
 			self.bar.finish()
+
+	def Calculate_CM_ADC(self):
+		if len(self.dicBraVectChs) == 0:
+			self.LoadROOTFile()
+			print 'Loading ADCs...', ; sys.stdout.flush()
+			self.LoadVectorFromBranch('rawTree.DiaADC')
+			self.adc_vect = self.dicBraVectChs['rawTree.DiaADC']
+			print 'Done'
+		if len(self.dicBraVect1ch) == 0:
+			self.LoadROOTFile()
+			print 'Loading CMs...', ; sys.stdout.flush()
+			self.LoadVectorFromBranch('commonModeNoise')
+			self.cm_vect = self.dicBraVect1ch['commonModeNoise']
+			print 'Done'
+		temp = []
+		self.CreateProgressBar(self.entries)
+		if self.bar is not None:
+			self.bar.start()
+		for ev in xrange(self.entries):
+			temp.append(self.adc_vect[ev].mean())
+		self.cm_adc = np.array(temp, 'f8')
+		del temp
 
 	def SaveHistograms(self):
 		print 'Saving histograms:'

@@ -31,6 +31,7 @@ def CreateDefaultSettingsFile(diri, run_no, events):
 		f.write('dia_input = 0\n\n')
 		f.write('Dia_channel_screen_channels = {}\n\n')
 		f.write('Dia_channel_not_connected = {}\n\n')
+		f.write('Dia_channel_noisy = {}\n\n')
 		f.write('Si_Pedestal_Hit_Factor = 5\n')
 		f.write('Di_Pedestal_Hit_Factor = 3\n\n')
 		f.write('DO_CMC = 1\n\n')
@@ -42,9 +43,10 @@ def CreateDefaultSettingsFile(diri, run_no, events):
 		f.write('si_avg_fidcut_xhigh = 255\n')
 		f.write('si_avg_fidcut_ylow = 0\n')
 		f.write('si_avg_fidcut_yhigh = 255\n')
-		f.write('selectionfidCut0 = {0-255,0-255}\n')
+		f.write('selectionFidCut = {0-255,0-255}\n')
 		f.write('RerunSelection = 0\n\n')
 		f.write('DetectorsToAlign = 2\n')
+		f.write('alignment_training_fidcuts = {1}\n')
 		f.write('alignment_training_track_number = {e}\n'.format(e=int(round(events)/10.0)))
 		f.write('alignment_training_method = 1\n')
 		f.write('alignment_chi2 = 5\n\n')
@@ -61,6 +63,141 @@ def CreateDirectoryIfNecessary(dir):
 	if not os.path.isdir(dir):
 		os.makedirs(dir)
 
+def Mark_channels_as_NC(s_file):
+	Replace_Settings_Line(s_file, 'Dia_channel_not_connected')
+
+def Mark_channels_as_Screened(s_file):
+	Replace_Settings_Line(s_file, 'Dia_channel_screen_channels')
+
+def Mark_channels_as_Noisy(s_file):
+	Replace_Settings_Line(s_file, 'Dia_channel_noisy')
+
+def Set_Diamond_pattern(s_file):
+	Replace_Settings_Line(s_file, 'diamondPattern')
+
+def Select_fiducial_region(s_file):
+	xlow = Replace_Settings_Line(s_file, 'si_avg_fidcut_xlow')
+	xhigh = Replace_Settings_Line(s_file, 'si_avg_fidcut_xhigh')
+	ylow = Replace_Settings_Line(s_file, 'si_avg_fidcut_ylow')
+	yhigh = Replace_Settings_Line(s_file, 'si_avg_fidcut_yhigh')
+	Replace_Settings_Line(s_file, 'selectionFidCut', action='value', value=('{' + xlow + '-' + xhigh + ',' + ylow + '-' + yhigh + '}').replace(' ', ''))
+
+def Replace_Settings_Line(s_file, setting_option, action='user', value=''):
+	if not os.path.isfile(s_file):
+		print 'The file', s_file, 'does not exist'
+		return
+	updated = False
+	with open(s_file, 'r') as f0:
+		with open('temp00.ini', 'w') as f1:
+			for line in f0:
+				if not line.lower().startswith(setting_option.lower()):
+					f1.write(line)
+				else:
+					if action == 'user':
+						new_values = Get_From_User_Line(setting_option, line.split('=')[1].split('\n')[0])
+					elif action == 'even':
+						new_values = Only_Even_Channels(line)
+					elif action == 'odd':
+						new_values = Only_Odd_Channels(line)
+					elif action == 'value':
+						new_values = value
+					f1.write(setting_option + ' = ' + new_values + '\n')
+					updated = True
+	if not updated:
+		with open('temp00.ini', 'a') as f1:
+			if action == 'user':
+				new_values = Get_From_User_Line(setting_option, update=False)
+			elif action == 'even':
+				new_values = Only_Even_Channels('Dia_channel_screen_channels = {1,127}')
+			elif action == 'odd':
+				new_values = Only_Odd_Channels('Dia_channel_screen_channels = {0,126}')
+			f1.write(setting_option + ' = ' + new_values + '\n')
+	os.remove(s_file)
+	shutil.move('temp00.ini', s_file)
+	if setting_option.startswith('si_avg_fidcut'):
+		return new_values
+
+def Get_From_User_Line(option, old_value='', update=True):
+	if update:
+		print 'The current value(s) for:', option, 'is(are):'
+		print old_value
+		temp = raw_input('Enter the new value(s) for ' + option + ' in the same format as above (Press enter to leave as it is): ')
+		if temp == '' or temp == '\n':
+			temp = old_value
+	else:
+		temp = raw_input('Enter the value(s) for ' + option + ' in the correct format: ')
+	return temp.replace(' ', '')
+
+def Only_Even_Channels(old_value):
+	channel_str = old_value[old_value.find('{') + 1:old_value.find('}')].split(',')
+	return Modify_String_Even_or_Odd(channel_str, 'even')
+	
+def Only_Odd_Channels(old_value):
+	channel_str = old_value[old_value.find('{') + 1:old_value.find('}')].split(',')
+	return Modify_String_Even_or_Odd(channel_str, 'odd')
+	
+def Modify_String_Even_or_Odd(channel_old, type='even'):
+	if type == 'even':
+		modulo = 1
+		if '1' != channel_old[0] and not '1-' in channel_old[0]:
+			if '0' != channel_old[0] and not '0-' in channel_old[0]:
+				channel_old.insert(0, '1')
+		if '127' != channel_old[-1] and not '-127' in channel_old[-1]:
+			channel_old.append('127')
+		channel_old.append('129')
+	else:
+		modulo = 0
+		if '0' != channel_old[0] and not '0-' in channel_old[0]:
+			channel_old.insert(0, '0')
+		if '126' != channel_old[-1] and not '-126' in channel_old[-1]:
+			if '127' != channel_old[-1] and not '-127' in channel_old[-1]:
+				channel_old.append('126')
+		channel_old.append('128')
+	channel_new = ''
+	for i in xrange(1, len(channel_old)):
+		if IsInt(channel_old[i - 1]):
+			prev = int(channel_old[i - 1])
+			if IsInt(channel_old[i]):
+				th = int(channel_old[i])
+				if th - prev < 2:
+					channel_new += str(prev) + ','
+				elif prev % 2 == modulo:
+					for ch in xrange(prev, th, 2):
+						channel_new += str(ch) + ','
+				else:
+					channel_new += str(prev) + ','
+					for ch in xrange(prev + 1, th, 2):
+						channel_new += str(ch) + ','
+			else:
+				temp = channel_old[i].split('-')
+				if IsInt(temp[0]):
+					th = int(temp[0])
+					if th - prev < 2:
+						channel_new += str(prev) + ','
+					elif prev % 2 == modulo:
+						for ch in xrange(prev, th, 2):
+							channel_new += str(ch) + ','
+					else:
+						channel_new += str(prev) + ','
+						for ch in xrange(prev + 1, th, 2):
+							channel_new += str(ch) + ','
+		else:
+			channel_new += channel_old[i - 1] + ','
+			prev = int(channel_old[i - 1].split('-')[-1])
+			if not IsInt(channel_old[i]):
+				th = int(channel_old[i].split('-')[0])
+			else:
+				th = int(channel_old[i])
+			if th - prev >= 2:
+				if prev % 2 == modulo:
+					for ch in xrange(prev + 2, th, 2):
+						channel_new += str(ch) + ','
+				else:
+					for ch in xrange(prev + 1, th, 2):
+						channel_new += str(ch) + ','
+
+	channel_new = channel_new[:-1]
+	return '{' + channel_new + '}'
 
 def RecreateLink(source, dest, name):
 	# if os.path.isfile(source) or os.path.isdir(source):
@@ -70,13 +207,20 @@ def RecreateLink(source, dest, name):
 		os.link(source, dest + '/' + name)
 		# os.symlink(source, dest + '/' + name)
 
-def RecreateSoftLink(source, dest, name):
+def RecreateSoftLink(source, dest, name, type='dir'):
 	# if os.path.isfile(source) or os.path.isdir(source):
-	if os.path.isfile(source):
-		if os.path.islink(dest + '/' + name):
-			os.unlink(dest + '/' + name)
-		# os.link(source, dest + '/' + name)
-		os.symlink(source, dest + '/' + name)
+	if False:
+		if type != 'dir':
+			if os.path.isfile(source):
+				if os.path.islink(dest + '/' + name):
+					os.unlink(dest + '/' + name)
+				# os.link(source, dest + '/' + name)
+				os.symlink(source, dest + '/' + name)
+		else:
+			if os.path.isdir(source):
+				if os.path.islink(dest + '/' + name):
+					os.unlink(dest + '/' + name)
+				os.symlink(source, dest + '/' + name)
 
 def CloseSubprocess(p, stdin=False, stdout=False):
 	pid = p.pid
@@ -108,7 +252,7 @@ def CloseSubprocess(p, stdin=False, stdout=False):
 	p = None
 
 def ReturnRGB(val, min, max):
-		hue = (val - min) * 1.0 / (max - min)
+		hue = (val - min) * 1.0 / (max - min) if max != min else 0
 		huep = hue * 6.0
 		i = int(huep)
 		v1 = 0.
@@ -127,3 +271,15 @@ def ReturnRGB(val, min, max):
 		else:
 			r, g, b = 1., v1, v2
 		return r, g, b
+
+def Correct_Path(path):
+	abs_path = ''
+	if path[0] == '~':
+		abs_path += os.path.expanduser('~')
+		abs_path += path[1:]
+	elif os.path.isabs(path):
+		abs_path += path
+	else:
+		abs_path += os.path.abspath(path)
+	return abs_path
+
