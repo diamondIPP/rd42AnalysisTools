@@ -11,6 +11,7 @@ from collections import OrderedDict
 from NoiseExtraction import NoiseExtraction
 import os, sys, shutil
 from Utils import *
+import cPickle as pickle
 
 __author__ = 'DA'
 
@@ -21,8 +22,8 @@ diaChs = 128
 
 fillColor = ro.TColor.GetColor(125, 153, 209)
 sigma_axis = {'min': 0, 'max': 35}
-adc_axis = {'min': 0, 'max': 2 ** 12 - 1}
-ped_axis = {'min': 0, 'max': 2 ** 12 - 1}
+adc_axis = {'min': 0, 'max': 2**12 - 1}
+ped_axis = {'min': 0, 'max': 2**12 - 1}
 cm_axis = {'min': -100, 'max': 100}
 
 
@@ -35,16 +36,25 @@ class PedestalAnalysis:
 		self.bar = None
 		self.rootFile = self.pedTree = None
 		self.adc_vect = self.ped_vect = self.sigma_vect = self.cm_vect = self.ped_cmc_vect = self.sigma_cmc_vect = None
-		self.adc_hist, self.ped_hist, self.sigma_hist, self.cm_hist, self.ped_cmc_hist, self.sigma_cmc_hist = ro.TH3D(), ro.TH3D(), ro.TH3D(), ro.TH2D(), ro.TH3D(), ro.TH3D()
+		self.signal_vect, self.signal_cmc_vect = None, None
+		self.adc_hist, self.ped_hist, self.sigma_hist, self.cm_hist, self.ped_cmc_hist, self.sigma_cmc_hist = ro.TH3F(), ro.TH3F(), ro.TH3F(), ro.TH2F(), ro.TH3F(), ro.TH3F()
+		self.signal_hist, self.signal_cmc_hist, self.biggest_adc_hist = ro.TH2F(), ro.TH2F(), ro.TH2F()
+		self.ped_ch_hist, self.ped_cmc_ch_hist, self.sigma_ch_hist, self.sigma_cmc_ch_hist = ro.TH2F(), ro.TH2F(), ro.TH2F(), ro.TH2F()
 		self.dicBraNames = {'rawTree.DiaADC': 'adc_' + str(self.run), 'diaPedestalMean': 'ped_' + str(self.run), 'diaPedestaSigma': 'sigma_' + str(self.run),
 		                    'diaPedestalMeanCMN': 'ped_cmc_' + str(self.run), 'diaPedestaSigmaCMN': 'sigma_cmc_' + str(self.run), 'commonModeNoise': 'cm_' + str(self.run)}
 		self.allBranches = self.dicBraNames.keys()
 		self.listBraNames1ch = ['commonModeNoise']
 		self.listBraNamesChs = [x for x in self.allBranches if x not in self.listBraNames1ch]
+		self.dicNewHistoNames = {'signal': 'signal_' + str(self.run), 'signalCMN': 'signal_cmc_' + str(self.run), 'biggestADC': 'biggest_adc_' + str(self.run), 'ped_ch': 'pedestal_ch_' + str(self.run),
+		                         'pedCMN_ch': 'pedestal_cmc_ch_' + str(self.run), 'sigma_ch': 'sigma_ch_' + str(self.run), 'sigmaCMN_ch': 'sigma_cmc_ch_' + str(self.run)}
+		self.allNewHistos = self.dicNewHistoNames.keys()
 		self.dicBraVectChs = {}
 		self.dicBraVect1ch = {}
+		self.dicNewVectChs = {}
+		self.dicNewVect1ch = {}
 		self.entries = 0
 		self.dicBraHist = {}
+		self.dicNewHist = {}
 		self.ev_axis = {'min': 0, 'max': 0, 'bins': 1000}
 		self.ch_axis = {'min': -0.5, 'max': diaChs - 0.5, 'bins': diaChs}
 		self.dicBraProf = {}
@@ -64,35 +74,373 @@ class PedestalAnalysis:
 		if self.force:
 			self.ClearOldAnalysis()
 
+		self.dicHasVectors = {bra: False for bra in self.allBranches}
+		self.hasVectors = self.CheckVectorPickles()
+
 		self.dicHasHistos = {bra: False for bra in self.allBranches}
+		self.dicHasNewHistos = {bra: False for bra in self.allNewHistos}
 		self.hasHistos = self.CheckHistograms()
 
 		self.dicHasProfiles = {bra: False for bra in self.listBraNamesChs}
 		self.hasProfiles = self.CheckProfiles()
 
-		if not self.hasProfiles:
-			if not self.hasHistos:
-				self.LoadROOTFile()
-				self.LoadVectorsFromBranches()
-				self.CreateHistograms()
-				self.FillHistograms()
-				self.SaveHistograms()
-				self.CreateProfiles()
-				self.SaveProfiles()
-			else:
-				self.LoadHistograms()
-				self.CreateProfiles()
-				self.SaveProfiles()
+		self.LoadROOTFile()
+		if not self.hasVectors:
+			self.LoadVectorsFromBranches()
+			self.SaveVectorsPickles()
+		else:
+			self.LoadVectorsFromPickles()
+		if not self.hasHistos:
+			self.CreateHistograms()
+			self.FillHistograms()
+			self.SaveHistograms()
 		else:
 			self.LoadHistograms()
+		if not self.hasProfiles:
+			self.CreateProfiles()
+			self.SaveProfiles()
+		else:
 			self.LoadProfiles()
-			self.GetMeanSigmaPerChannel()
+		self.GetMeanSigmaPerChannel()
 
 	def ClearOldAnalysis(self):
 		if os.path.isdir('{d}/pedestalAnalysis/histos'.format(d=self.dir)):
 			shutil.rmtree('{d}/pedestalAnalysis/histos'.format(d=self.dir))
 		if os.path.isdir('{d}/pedestalAnalysis/profiles'.format(d=self.dir)):
 			shutil.rmtree('{d}/pedestalAnalysis/profiles'.format(d=self.dir))
+
+	def CheckVectorPickles(self):
+		if not os.path.isdir('{d}/pedestalAnalysis/vectors'.format(d=self.dir)):
+			print 'Pedestal analysis "vectors" does not exist. All the vectors for the analysis will be created'
+			return False
+		else:
+			for branch in self.allBranches:
+				name = self.dicBraNames[branch]
+				self.dicHasVectors[branch] = True if os.path.isfile('{d}/pedestalAnalysis/vectors/{n}.dat'.format(d=self.dir, n=name)) else False
+			return np.array(self.dicHasVectors.values(), '?').all()
+
+	def CheckHistograms(self):
+		if not os.path.isdir('{d}/pedestalAnalysis/histos'.format(d=self.dir)):
+			print 'Pedestal analysis directory "histos" does not exist. All the histograms for the analysis will be created'
+			return False
+		else:
+			for branch in self.allBranches:
+				name = self.dicBraNames[branch]
+				if os.path.isfile('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=name)):
+					self.dicHasHistos[branch] = True
+					tempf = ro.TFile('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=name), 'READ')
+					self.dicBraHist[branch] = deepcopy(tempf.Get(name))
+					tempf.Close()
+					del tempf
+				else:
+					self.dicHasHistos[branch] = False
+
+			for hist in self.allNewHistos:
+				name = self.dicNewHistoNames[hist]
+				if os.path.isfile('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=name)):
+					self.dicHasNewHistos[hist] = True
+					tempf = ro.TFile('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=name), 'READ')
+					self.dicNewHist[hist] = deepcopy(tempf.Get(name))
+					tempf.Close()
+					del tempf
+				else:
+					self.dicHasNewHistos[hist] = False
+			return np.array(self.dicHasHistos.values(), '?').all() and np.array(self.dicHasNewHistos.values(), '?').all()
+
+	def CheckProfiles(self):
+		if not os.path.isdir('{d}/pedestalAnalysis/profiles'.format(d=self.dir)):
+			print 'Pedestal analysis directory "profiles" does not exist.'
+			return False
+		else:
+			for branch in self.listBraNamesChs:
+				name = self.dicBraNames[branch]
+				if os.path.isfile('{d}/pedestalAnalysis/profiles/{n}_pyx.root'.format(d=self.dir, n=name)):
+					self.dicHasProfiles[branch] = True
+					tempf = ro.TFile('{d}/pedestalAnalysis/profiles/{n}_pyx.root'.format(d=self.dir, n=name), 'READ')
+					self.dicBraProf[branch] = deepcopy(tempf.Get(name))
+					tempf.Close()
+					del tempf
+				else:
+					self.dicHasProfiles[branch] = False
+			return np.array(self.dicHasProfiles.values(), '?').all()
+
+	def LoadROOTFile(self):
+		print 'Loading ROOT file...',
+		sys.stdout.flush()
+		# ipdb.set_trace()
+		self.rootFile = ro.TFile('{d}/pedestalData.{r}.root'.format(d=self.dir, r=self.run), 'READ')
+		self.pedTree = self.rootFile.Get('pedestalTree')
+		self.entries = self.pedTree.GetEntries()
+		# self.entries = int(maxEntries)
+		print 'Done'
+
+	def LoadVectorsFromBranches(self, first_ev=0):
+		print 'Loading vectors from branches...'
+		if self.pedTree is None:
+			self.LoadROOTFile()
+
+		num_bra_chs = len(self.listBraNamesChs)
+		if num_bra_chs < 1:
+			print 'The dictionary of branches and vectors is empty! try again'
+			return
+		channels = self.pedTree.GetLeaf(self.listBraNamesChs[0]).GetLen()
+		for branch in self.listBraNamesChs:
+			if self.pedTree.GetLeaf(branch).GetLen() != channels:
+				print 'The given branches have different sizes! try again'
+				return
+		leng = self.pedTree.Draw(':'.join(self.listBraNamesChs), '', 'goff para', self.entries, first_ev)
+		if leng == -1:
+			print 'Error, could not load the branches. try again'
+			return
+		while leng > self.pedTree.GetEstimate():
+			self.pedTree.SetEstimate(leng)
+			leng = self.pedTree.Draw(':'.join(self.listBraNamesChs), '', 'goff para', self.entries, first_ev)
+		self.entries = leng / channels
+		for pos, branch in enumerate(self.listBraNamesChs):
+			print 'Loading', branch, '...', ;sys.stdout.flush()
+			temp = self.pedTree.GetVal(pos)
+			self.dicBraVectChs[branch] = np.array([[temp[ev * channels + ch] for ch in xrange(channels)] for ev in xrange(self.entries)], dtype='f8')
+			del temp
+			print 'Done'
+
+		num_bra_1ch = len(self.listBraNames1ch)
+		if num_bra_1ch < 1:
+			print 'The dictionary of branches and vectors is empty! try again'
+			return
+		channel = 1
+		for branch in self.listBraNames1ch:
+			if self.pedTree.GetLeaf(branch).GetLen() != channel:
+				print 'The given branches have different sizes different to 1! try again'
+				return
+		leng = self.pedTree.Draw(':'.join(self.listBraNames1ch), '', 'goff para', self.entries, first_ev)
+		if leng == -1:
+			print 'Error, could not load the branches. try again'
+			return
+		while leng > self.pedTree.GetEstimate():
+			self.pedTree.SetEstimate(leng)
+			leng = self.pedTree.Draw(':'.join(self.listBraNames1ch), '', 'goff para', self.entries, first_ev)
+		for pos, branch in enumerate(self.listBraNames1ch):
+			print 'Loading', branch, '...', ;sys.stdout.flush()
+			temp = self.pedTree.GetVal(pos)
+			self.dicBraVect1ch[branch] = np.array([temp[ev] for ev in xrange(self.entries)], dtype='f8')
+			del temp
+			print 'Done'
+		self.AssignVectorsFromDictrionaries()
+		self.LoadNewVectorsFromVectors()
+		self.ev_axis['max'] = self.entries
+
+	def AssignVectorsFromDictrionaries(self):
+		self.adc_vect, self.ped_vect, self.sigma_vect, self.ped_cmc_vect, self.sigma_cmc_vect = self.dicBraVectChs['rawTree.DiaADC'], self.dicBraVectChs['diaPedestalMean'], self.dicBraVectChs[
+			'diaPedestaSigma'], self.dicBraVectChs['diaPedestalMeanCMN'], self.dicBraVectChs['diaPedestaSigmaCMN']
+		self.cm_vect = self.dicBraVect1ch['commonModeNoise']
+
+	def LoadNewVectorsFromVectors(self):
+		self.dicNewVectChs['signal'] = self.adc_vect - self.ped_vect
+		self.dicNewVectChs['signalCMN'] = np.subtract(self.adc_vect - self.ped_vect, [[cmi] for cmi in self.cm_vect])
+		self.signal_vect = self.dicNewVectChs['signal']
+		self.signal_cmc_vect = self.dicNewVectChs['signalCMN']
+
+	def SaveVectorsPickles(self):
+		print 'Saving vectors...'
+		if not os.path.isdir('{d}/pedestalAnalysis/vectors'.format(d=self.dir)):
+			os.makedirs('{d}/pedestalAnalysis/vectors'.format(d=self.dir))
+		for branch in self.allBranches:
+			print 'Saving', branch, '...', ; sys.stdout.flush()
+			name = self.dicBraNames[branch]
+			if branch in self.listBraNamesChs:
+				with open('{d}/pedestalAnalysis/vectors/{n}.dat'.format(d=self.dir, n=name), 'wb') as fs:
+					pickle.dump(self.dicBraVectChs[branch], fs, pickle.HIGHEST_PROTOCOL)
+			else:
+				with open('{d}/pedestalAnalysis/vectors/{n}.dat'.format(d=self.dir, n=name), 'wb') as fs:
+					pickle.dump(self.dicBraVect1ch[branch], fs, pickle.HIGHEST_PROTOCOL)
+			print 'Done'
+
+	def LoadVectorsFromPickles(self):
+		print 'Loading vectors from pickles...'
+		for branch in self.allBranches:
+			print 'Loading', branch, '...', ; sys.stdout.flush()
+			name = self.dicBraNames[branch]
+			if branch in self.listBraNamesChs:
+				self.dicBraVectChs[branch] = pickle.load(open('{d}/pedestalAnalysis/vectors/{n}.dat'.format(d=self.dir, n=name), 'rb'))
+			else:
+				self.dicBraVect1ch[branch] = pickle.load(open('{d}/pedestalAnalysis/vectors/{n}.dat'.format(d=self.dir, n=name), 'rb'))
+			print 'Done'
+		self.AssignVectorsFromDictrionaries()
+		self.LoadNewVectorsFromVectors()
+		self.ev_axis['max'] = self.entries
+		print
+
+	def CreateHistograms(self):
+		print 'Creating histograms...',
+		sys.stdout.flush()
+		# self.SetHistogramLimits()
+		for branch in self.allBranches:
+			if not self.dicHasHistos[branch]:
+				name = self.dicBraNames[branch]
+				if branch in self.listBraNames1ch:
+					ymin, ymax, ybins = 0, 0, 0
+					if name.startswith('cm'):
+						ymin, ymax, ybins = cm_axis['min'], cm_axis['max'], int((cm_axis['max'] - cm_axis['min']) / 0.5)
+					self.dicBraHist[branch] = ro.TH2F(name, name, self.ev_axis['bins'], self.ev_axis['min'], self.ev_axis['max'], ybins + 1, ymin, ymax + (ymax - ymin) / float(ybins))
+					self.dicBraHist[branch].GetXaxis().SetTitle('event')
+					self.dicBraHist[branch].GetYaxis().SetTitle(name[:-6])
+				elif branch in self.listBraNamesChs:
+					zmin, zmax, zbins = 0, 0, 0
+					if name.startswith('ped'):
+						zmin, zmax, zbins = ped_axis['min'], ped_axis['max'], int(min((ped_axis['max'] - ped_axis['min']) / 5., 1000))
+					elif name.startswith('adc'):
+						zmin, zmax, zbins = adc_axis['min'], adc_axis['max'], int(min((adc_axis['max'] - adc_axis['min']) / 5., 1000))
+					elif name.startswith('sigma'):
+						zmin, zmax, zbins = sigma_axis['min'], sigma_axis['max'], int(min((sigma_axis['max'] - sigma_axis['min']) / 0.1, 1000))
+					self.dicBraHist[branch] = ro.TH3F(name, name, self.ev_axis['bins'], self.ev_axis['min'], self.ev_axis['max'], self.ch_axis['bins'], self.ch_axis['min'], self.ch_axis['max'], zbins + 1,
+					                                  zmin, zmax + (zmax - zmin) / float(zbins))
+					self.dicBraHist[branch].GetXaxis().SetTitle('event')
+					self.dicBraHist[branch].GetYaxis().SetTitle('channel')
+					self.dicBraHist[branch].GetZaxis().SetTitle(name[:-6])
+		for hist in self.allNewHistos:
+			if not self.dicHasNewHistos[hist]:
+				name = self.dicNewHistoNames[hist]
+				xmin, xmax, xbins = 0, 0, 0
+				if name.startswith('signal'):
+					xmin, xmax, xbins = -adc_axis['max'], adc_axis['max'], int(min(2*adc_axis['max'] / 0.5, 20000))
+				elif name.startswith('biggest'):
+					xmin, xmax, xbins = adc_axis['min'], adc_axis['max'], int(min((adc_axis['max'] - adc_axis['min']) / 0.5, 10000))
+				elif name.startswith('ped'):
+					xmin, xmax, xbins = ped_axis['max'], ped_axis['max'], int(min((ped_axis['max'] - ped_axis['min']) / 5.0, 1000))
+				elif name.startswith('sigma'):
+					xmin, xmax, xbins = sigma_axis['max'], sigma_axis['max'], int(min((sigma_axis['max'] - sigma_axis['min']) / 0.1, 1000))
+				ymin, ymax, ybins = self.ch_axis['min'], self.ch_axis['max'], self.ch_axis['bins']
+				self.dicNewHist[hist] = ro.TH2F(name, name, xbins, xmin, xmax, ybins, ymin, ymax)
+				self.dicNewHist[hist].GetXaxis().SetTitle(name[:-6])
+				self.dicNewHist[hist].GetYaxis().SetTitle('channel')
+				self.dicNewHist[hist].GetZaxis().SetTitle('entries')
+
+		self.adc_hist, self.ped_hist, self.sigma_hist, self.ped_cmc_hist, self.sigma_cmc_hist, self.cm_hist = self.dicBraHist['rawTree.DiaADC'], self.dicBraHist['diaPedestalMean'], self.dicBraHist[
+			'diaPedestaSigma'], self.dicBraHist['diaPedestalMeanCMN'], self.dicBraHist['diaPedestaSigmaCMN'], self.dicBraHist['commonModeNoise']
+		self.signal_hist, self.signal_cmc_hist, self.biggest_adc_hist = self.dicNewHist['signal'], self.dicNewHist['signalCMN'], self.dicNewHist['biggestADC']
+		self.ped_ch_hist, self.ped_cmc_ch_hist, self.sigma_ch_hist, self.sigma_cmc_ch_hist = self.dicNewHist['ped_ch'], self.dicNewHist['pedCMN_ch'], self.dicNewHist['sigma_ch'], self.dicNewHist['sigmaCMN_ch']
+		print 'Done'
+
+	def FillHistograms(self):
+		print 'Filling histograms:'
+		self.CreateProgressBar(self.entries)
+		if self.bar is not None:
+			self.bar.start()
+		biggest_adc_ch = self.adc_vect.argmax(axis=1)
+		biggest_adc = self.adc_vect.max(axis=1)
+		for ev in xrange(self.entries):
+			for ch in xrange(diaChs):
+				if not self.dicHasHistos['rawTree.DiaADC']:
+					self.adc_hist.Fill(ev, ch, self.adc_vect.item(ev, ch))
+				if not self.dicHasHistos['diaPedestalMean']:
+					self.ped_hist.Fill(ev, ch, self.ped_vect.item(ev, ch))
+				if not self.dicHasHistos['diaPedestaSigma']:
+					self.sigma_hist.Fill(ev, ch, self.sigma_vect.item(ev, ch))
+				if not self.dicHasHistos['diaPedestalMeanCMN']:
+					self.ped_cmc_hist.Fill(ev, ch, self.ped_cmc_vect.item(ev, ch))
+				if not self.dicHasHistos['diaPedestaSigmaCMN']:
+					self.sigma_cmc_hist.Fill(ev, ch, self.sigma_cmc_vect.item(ev, ch))
+				if not self.dicHasNewHistos['signal']:
+					self.signal_hist.Fill(self.signal_vect.item(ev, ch), ch)
+				if not self.dicHasNewHistos['signalCMN']:
+					self.signal_cmc_hist.Fill(self.signal_cmc_vect.item(ev, ch), ch)
+				if not self.dicHasNewHistos['ped_ch']:
+					self.ped_ch_hist.Fill(self.ped_vect.item(ev, ch), ch)
+				if not self.dicHasNewHistos['pedCMN_ch']:
+					self.ped_ch_hist.Fill(self.ped_cmc_vect.item(ev, ch), ch)
+				if not self.dicHasNewHistos['sigma_ch']:
+					self.ped_ch_hist.Fill(self.sigma_vect.item(ev, ch), ch)
+				if not self.dicHasNewHistos['sigmaCMN_ch']:
+					self.ped_ch_hist.Fill(self.sigma_cmc_vect.item(ev, ch), ch)
+			if not self.dicHasNewHistos['biggestADC']:
+				self.biggest_adc_hist.Fill(biggest_adc.item(ev), biggest_adc_ch.item(ev))
+			if not self.dicHasHistos['commonModeNoise']:
+				self.cm_hist.Fill(ev, self.cm_vect.item(ev))
+			if self.bar is not None:
+				self.bar.update(ev + 1)
+		if self.bar is not None:
+			self.bar.finish()
+
+	def SaveHistograms(self):
+		print 'Saving histograms:'
+		if not os.path.isdir('{d}/pedestalAnalysis/histos'.format(d=self.dir)):
+			os.makedirs('{d}/pedestalAnalysis/histos'.format(d=self.dir))
+		for branch, histo in self.dicBraHist.iteritems():
+			if not self.dicHasHistos[branch]:
+				name = self.dicBraNames[branch]
+				histo.SaveAs('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=name))
+				self.dicHasHistos[branch] = True
+		for key, histo in self.dicNewHist.iteritems():
+			if not self.dicHasNewHistos[key]:
+				name = self.dicNewHistoNames[key]
+				histo.SaveAs('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=name))
+				self.dicHasNewHistos[key] = True
+
+	def CreateProfiles(self):
+		print 'Creating profiles:'
+		self.dicBraProf = {branch: histo.Project3DProfile('yx') for branch, histo in self.dicBraHist.iteritems() if branch in self.listBraNamesChs and not self.dicHasProfiles[branch]}
+		# for branch, histo in self.dicBraHist.iteritems():
+		# 	if branch in self.listBraNamesChs:
+		# 		self.dicBraProf[branch] = histo.Project3DProfile('yx')
+		self.SetProfileDefaults()
+
+	def SetProfileDefaults(self):
+		for branch, prof in self.dicBraProf.iteritems():
+			prof.GetXaxis().SetTitle('event')
+			prof.GetYaxis().SetTitle('channel')
+			prof.GetZaxis().SetTitle(self.dicBraNames[branch][:-6])
+			prof.GetZaxis().SetRangeUser(self.dicBraHist[branch].GetZaxis().GetXmin(), self.dicBraHist[branch].GetZaxis().GetXmax())
+			prof.SetStats(False)
+
+	def SaveProfiles(self):
+		print 'Saving profiles:'
+		if not os.path.isdir('{d}/pedestalAnalysis/profiles'.format(d=self.dir)):
+			os.makedirs('{d}/pedestalAnalysis/profiles'.format(d=self.dir))
+		for branch, prof in self.dicBraProf.iteritems():
+			if not self.dicHasProfiles[branch]:
+				name = self.dicBraNames[branch]
+				prof.SaveAs('{d}/pedestalAnalysis/profiles/{n}_pyx.root'.format(d=self.dir, n=name))
+				self.dicHasProfiles[branch] = True
+
+	def LoadHistograms(self):
+		print 'Loading Histograms...',
+		sys.stdout.flush()
+		for branch in self.allBranches:
+			if self.dicHasHistos[branch]:
+				temp = ro.TFile('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=self.dicBraNames[branch]), 'read')
+				self.dicBraHist[branch] = deepcopy(temp.Get(self.dicBraNames[branch]))
+				temp.Close()
+				del temp
+		for hist in self.allNewHistos:
+			if self.dicHasNewHistos[hist]:
+				temp = ro.TFile('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=self.dicNewHistoNames[hist]), 'read')
+				self.dicNewHist[hist] = deepcopy(temp.Get(self.dicNewHistoNames[hist]))
+				temp.Close()
+				del temp
+		self.entries = int(self.dicBraHist[self.listBraNamesChs[0]].GetXaxis().GetXmax())
+		self.SetHistogramDefaults()
+		print 'Done'
+
+	def SetHistogramDefaults(self):
+		for branch, hist in self.dicBraHist.iteritems():
+			name = self.dicBraNames[branch]
+			hist.GetXaxis().SetTitle('event')
+			hist.GetYaxis().SetTitle('channel') if branch in self.listBraNamesChs else hist.GetYaxis().SetTitle(name[:-6])
+			if branch in self.listBraNamesChs:
+				hist.GetZaxis().SetTitle(name[:-6])
+		for key, hist, in self.dicNewHist.iteritems():
+			name = self.dicNewHistoNames[key]
+			hist.GetXaxis().SetTitle(name[:-6])
+			hist.GetYaxis().SetTitle('channel')
+			hist.GetZaxis().SetTitle('entries')
+
+	def GetMeanSigmaPerChannel(self):
+		for branch, prof in self.dicBraProf.iteritems():
+			# ipdb.set_trace()
+			temp1 = prof.ProfileY(prof.GetTitle() + '_py')
+			self.dic_bra_mean_ped_chs[branch] = np.array([temp1.GetBinContent(ch + 1) for ch in xrange(diaChs + 1)], dtype='f8')
+			self.dic_bra_sigma_ped_chs[branch] = np.array([temp1.GetBinError(ch + 1) for ch in xrange(diaChs + 1)], dtype='f8')
+			del temp1
 
 	def SetTCutG(self, ev_ini=0, ev_end=0, color=ro.kRed + 3):
 		ev_fin = self.entries if ev_end == 0 else ev_end
@@ -223,154 +571,32 @@ class PedestalAnalysis:
 		temp.GetYaxis().SetRangeUser(prof.GetMinimum(), prof.GetMaximum())
 		return temp
 
-	def GetMeanSigmaPerChannel(self):
-		for branch, prof in self.dicBraProf.iteritems():
-			# ipdb.set_trace()
-			temp1 = prof.ProfileY(prof.GetTitle() + '_py')
-			self.dic_bra_mean_ped_chs[branch] = np.array([temp1.GetBinContent(ch + 1) for ch in xrange(diaChs + 1)], dtype='f8')
-			self.dic_bra_sigma_ped_chs[branch] = np.array([temp1.GetBinError(ch + 1) for ch in xrange(diaChs + 1)], dtype='f8')
-			del temp1
-
-	def SetProfileDefaults(self):
-		for branch, prof in self.dicBraProf.iteritems():
-			prof.GetXaxis().SetTitle('event')
-			prof.GetYaxis().SetTitle('channel')
-			prof.GetZaxis().SetTitle(self.dicBraNames[branch][:-6])
-			prof.GetZaxis().SetRangeUser(self.dicBraHist[branch].GetZaxis().GetXmin(), self.dicBraHist[branch].GetZaxis().GetXmax())
-			prof.SetStats(False)
-
-	def SetHistogramDefaults(self):
-		for branch, hist in self.dicBraHist.iteritems():
-			name = self.dicBraNames[branch]
-			hist.GetXaxis().SetTitle('event')
-			hist.GetYaxis().SetTitle('channel') if branch in self.listBraNamesChs else hist.GetYaxis().SetTitle(name[:-6])
-			if branch in self.listBraNamesChs:
-				hist.GetZaxis().SetTitle(name[:-6])
-
-	def CheckProfiles(self):
-		if not os.path.isdir('{d}/pedestalAnalysis/profiles'.format(d=self.dir)):
-			print 'Pedestal analysis directory "profiles" does not exist.'
-			return False
-		else:
-			for branch in self.listBraNamesChs:
-				name = self.dicBraNames[branch]
-				if not os.path.isfile('{d}/pedestalAnalysis/profiles/{n}_pyx.root'.format(d=self.dir, n=name)):
-					self.dicHasProfiles[branch] = False
-				else:
-					self.dicHasProfiles[branch] = True
-			return np.array(self.dicHasProfiles.values(), '?').all()
-
-	def CheckHistograms(self):
-		if not os.path.isdir('{d}/pedestalAnalysis/histos'.format(d=self.dir)):
-			print 'Pedestal analysis directory "histos" does not exist. All the vectors for the analysis will be created'
-			return False
-		else:
-			for branch in self.allBranches:
-				name = self.dicBraNames[branch]
-				if not os.path.isfile('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=name)):
-					self.dicHasHistos[branch] = False
-				else:
-					self.dicHasHistos[branch] = True
-			return np.array(self.dicHasHistos.values(), '?').all()
-
-	def LoadROOTFile(self):
-		print 'Loading ROOT file...',
-		sys.stdout.flush()
-		# ipdb.set_trace()
-		self.rootFile = ro.TFile('{d}/pedestalData.{r}.root'.format(d=self.dir, r=self.run), 'READ')
-		self.pedTree = self.rootFile.Get('pedestalTree')
-		self.entries = self.pedTree.GetEntries()
-		# self.entries = int(maxEntries)
-		print 'Done'
-
-	def LoadHistograms(self):
-		print 'Loading Histograms...',
-		sys.stdout.flush()
-		for branch in self.allBranches:
-			temp = ro.TFile('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=self.dicBraNames[branch]), 'read')
-			self.dicBraHist[branch] = deepcopy(temp.Get(self.dicBraNames[branch]))
-			temp.Close()
-			del temp
-		self.entries = int(self.dicBraHist[self.listBraNamesChs[0]].GetXaxis().GetXmax())
-		self.SetHistogramDefaults()
-		print 'Done'
-
 	def LoadProfiles(self):
 		print 'Loading Profiles...',
 		sys.stdout.flush()
 		for branch in self.listBraNamesChs:
-			temp = ro.TFile('{d}/pedestalAnalysis/profiles/{n}_pyx.root'.format(d=self.dir, n=self.dicBraNames[branch]), 'read')
-			self.dicBraProf[branch] = deepcopy(temp.Get('{n}_pyx'.format(n=self.dicBraNames[branch])))
-			temp.Close()
-			del temp
+			if self.dicHasProfiles[branch]:
+				temp = ro.TFile('{d}/pedestalAnalysis/profiles/{n}_pyx.root'.format(d=self.dir, n=self.dicBraNames[branch]), 'read')
+				self.dicBraProf[branch] = deepcopy(temp.Get('{n}_pyx'.format(n=self.dicBraNames[branch])))
+				temp.Close()
+				del temp
 		self.entries = int(self.dicBraProf[self.listBraNamesChs[0]].GetXaxis().GetXmax())
 		self.SetProfileDefaults()
 		print 'Done'
 
-	def CreateProfiles(self):
-		print 'Creating profiles:'
-		self.dicBraProf = {branch: histo.Project3DProfile('yx') for branch, histo in self.dicBraHist.iteritems() if branch in self.listBraNamesChs}
-		# for branch, histo in self.dicBraHist.iteritems():
-		# 	if branch in self.listBraNamesChs:
-		# 		self.dicBraProf[branch] = histo.Project3DProfile('yx')
-		self.SetProfileDefaults()
-
-	def LoadVectorsFromBranches(self, first_ev=0):
-		print 'Loading vectors from branches...',
-		sys.stdout.flush()
-		if self.pedTree is None:
-			self.LoadROOTFile()
-
-		num_bra_chs = len(self.listBraNamesChs)
-		if num_bra_chs < 1:
-			print 'The dictionary of branches and vectors is empty! try again'
-			return
-		channels = self.pedTree.GetLeaf(self.listBraNamesChs[0]).GetLen()
-		for branch in self.listBraNamesChs:
-			if self.pedTree.GetLeaf(branch).GetLen() != channels:
-				print 'The given branches have different sizes! try again'
-				return
-		leng = self.pedTree.Draw(':'.join(self.listBraNamesChs), '', 'goff para', self.entries, first_ev)
-		if leng == -1:
-			print 'Error, could not load the branches. try again'
-			return
-		while leng > self.pedTree.GetEstimate():
-			self.pedTree.SetEstimate(leng)
-			leng = self.pedTree.Draw(':'.join(self.listBraNamesChs), '', 'goff para', self.entries, first_ev)
-		self.entries = leng / channels
-		for pos, branch in enumerate(self.listBraNamesChs):
-			temp = self.pedTree.GetVal(pos)
-			self.dicBraVectChs[branch] = np.array([[temp[ev * channels + ch] for ch in xrange(channels)] for ev in xrange(self.entries)], dtype='f8')
-			del temp
-
-		num_bra_1ch = len(self.listBraNames1ch)
-		if num_bra_1ch < 1:
-			print 'The dictionary of branches and vectors is empty! try again'
-			return
-		channel = 1
-		for branch in self.listBraNames1ch:
-			if self.pedTree.GetLeaf(branch).GetLen() != channel:
-				print 'The given branches have different sizes different to 1! try again'
-				return
-		leng = self.pedTree.Draw(':'.join(self.listBraNames1ch), '', 'goff para', self.entries, first_ev)
-		if leng == -1:
-			print 'Error, could not load the branches. try again'
-			return
-		while leng > self.pedTree.GetEstimate():
-			self.pedTree.SetEstimate(leng)
-			leng = self.pedTree.Draw(':'.join(self.listBraNames1ch), '', 'goff para', self.entries, first_ev)
-		for pos, branch in enumerate(self.listBraNames1ch):
-			temp = self.pedTree.GetVal(pos)
-			self.dicBraVect1ch[branch] = np.array([temp[ev] for ev in xrange(self.entries)], dtype='f8')
-			del temp
-
-		self.adc_vect, self.ped_vect, self.sigma_vect, self.ped_cmc_vect, self.sigma_cmc_vect = self.dicBraVectChs['rawTree.DiaADC'], self.dicBraVectChs['diaPedestalMean'], self.dicBraVectChs[
-			'diaPedestaSigma'], self.dicBraVectChs['diaPedestalMeanCMN'], self.dicBraVectChs['diaPedestaSigmaCMN']
-		self.cm_vect = self.dicBraVect1ch['commonModeNoise']
-		self.ev_axis['max'] = self.entries
-		print 'Done'
-
 	def LoadVectorFromBranch(self, branch):
+		if self.dicHasVectors[branch]:
+			self.LoadVectorFromPickle(branch)
+		else:
+			self.LoadVectorFromTree(branch)
+
+	def LoadVectorFromPickle(self, branch):
+		if branch in self.listBraNamesChs:
+			self.dicBraVectChs[branch] = pickle.load(open('{d}/pedestalAnalysis/vectors/{n}dat'.format(d=self.dir, n=self.dicBraNames[branch]), 'rb'))
+		else:
+			self.dicBraVect1ch[branch] = pickle.load(open('{d}/pedestalAnalysis/vectors/{n}dat'.format(d=self.dir, n=self.dicBraNames[branch]), 'rb'))
+
+	def LoadVectorFromTree(self, branch):
 		channels = self.pedTree.GetLeaf(branch).GetLen()
 		leng = self.pedTree.Draw(branch, '', 'goff', self.entries, 0)
 		if leng == -1:
@@ -404,67 +630,11 @@ class PedestalAnalysis:
 				zmin, zmax = min(adc_axis['min'], vect.min()), max(adc_axis['max'], vect.max())
 				adc_axis['min'], adc_axis['max'] = zmin, zmax
 
-	def CreateHistograms(self):
-		print 'Creating histograms...',
-		sys.stdout.flush()
-		self.SetHistogramLimits()
-		for branch in self.allBranches:
-			name = self.dicBraNames[branch]
-			if branch in self.listBraNames1ch:
-				ymin, ymax, ybins = 0, 0, 0
-				if name.startswith('cm'):
-					ymin, ymax, ybins = cm_axis['min'], cm_axis['max'], int((cm_axis['max'] - cm_axis['min']) / 0.5)
-				self.dicBraHist[branch] = ro.TH2D(name, name, self.ev_axis['bins'], self.ev_axis['min'], self.ev_axis['max'], ybins + 1, ymin, ymax + (ymax - ymin) / float(ybins))
-				self.dicBraHist[branch].GetXaxis().SetTitle('event')
-				self.dicBraHist[branch].GetYaxis().SetTitle(name[:-6])
-			elif branch in self.listBraNamesChs:
-				zmin, zmax, zbins = 0, 0, 0
-				if name.startswith('ped'):
-					zmin, zmax, zbins = ped_axis['min'], ped_axis['max'], int(min((ped_axis['max'] - ped_axis['min']) / 10.0, 500))
-				elif name.startswith('adc'):
-					zmin, zmax, zbins = adc_axis['min'], adc_axis['max'], int(min((adc_axis['max'] - adc_axis['min']) / 10.0, 500))
-				elif name.startswith('sigma'):
-					zmin, zmax, zbins = sigma_axis['min'], sigma_axis['max'], int(min((sigma_axis['max'] - sigma_axis['min']) / 0.2, 500))
-				self.dicBraHist[branch] = ro.TH3D(name, name, self.ev_axis['bins'], self.ev_axis['min'], self.ev_axis['max'], self.ch_axis['bins'], self.ch_axis['min'], self.ch_axis['max'], zbins + 1,
-				                                  zmin, zmax + (zmax - zmin) / float(zbins))
-				self.dicBraHist[branch].GetXaxis().SetTitle('event')
-				self.dicBraHist[branch].GetYaxis().SetTitle('channel')
-				self.dicBraHist[branch].GetZaxis().SetTitle(name[:-6])
-		self.adc_hist, self.ped_hist, self.sigma_hist, self.ped_cmc_hist, self.sigma_cmc_hist, self.cm_hist = self.dicBraHist['rawTree.DiaADC'], self.dicBraHist['diaPedestalMean'], self.dicBraHist[
-			'diaPedestaSigma'], self.dicBraHist['diaPedestalMeanCMN'], self.dicBraHist['diaPedestaSigmaCMN'], self.dicBraHist['commonModeNoise']
-		print 'Done'
-
-	def FillHistograms(self):
-		print 'Filling histograms:'
-		self.CreateProgressBar(self.entries)
-		if self.bar is not None:
-			self.bar.start()
-		for ev in xrange(self.entries):
-			for ch in xrange(diaChs):
-				self.adc_hist.Fill(ev, ch, self.adc_vect[ev, ch])
-				self.ped_hist.Fill(ev, ch, self.ped_vect[ev, ch])
-				self.sigma_hist.Fill(ev, ch, self.sigma_vect[ev, ch])
-				self.ped_cmc_hist.Fill(ev, ch, self.ped_cmc_vect[ev, ch])
-				self.sigma_cmc_hist.Fill(ev, ch, self.sigma_cmc_vect[ev, ch])
-			self.cm_hist.Fill(ev, self.cm_vect[ev])
-			if self.bar is not None:
-				self.bar.update(ev + 1)
-		if self.bar is not None:
-			self.bar.finish()
-
 	def Calculate_CM_ADC(self):
-		if len(self.dicBraVectChs) == 0:
-			self.LoadROOTFile()
-			print 'Loading ADCs...', ; sys.stdout.flush()
-			self.LoadVectorFromBranch('rawTree.DiaADC')
-			self.adc_vect = self.dicBraVectChs['rawTree.DiaADC']
-			print 'Done'
-		if len(self.dicBraVect1ch) == 0:
-			self.LoadROOTFile()
-			print 'Loading CMs...', ; sys.stdout.flush()
-			self.LoadVectorFromBranch('commonModeNoise')
-			self.cm_vect = self.dicBraVect1ch['commonModeNoise']
-			print 'Done'
+		self.CheckExistanceVector('rawTree.DiaADC')
+		self.adc_vect = self.dicBraVectChs['rawTree.DiaADC']
+		self.CheckExistanceVector('commonModeNoise')
+		self.cm_vect = self.dicBraVect1ch['commonModeNoise']
 		temp = []
 		self.CreateProgressBar(self.entries)
 		if self.bar is not None:
@@ -474,21 +644,18 @@ class PedestalAnalysis:
 		self.cm_adc = np.array(temp, 'f8')
 		del temp
 
-	def SaveHistograms(self):
-		print 'Saving histograms:'
-		if not os.path.isdir('{d}/pedestalAnalysis/histos'.format(d=self.dir)):
-			os.makedirs('{d}/pedestalAnalysis/histos'.format(d=self.dir))
-		for branch, histo in self.dicBraHist.iteritems():
-			name = self.dicBraNames[branch]
-			histo.SaveAs('{d}/pedestalAnalysis/histos/{n}.root'.format(d=self.dir, n=name))
-
-	def SaveProfiles(self):
-		print 'Saving profiles:'
-		if not os.path.isdir('{d}/pedestalAnalysis/profiles'.format(d=self.dir)):
-			os.makedirs('{d}/pedestalAnalysis/profiles'.format(d=self.dir))
-		for branch, prof in self.dicBraProf.iteritems():
-			name = self.dicBraNames[branch]
-			prof.SaveAs('{d}/pedestalAnalysis/profiles/{n}_pyx.root'.format(d=self.dir, n=name))
+	def CheckExistanceVector(self, branch):
+		if branch in self.listBraNames1ch:
+			if len(self.dicBraVect1ch) != 0:
+				if self.dicBraVect1ch[branch]:
+					return
+		elif branch in self.listBraNamesChs:
+			if len(self.dicBraVectChs) != 0:
+				if self.dicBraVectChs[branch]:
+					return
+		if not self.pedTree:
+			self.LoadROOTFile()
+			self.LoadVectorFromBranch(branch)
 
 	def CreateProgressBar(self, maxVal=1):
 		widgets = [

@@ -93,10 +93,13 @@ class RD42Analysis:
 			os.makedirs(self.settings_dir + '/full')
 		if not os.path.isfile(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run)):
 			CreateDefaultSettingsFile(self.settings_dir + '/full', self.run, self.num_ev)
+		Set_voltage(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 		Set_Diamond_pattern(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 		Mark_channels_as_NC(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 		Mark_channels_as_Screened(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 		Mark_channels_as_Noisy(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
+		if self.do_autom_all:
+			Mark_channels_as_no_alignment(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 		Select_fiducial_region(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 
 	def Modify_even_odd(self):
@@ -269,13 +272,13 @@ class RD42Analysis:
 			if temp_flag:
 				print 'waiting for even events to finish...'
 				temp_flag = False
-		CloseSubprocess(self.process_e, True, True)
+		CloseSubprocess(self.process_e, True, False)
 		temp_flag = True
 		while self.process_o.poll() is None:
 			if temp_flag:
 				print 'waiting for even events to finish...'
 				temp_flag = False
-		CloseSubprocess(self.process_e, True, True)
+		CloseSubprocess(self.process_o, True, False)
 		print 'Finished :)'
 
 	def Check_if_clustering_finished(self):
@@ -302,25 +305,32 @@ class RD42Analysis:
 			if elem == upto:
 				break
 		if 'raw' in cummulative:
-			RecreateLink(source + '/rawData.{r}.root'.format(r=self.run), dest, 'rawData.{r}.root'.format(r=self.run))
+			if not os.path.isfile(dest + '/rawData.{r}.root'.format(r=self.run)):
+				RecreateLink(source + '/rawData.{r}.root'.format(r=self.run), dest, 'rawData.{r}.root'.format(r=self.run))
 		if 'pedestal' in cummulative:
-			RecreateLink(source + '/pedestalData.{r}.root'.format(r=self.run), dest, 'pedestalData.{r}.root'.format(r=self.run))
-			RecreateLink(source + '/pedestalAnalysis', dest, 'pedestalAnalysis')
+			if not os.path.isfile(dest + '/pedestalData.{r}.root'.format(r=self.run)):
+				RecreateLink(source + '/pedestalData.{r}.root'.format(r=self.run), dest, 'pedestalData.{r}.root'.format(r=self.run))
+				RecreateLink(source + '/pedestalAnalysis', dest, 'pedestalAnalysis')
 		if 'cluster' in cummulative:
-			RecreateLink(source + '/clusterData.{r}.root'.format(r=self.run), dest, 'clusterData.{r}.root'.format(r=self.run))
-			RecreateLink(source + '/etaCorrection.{r}.root'.format(r=self.run), dest, 'etaCorrection.{r}.root'.format(r=self.run))
-			RecreateLink(source + '/clustering', dest, 'clustering')
+			if not os.path.isfile(dest + '/clusterData.{r}.root'.format(r=self.run)):
+				RecreateLink(source + '/clusterData.{r}.root'.format(r=self.run), dest, 'clusterData.{r}.root'.format(r=self.run))
+				RecreateLink(source + '/clustering', dest, 'clustering')
+			if not os.path.isfile(dest + '/etaCorrection.{r}.root'.format(r=self.run)):
+				RecreateLink(source + '/etaCorrection.{r}.root'.format(r=self.run), dest, 'etaCorrection.{r}.root'.format(r=self.run))
 			if os.path.isfile(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run)) and doCopy:
 				shutil.copy(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run), dest + '/')
 		if 'selection' in cummulative:
-			RecreateLink(source + '/selectionData.{r}.root'.format(r=self.run), dest, 'selectionData.{r}.root'.format(r=self.run))
-			RecreateLink(source + '/selectionAnalysis', dest, 'selectionAnalysis')
-			RecreateLink(source + '/selections', dest, 'selections')
+			if not os.path.isfile(dest + '/selectionData.{r}.root'.format(r=self.run)):
+				RecreateLink(source + '/selectionData.{r}.root'.format(r=self.run), dest, 'selectionData.{r}.root'.format(r=self.run))
+				RecreateLink(source + '/selectionAnalysis', dest, 'selectionAnalysis')
+				RecreateLink(source + '/selections', dest, 'selections')
 		if 'align' in cummulative:
-			RecreateLink(source + '/alignment.{r}.root'.format(r=self.run), dest, 'alignment.{r}.root'.format(r=self.run))
-			RecreateLink(source + '/alignment', dest, 'alignment')
+			if not os.path.isfile(dest + '/alignment.{r}.root'.format(r=self.run)):
+				RecreateLink(source + '/alignment.{r}.root'.format(r=self.run), dest, 'alignment.{r}.root'.format(r=self.run))
+				RecreateLink(source + '/alignment', dest, 'alignment')
 		if 'transparent' in cummulative:
-			RecreateLink(source + '/transparentAnalysis', dest, 'transparentAnalysis')
+			if not os.path.isfile(dest + '/transparentAnalysis'):
+				RecreateLink(source + '/transparentAnalysis', dest, 'transparentAnalysis')
 		if os.path.isfile(source + '/index.php'):
 			shutil.copyfile(source + '/index.php', dest + '/index.php')
 		if os.path.isfile(source + '/overview.html'):
@@ -329,7 +339,8 @@ class RD42Analysis:
 			shutil.copyfile(source + '/results_{r}.res'.format(r=self.run), dest + '/results_{r}.res'.format(r=self.run))
 		if os.path.isfile(source + '/results_{r}.txt'.format(r=self.run)) and doCopy:
 			shutil.copyfile(source + '/results_{r}.txt'.format(r=self.run), dest + '/results_{r}.txt'.format(r=self.run))
-		RecreateLink(source + '/Results.{r}.root'.format(r=self.run), dest, 'Results.{r}.root'.format(r=self.run))
+		if not os.path.isfile(dest + '/Results.{r}.root'.format(r=self.run)):
+			RecreateLink(source + '/Results.{r}.root'.format(r=self.run), dest, 'Results.{r}.root'.format(r=self.run))
 
 	def CreateProgressBar(self, maxVal=1):
 		widgets = [

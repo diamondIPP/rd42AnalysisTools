@@ -63,6 +63,9 @@ def CreateDirectoryIfNecessary(dir):
 	if not os.path.isdir(dir):
 		os.makedirs(dir)
 
+def Set_voltage(s_file):
+	Replace_Settings_Line(s_file, 'voltage')
+
 def Mark_channels_as_NC(s_file):
 	Replace_Settings_Line(s_file, 'Dia_channel_not_connected')
 
@@ -74,6 +77,20 @@ def Mark_channels_as_Noisy(s_file):
 
 def Set_Diamond_pattern(s_file):
 	Replace_Settings_Line(s_file, 'diamondPattern')
+
+def Mark_channels_as_no_alignment(s_file):
+	with open(s_file, 'r') as f0:
+		for line in f0:
+			if line.lower().startswith('Dia_channel_not_connected'.lower()):
+				print 'The current value(s) for not connected channels are:'
+				print line.split('=')[1].split('\n')[0]
+			if line.lower().startswith('Dia_channel_screen_channels'.lower()):
+				print 'The current value(s) for screened channels are:'
+				print line.split('=')[1].split('\n')[0]
+			if line.lower().startswith('Dia_channel_noisy'.lower()):
+				print 'The current value(s) for noisy channels are:'
+				print line.split('=')[1].split('\n')[0]
+	Replace_Settings_Line(s_file, 'AlignmentIgnoreChannelDia')
 
 def Select_fiducial_region(s_file):
 	xlow = Replace_Settings_Line(s_file, 'si_avg_fidcut_xlow')
@@ -130,10 +147,12 @@ def Get_From_User_Line(option, old_value='', update=True):
 
 def Only_Even_Channels(old_value):
 	channel_str = old_value[old_value.find('{') + 1:old_value.find('}')].split(',')
+	channel_str = ['0', '126'] if len(channel_str) == 1 and channel_str[0] == '' else channel_str
 	return Modify_String_Even_or_Odd(channel_str, 'even')
 	
 def Only_Odd_Channels(old_value):
 	channel_str = old_value[old_value.find('{') + 1:old_value.find('}')].split(',')
+	channel_str = ['1', '127'] if len(channel_str) == 1 and channel_str[0] == '' else channel_str
 	return Modify_String_Even_or_Odd(channel_str, 'odd')
 	
 def Modify_String_Even_or_Odd(channel_old, type='even'):
@@ -209,18 +228,17 @@ def RecreateLink(source, dest, name):
 
 def RecreateSoftLink(source, dest, name, type='dir'):
 	# if os.path.isfile(source) or os.path.isdir(source):
-	if False:
-		if type != 'dir':
-			if os.path.isfile(source):
-				if os.path.islink(dest + '/' + name):
-					os.unlink(dest + '/' + name)
-				# os.link(source, dest + '/' + name)
-				os.symlink(source, dest + '/' + name)
-		else:
-			if os.path.isdir(source):
-				if os.path.islink(dest + '/' + name):
-					os.unlink(dest + '/' + name)
-				os.symlink(source, dest + '/' + name)
+	if type != 'dir':
+		if os.path.isfile(source):
+			if os.path.islink(dest + '/' + name):
+				os.unlink(dest + '/' + name)
+			# os.link(source, dest + '/' + name)
+			os.symlink(source, dest + '/' + name)
+	else:
+		if os.path.isdir(source):
+			if os.path.islink(dest + '/' + name):
+				os.unlink(dest + '/' + name)
+			os.symlink(source, dest + '/' + name)
 
 def CloseSubprocess(p, stdin=False, stdout=False):
 	pid = p.pid
