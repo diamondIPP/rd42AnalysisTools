@@ -25,29 +25,36 @@ sigma_axis = {'min': 0, 'max': 35}
 adc_axis = {'min': 0, 'max': 2**12 - 1}
 ped_axis = {'min': 0, 'max': 2**12 - 1}
 cm_axis = {'min': -100, 'max': 100}
-
+ev_axis = {'min': 0, 'max': 0, 'bins': 1000}
+ch_axis = {'min': -0.5, 'max': diaChs - 0.5, 'bins': diaChs}
 
 class PedestalAnalysis:
 	def __init__(self, run=22011, dir='', force=False):
 		print 'Creating PedestalAnalysis instance for run:', run
 		self.run = run
+		self.bias = self.GetBiasUser()
+		self.dia = self.GetDiamondNameUser()
 		self.dir = dir + '/{r}'.format(r=self.run)
 		self.force = force
-		self.bar = None
-		self.rootFile = self.pedTree = None
-		self.adc_vect = self.ped_vect = self.sigma_vect = self.cm_vect = self.ped_cmc_vect = self.sigma_cmc_vect = None
+		self.rootFile, self.pedTree = None, None
+		self.adc_vect, self.ped_vect, self.sigma_vect, self.cm_vect, self.ped_cmc_vect, self.sigma_cmc_vect = None, None, None, None, None, None
 		self.signal_vect, self.signal_cmc_vect = None, None
-		self.adc_hist, self.ped_hist, self.sigma_hist, self.cm_hist, self.ped_cmc_hist, self.sigma_cmc_hist = ro.TH3F(), ro.TH3F(), ro.TH3F(), ro.TH2F(), ro.TH3F(), ro.TH3F()
-		self.signal_hist, self.signal_cmc_hist, self.biggest_adc_hist = ro.TH2F(), ro.TH2F(), ro.TH2F()
-		self.ped_ch_hist, self.ped_cmc_ch_hist, self.sigma_ch_hist, self.sigma_cmc_ch_hist = ro.TH2F(), ro.TH2F(), ro.TH2F(), ro.TH2F()
+		self.biggest_adc_vect = None
+		self.adc_ev_hist, self.ped_ev_hist, self.sigma_ev_hist, self.cm_ev_hist, self.ped_cmc_ev_hist, self.sigma_cmc_ev_hist = ro.TH3F(), ro.TH3F(), ro.TH3F(), ro.TH2F(), ro.TH3F(), ro.TH3F()
+		self.signal_ev_hist, self.signal_cmc_ev_hist, self.biggest_adc_ev_hist = None, None, None
+		self.signal_ch_hist, self.signal_cmc_ch_hist, self.biggest_adc_ch_hist = ro.TH2F(), ro.TH2F(), ro.TH2F()
+		self.ped_ch_hist, self.ped_cmc_ch_hist, self.sigma_ch_hist, self.sigma_cmc_ch_hist, self.adc_ch_hist = ro.TH2F(), ro.TH2F(), ro.TH2F(), ro.TH2F(), ro.TH2F()
 		self.dicBraNames = {'rawTree.DiaADC': 'adc_' + str(self.run), 'diaPedestalMean': 'ped_' + str(self.run), 'diaPedestaSigma': 'sigma_' + str(self.run),
 		                    'diaPedestalMeanCMN': 'ped_cmc_' + str(self.run), 'diaPedestaSigmaCMN': 'sigma_cmc_' + str(self.run), 'commonModeNoise': 'cm_' + str(self.run)}
 		self.allBranches = self.dicBraNames.keys()
 		self.listBraNames1ch = ['commonModeNoise']
 		self.listBraNamesChs = [x for x in self.allBranches if x not in self.listBraNames1ch]
 		self.dicNewHistoNames = {'signal': 'signal_' + str(self.run), 'signalCMN': 'signal_cmc_' + str(self.run), 'biggestADC': 'biggest_adc_' + str(self.run), 'ped_ch': 'pedestal_ch_' + str(self.run),
-		                         'pedCMN_ch': 'pedestal_cmc_ch_' + str(self.run), 'sigma_ch': 'sigma_ch_' + str(self.run), 'sigmaCMN_ch': 'sigma_cmc_ch_' + str(self.run)}
+		                         'pedCMN_ch': 'pedestal_cmc_ch_' + str(self.run), 'sigma_ch': 'sigma_ch_' + str(self.run), 'sigmaCMN_ch': 'sigma_cmc_ch_' + str(self.run), 'adc_ch': 'adc_ch_'+str(self.run)}
 		self.allNewHistos = self.dicNewHistoNames.keys()
+
+		# TODO REDOING PEDESTAL ANALYSIS SUCH THAT IT UPDATES THE TREE WITH CHANNEL VECTOR AND THEN PLOT DIRECTLY FORM PYTHON WITHOUT SAVING VECTORS, ETC...
+
 		self.dicBraVectChs = {}
 		self.dicBraVect1ch = {}
 		self.dicNewVectChs = {}
@@ -102,6 +109,16 @@ class PedestalAnalysis:
 		else:
 			self.LoadProfiles()
 		self.GetMeanSigmaPerChannel()
+
+	def GetDiamondNameUser(self):
+		name = raw_input('Please enter the name of the diamond (e.g. II6-99): ')
+		return name
+
+	def GetBiasUser(self):
+		bias = 'a'
+		while IsFloat(bias):
+			bias = raw_input('Please enter the bias voltage in V used for this run ({r}) (e.g. -234.4): '.format(r=self.run))
+		return float(bias)
 
 	def ClearOldAnalysis(self):
 		if os.path.isdir('{d}/pedestalAnalysis/histos'.format(d=self.dir)):
@@ -306,18 +323,20 @@ class PedestalAnalysis:
 				elif name.startswith('biggest'):
 					xmin, xmax, xbins = adc_axis['min'], adc_axis['max'], int(min((adc_axis['max'] - adc_axis['min']) / 0.5, 10000))
 				elif name.startswith('ped'):
-					xmin, xmax, xbins = ped_axis['max'], ped_axis['max'], int(min((ped_axis['max'] - ped_axis['min']) / 5.0, 1000))
+					xmin, xmax, xbins = ped_axis['min'], ped_axis['max'], int(min((ped_axis['max'] - ped_axis['min']) / 5.0, 1000))
 				elif name.startswith('sigma'):
-					xmin, xmax, xbins = sigma_axis['max'], sigma_axis['max'], int(min((sigma_axis['max'] - sigma_axis['min']) / 0.1, 1000))
+					xmin, xmax, xbins = sigma_axis['min'], sigma_axis['max'], int(min((sigma_axis['max'] - sigma_axis['min']) / 0.1, 1000))
+				elif name.startswith('adc'):
+					xmin, xmax, xbins = adc_axis['min'], adc_axis['max'], int(min((adc_axis['max'] - adc_axis['min']) / 0.5, 10000))
 				ymin, ymax, ybins = self.ch_axis['min'], self.ch_axis['max'], self.ch_axis['bins']
 				self.dicNewHist[hist] = ro.TH2F(name, name, xbins, xmin, xmax, ybins, ymin, ymax)
 				self.dicNewHist[hist].GetXaxis().SetTitle(name[:-6])
 				self.dicNewHist[hist].GetYaxis().SetTitle('channel')
 				self.dicNewHist[hist].GetZaxis().SetTitle('entries')
 
-		self.adc_hist, self.ped_hist, self.sigma_hist, self.ped_cmc_hist, self.sigma_cmc_hist, self.cm_hist = self.dicBraHist['rawTree.DiaADC'], self.dicBraHist['diaPedestalMean'], self.dicBraHist[
+		self.adc_ev_hist, self.ped_ev_hist, self.sigma_ev_hist, self.ped_cmc_ev_hist, self.sigma_cmc_ev_hist, self.cm_ev_hist = self.dicBraHist['rawTree.DiaADC'], self.dicBraHist['diaPedestalMean'], self.dicBraHist[
 			'diaPedestaSigma'], self.dicBraHist['diaPedestalMeanCMN'], self.dicBraHist['diaPedestaSigmaCMN'], self.dicBraHist['commonModeNoise']
-		self.signal_hist, self.signal_cmc_hist, self.biggest_adc_hist = self.dicNewHist['signal'], self.dicNewHist['signalCMN'], self.dicNewHist['biggestADC']
+		self.signal_ch_hist, self.signal_cmc_ch_hist, self.biggest_adc_ch_hist, self.adc_ch_hist = self.dicNewHist['signal'], self.dicNewHist['signalCMN'], self.dicNewHist['biggestADC'], self.dicNewHist['adc_ch']
 		self.ped_ch_hist, self.ped_cmc_ch_hist, self.sigma_ch_hist, self.sigma_cmc_ch_hist = self.dicNewHist['ped_ch'], self.dicNewHist['pedCMN_ch'], self.dicNewHist['sigma_ch'], self.dicNewHist['sigmaCMN_ch']
 		print 'Done'
 
@@ -331,31 +350,31 @@ class PedestalAnalysis:
 		for ev in xrange(self.entries):
 			for ch in xrange(diaChs):
 				if not self.dicHasHistos['rawTree.DiaADC']:
-					self.adc_hist.Fill(ev, ch, self.adc_vect.item(ev, ch))
+					self.adc_ev_hist.Fill(ev, ch, self.adc_vect.item(ev, ch))
 				if not self.dicHasHistos['diaPedestalMean']:
-					self.ped_hist.Fill(ev, ch, self.ped_vect.item(ev, ch))
+					self.ped_ev_hist.Fill(ev, ch, self.ped_vect.item(ev, ch))
 				if not self.dicHasHistos['diaPedestaSigma']:
-					self.sigma_hist.Fill(ev, ch, self.sigma_vect.item(ev, ch))
+					self.sigma_ev_hist.Fill(ev, ch, self.sigma_vect.item(ev, ch))
 				if not self.dicHasHistos['diaPedestalMeanCMN']:
-					self.ped_cmc_hist.Fill(ev, ch, self.ped_cmc_vect.item(ev, ch))
+					self.ped_cmc_ev_hist.Fill(ev, ch, self.ped_cmc_vect.item(ev, ch))
 				if not self.dicHasHistos['diaPedestaSigmaCMN']:
-					self.sigma_cmc_hist.Fill(ev, ch, self.sigma_cmc_vect.item(ev, ch))
+					self.sigma_cmc_ev_hist.Fill(ev, ch, self.sigma_cmc_vect.item(ev, ch))
 				if not self.dicHasNewHistos['signal']:
-					self.signal_hist.Fill(self.signal_vect.item(ev, ch), ch)
+					self.signal_ch_hist.Fill(self.signal_vect.item(ev, ch), ch)
 				if not self.dicHasNewHistos['signalCMN']:
-					self.signal_cmc_hist.Fill(self.signal_cmc_vect.item(ev, ch), ch)
+					self.signal_cmc_ch_hist.Fill(self.signal_cmc_vect.item(ev, ch), ch)
 				if not self.dicHasNewHistos['ped_ch']:
 					self.ped_ch_hist.Fill(self.ped_vect.item(ev, ch), ch)
 				if not self.dicHasNewHistos['pedCMN_ch']:
-					self.ped_ch_hist.Fill(self.ped_cmc_vect.item(ev, ch), ch)
+					self.ped_cmc_ch_hist.Fill(self.ped_cmc_vect.item(ev, ch), ch)
 				if not self.dicHasNewHistos['sigma_ch']:
-					self.ped_ch_hist.Fill(self.sigma_vect.item(ev, ch), ch)
+					self.sigma_ch_hist.Fill(self.sigma_vect.item(ev, ch), ch)
 				if not self.dicHasNewHistos['sigmaCMN_ch']:
-					self.ped_ch_hist.Fill(self.sigma_cmc_vect.item(ev, ch), ch)
+					self.sigma_cmc_ch_hist.Fill(self.sigma_cmc_vect.item(ev, ch), ch)
 			if not self.dicHasNewHistos['biggestADC']:
-				self.biggest_adc_hist.Fill(biggest_adc.item(ev), biggest_adc_ch.item(ev))
+				self.biggest_adc_ch_hist.Fill(biggest_adc.item(ev), biggest_adc_ch.item(ev))
 			if not self.dicHasHistos['commonModeNoise']:
-				self.cm_hist.Fill(ev, self.cm_vect.item(ev))
+				self.cm_ev_hist.Fill(ev, self.cm_vect.item(ev))
 			if self.bar is not None:
 				self.bar.update(ev + 1)
 		if self.bar is not None:
