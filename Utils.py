@@ -238,6 +238,9 @@ def RecreateSoftLink(source, dest, name, type='dir'):
 		if os.path.isdir(source):
 			if os.path.islink(dest + '/' + name):
 				os.unlink(dest + '/' + name)
+			elif os.path.islink(dest + '/' + name):
+				print 'There is an existing directory already there!'
+				return
 			os.symlink(source, dest + '/' + name)
 
 def CloseSubprocess(p, stdin=False, stdout=False):
