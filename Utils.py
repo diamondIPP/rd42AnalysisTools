@@ -1,4 +1,4 @@
-import os, shutil
+import os, shutil, sys
 import ipdb
 
 def IsInt(i):
@@ -15,12 +15,14 @@ def IsFloat(f):
 	except ValueError:
 		return False
 
-def CreateDefaultSettingsFile(diri, run_no, events):
+def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0):
 	if not os.path.isdir(diri):
 		os.makedirs(diri)
 	with open(diri + '/settings.{r}.ini'.format(r=run_no), 'w') as f:
 		f.write('runNo = {r}\n'.format(r=run_no))
 		f.write('Events = {e}\n'.format(e=events))
+		f.write('Ev_ini = {ei}\n'.format(ei=ev_ini))
+		f.write('Events_ana = {ea}\n'.format(ea=events-ev_ini if num_evs_ana == 0 else num_evs_ana))
 		f.write('repeaterCardNo = 2\n')
 		f.write('voltage = 0\n')
 		f.write('diamondName = default\n')
@@ -47,7 +49,7 @@ def CreateDefaultSettingsFile(diri, run_no, events):
 		f.write('RerunSelection = 0\n\n')
 		f.write('DetectorsToAlign = 2\n')
 		f.write('alignment_training_fidcuts = {1}\n')
-		f.write('alignment_training_track_number = {e}\n'.format(e=int(round(events)/10.0)))
+		f.write('alignment_training_track_number = {e}\n'.format(e=int(round(num_evs_ana)/10.0)))
 		f.write('alignment_training_method = 1\n')
 		f.write('alignment_chi2 = 5\n\n')
 		f.write('Double_t detectorD0Z = 0.725\n')
@@ -61,7 +63,9 @@ def CreateDefaultSettingsFile(diri, run_no, events):
 
 def CreateDirectoryIfNecessary(dir):
 	if not os.path.isdir(dir):
+		print 'Creating directory', dir, '...', ; sys.stdout.flush()
 		os.makedirs(dir)
+		print 'Done'
 
 def Set_voltage(s_file):
 	Replace_Settings_Line(s_file, 'voltage')
@@ -77,6 +81,9 @@ def Mark_channels_as_Noisy(s_file):
 
 def Set_Diamond_pattern(s_file):
 	Replace_Settings_Line(s_file, 'diamondPattern')
+
+def Set_Diamond_name(s_file):
+	Replace_Settings_Line(s_file, 'diamondName')
 
 def Mark_channels_as_no_alignment(s_file):
 	with open(s_file, 'r') as f0:
@@ -238,7 +245,7 @@ def RecreateSoftLink(source, dest, name, type='dir'):
 		if os.path.isdir(source):
 			if os.path.islink(dest + '/' + name):
 				os.unlink(dest + '/' + name)
-			elif os.path.islink(dest + '/' + name):
+			elif os.path.isdir(dest + '/' + name):
 				print 'There is an existing directory already there!'
 				return
 			os.symlink(source, dest + '/' + name)
@@ -303,4 +310,18 @@ def Correct_Path(path):
 	else:
 		abs_path += os.path.abspath(path)
 	return abs_path
+
+def DeleteDirectoryContents(dir):
+	if os.path.isdir(dir):
+		print 'Deleting old analysis...', ; sys.stdout.flush()
+		for file in os.listdir(dir):
+			file_path = os.path.join(dir, file)
+			try:
+				if os.path.islink(file_path) or os.path.isfile(file_path):
+					os.unlink(file_path)
+				elif os.path.isdir(file_path):
+					shutil.rmtree(file_path)
+			except Exception as e:
+				print(e)
+		print 'Done'
 

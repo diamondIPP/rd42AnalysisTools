@@ -21,12 +21,15 @@ dicTypes = {'Char_t': 'int8', 'UChar_t': 'uint8', 'Short_t': 'short', 'UShort_t'
 diaChs = 128
 
 fillColor = ro.TColor.GetColor(125, 153, 209)
-sigma_axis = {'min': 0, 'max': 35}
+sigma_axis = {'min': 0, 'max': 100}
 adc_axis = {'min': 0, 'max': 2**12 - 1}
 ped_axis = {'min': 0, 'max': 2**12 - 1}
 cm_axis = {'min': -100, 'max': 100}
 ev_axis = {'min': 0, 'max': 0, 'bins': 1000}
 ch_axis = {'min': -0.5, 'max': diaChs - 0.5, 'bins': diaChs}
+
+ro.gStyle.SetPalette(55)
+ro.gStyle.SetNumberContours(999)
 
 class PedestalAnalysis:
 	def __init__(self, run=22011, dir='', force=False):
@@ -140,6 +143,14 @@ class PedestalAnalysis:
 		self.rootFile = ro.TFile('{d}/pedestalData.{r}.root'.format(d=self.dir, r=self.run), mode)
 		self.pedTree = self.rootFile.Get('pedestalTree')
 		self.entries = self.pedTree.GetEntries()
+		self.pedTree.SetBranchStatus('*', 0)
+		self.pedTree.SetBranchStatus('eventNumber', 1)
+		self.pedTree.GetEntry(0)
+		ev_axis['min'] = self.pedTree.eventNumber
+		self.pedTree.GetEntry(self.entries-1)
+		ev_axis['max'] = self.pedTree.eventNumber + 1
+		self.pedTree.SetBranchStatus('*', 1)
+
 		# self.entries = int(maxEntries)
 		print 'Done'
 
@@ -167,11 +178,14 @@ class PedestalAnalysis:
 		else:
 			print 'The tree has the branch "diaChannel".\n'
 
-	def Plot2DHisto(self, ybra='', xbra='', option='colz', name=''):
+	def Plot2DHisto(self, ybra='', xbra='', option='colz', name='', numev=-1, evini=0, rePlot=False, chi=0, chf=diaChs):
 		if not self.pedTree.GetLeaf(xbra) or not self.pedTree.GetLeaf(ybra):
 			print 'One of the two branches:', ybra, 'or', xbra, 'does not exist'
 			return
 		print 'Creating plot...', ; sys.stdout.flush()
+		tempc = ro.TCut('abs(2*diaChannel-{cf}-{ci})<=({cf}-{ci})'.format(cf=chf, ci=chi))
+		numevs = self.pedTree.GetEntries() if numev == -1 else numev
+		if rePlot: del self.dicBraHist[ybra][xbra]
 		if not self.dicBraHist.has_key(ybra):
 			self.dicBraHist[ybra] = {}
 		if not self.dicBraHist[ybra].has_key(xbra):
@@ -184,17 +198,20 @@ class PedestalAnalysis:
 			self.dicBraHist[ybra][xbra] = ro.TH2F(nameh, nameh, xbin, xmin, xmax, ybin, ymin, ymax)
 			self.dicBraHist[ybra][xbra].GetXaxis().SetTitle(xbraN)
 			self.dicBraHist[ybra][xbra].GetYaxis().SetTitle(ybraN)
-			leng = self.pedTree.Draw('{y}:{x}>>{n}'.format(y=ybra, x=xbra, n=nameh), '', 'goff')
+			leng = self.pedTree.Draw('{y}:{x}>>{n}'.format(y=ybra, x=xbra, n=nameh), tempc, 'goff', numevs, evini)
+			print "self.pedTree.Draw('{y}:{x}>>{n}', 'abs(2*diaChannel-{cf}-{ci})<=({cf}-{ci})', 'goff', {nevs}, {evin})".format(n=nameh, x=xbra, y=ybra, ci=chi, cf=chf, nevs=numevs, evin=evini)
 			while leng > self.pedTree.GetEstimate():
 				self.pedTree.SetEstimate(leng)
-				leng = self.pedTree.Draw('{y}:{x}>>{n}'.format(y=ybra, x=xbra, n=nameh), '', 'goff')
+				leng = self.pedTree.Draw('{y}:{x}>>{n}'.format(y=ybra, x=xbra, n=nameh), tempc, 'goff', numevs, evini)
 		name0 = self.dicBraHist[ybra][xbra].GetName()[2:]
 		self.CreateCanvas(name=name0)
 		self.dicBraHist[ybra][xbra].Draw(option)
 		print 'Done'
 
 	def GetHistoLimits(self, branch):
-		if branch.lower().startswith('rawTree.DiaADC'.lower()) or branch.lower().startswith('diaPedestalM'.lower()):
+		if branch.lower().startswith('rawTree.DiaADC'.lower()):
+			return adc_axis['min'], adc_axis['max'], int(min((adc_axis['max'] - adc_axis['min']) / 1, 10000))
+		if branch.lower().startswith('diaPedestalM'.lower()):
 			return adc_axis['min'], adc_axis['max'], int(min((adc_axis['max'] - adc_axis['min']) / 0.5, 10000))
 		if branch.lower().startswith('diaPedestaS'.lower()):
 			return sigma_axis['min'], sigma_axis['max'], int(min((sigma_axis['max'] - sigma_axis['min']) / 0.01, 10000))
@@ -216,16 +233,18 @@ class PedestalAnalysis:
 			if not value:
 				self.canvas.pop(key)
 
-	def Plot2DProfile(self, zbra='', ybra='', xbra='', option='colz', name=''):
+	def Plot2DProfile(self, zbra='', ybra='', xbra='', option='colz', name='', numev=-1, evini=0, rePlot=False, chi=0, chf=diaChs):
 		if not self.pedTree.GetLeaf(xbra) or not self.pedTree.GetLeaf(ybra) or not self.pedTree.GetLeaf(zbra):
 			print 'One of the two branches:', zbra, 'or', ybra, 'or', xbra, 'does not exist'
 			return
 		print 'Creating plot...', ; sys.stdout.flush()
+		numevs = self.pedTree.GetEntries() if numev == -1 else numev
+		if rePlot: del self.dicBraProf[zbra][ybra][xbra]
 		if not self.dicBraProf.has_key(zbra):
 			self.dicBraProf[zbra] = {}
 		if not self.dicBraProf[zbra].has_key(ybra):
 			self.dicBraProf[zbra][ybra] = {}
-		if not self.dicBraProf[zbra][ybra].has_key(xbra):
+		if not self.dicBraProf[zbra][ybra].has_key(xbra) or rePlot:
 			xbraN, ybraN, zbraN = self.dicBraNames[xbra], self.dicBraNames[ybra], self.dicBraNames[zbra]
 			pol = 'Pos' if self.bias >= 0 else 'Neg'
 			name0 = '{z}_{y}_vs_{x}_{d}_{r}_{p}_{v}V'.format(z=zbraN, y=ybraN, x=xbraN, d=self.dia, r=self.run, p=pol, v=self.bias) if name == '' else name
@@ -237,10 +256,10 @@ class PedestalAnalysis:
 			self.dicBraProf[zbra][ybra][xbra].GetXaxis().SetTitle(xbraN)
 			self.dicBraProf[zbra][ybra][xbra].GetYaxis().SetTitle(ybraN)
 			self.dicBraProf[zbra][ybra][xbra].GetZaxis().SetTitle(ybraN)
-			leng = self.pedTree.Draw('{z}:{y}:{x}>>{n}'.format(z=zbra, y=ybra, x=xbra, n=namep), '', 'prof goff')
+			leng = self.pedTree.Draw('{z}:{y}:{x}>>{n}'.format(z=zbra, y=ybra, x=xbra, n=namep), 'abs(2*diaChannel-{cf}-{ci})<=({cf}-{ci})'.format(ci=chi, cf=chf), 'prof goff', numevs, evini)
 			while leng > self.pedTree.GetEstimate():
 				self.pedTree.SetEstimate(leng)
-				leng = self.pedTree.Draw('{z}:{y}:{x}>>{n}'.format(z=zbra, y=ybra, x=xbra, n=namep), '', 'prof goff')
+				leng = self.pedTree.Draw('{z}:{y}:{x}>>{n}'.format(z=zbra, y=ybra, x=xbra, n=namep), 'abs(2*diaChannel-{cf}-{ci})<=({cf}-{ci})'.format(ci=chi, cf=chf), 'prof goff', numevs, evini)
 		name0 = self.dicBraProf[zbra][ybra][xbra].GetName()[2:]
 		self.CreateCanvas(name=name0)
 		self.dicBraProf[zbra][ybra][xbra].Draw(option)

@@ -28,7 +28,7 @@ cm_axis = {'min': -100, 'max': 100}
 scratch_path = '/scratch/strip_telescope_tests/runDiego/output'
 
 class RD42Analysis:
-	def __init__(self, run, source_dir, numev, runlistdir, settings_dir, pedestal=False, cluster=False, selec=False, autom_all=False):
+	def __init__(self, run, source_dir, numev, runlistdir, settings_dir, pedestal=False, cluster=False, selec=False, doAlign=False, transparent=False, evini=0, numEvsAna=0, deleteold=False):
 		print 'Creating RD42Analysis instance for run:', run
 		self.run = run
 		self.in_dir = source_dir + str(self.run)
@@ -47,18 +47,22 @@ class RD42Analysis:
 					print 'What you entered is not valid. Try again'
 			self.num_ev = deepcopy(temp)
 			del temp
+		self.firstev = evini
+		self.num_ev_ana = self.num_ev - self.firstev if numEvsAna == 0 else numEvsAna
 		self.runlist_dir = Correct_Path(runlistdir)
 		self.settings_dir = Correct_Path(settings_dir)
 		self.do_pedestal_ana = pedestal
 		self.do_cluster_ana = cluster
 		self.do_selec_ana = selec
-		self.do_autom_all = autom_all
+		self.do_align = doAlign
+		self.do_trans = transparent
 		self.bar = None
 		self.process_f = None
 		self.process_e = None
 		self.process_o = None
 		ro.gStyle.SetPalette(55)
 		ro.gStyle.SetNumberContours(999)
+		self.deleteold = deleteold
 
 	def Create_Run_List_full(self):
 		if not os.path.isdir(self.runlist_dir):
@@ -66,18 +70,20 @@ class RD42Analysis:
 		ped = 1 if self.do_pedestal_ana else 0
 		clu = 1 if self.do_cluster_ana else 0
 		sele = 1 if self.do_selec_ana else 0
+		alig = 1 if self.do_align else 0
+		tran = 1 if self.do_trans else 0
 		if not os.path.isdir(self.runlist_dir+'/full'):
 			os.makedirs(self.runlist_dir+'/full')
 		with open(self.runlist_dir + '/full/RunList_'+str(self.run)+'.ini', 'w') as rlf:
-			rlf.write('{r}\t0\t0\t{n}\t0\t{p}\t{c}\t{s}\t1\t0\t1\n'.format(r=self.run, n=self.num_ev, p=ped, c=clu, s=sele))
+			rlf.write('{r}\t0\t0\t{n}\t0\t{p}\t{c}\t{s}\t{al}\t0\t{t}\n#\n'.format(r=self.run, n=self.num_ev_ana, p=ped, c=clu, s=sele, al=alig, t=tran))
 		if not os.path.isdir(self.runlist_dir+'/odd'):
 			os.makedirs(self.runlist_dir+'/odd')
 		with open(self.runlist_dir+'/odd' + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
-			rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n'.format(r=self.run, n=self.num_ev, p=ped, c=clu, s=sele))
+			rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.num_ev_ana, p=ped, c=clu, s=sele))
 		if not os.path.isdir(self.runlist_dir+'/even'):
 			os.makedirs(self.runlist_dir+'/even')
 		with open(self.runlist_dir+'/even' + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
-			rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n'.format(r=self.run, n=self.num_ev, p=ped, c=clu, s=sele))
+			rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.num_ev_ana, p=ped, c=clu, s=sele))
 
 	def Copy_settings_to_even_odd(self):
 		self.Check_settings_full()
@@ -89,16 +95,18 @@ class RD42Analysis:
 		shutil.copy(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run), self.settings_dir + '/odd/')
 
 	def Check_settings_full(self):
+		print 'Checking settings...\n'
 		if not os.path.isdir(self.settings_dir + '/full'):
 			os.makedirs(self.settings_dir + '/full')
 		if not os.path.isfile(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run)):
-			CreateDefaultSettingsFile(self.settings_dir + '/full', self.run, self.num_ev)
+			CreateDefaultSettingsFile(self.settings_dir + '/full', self.run, self.num_ev, ev_ini=self.firstev, num_evs_ana=self.num_ev_ana)
 		Set_voltage(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 		Set_Diamond_pattern(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
+		Set_Diamond_name(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 		Mark_channels_as_NC(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 		Mark_channels_as_Screened(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 		Mark_channels_as_Noisy(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
-		if self.do_autom_all:
+		if self.do_align:
 			Mark_channels_as_no_alignment(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 		Select_fiducial_region(self.settings_dir + '/full/settings.{r}.ini'.format(r=self.run))
 
@@ -107,10 +115,14 @@ class RD42Analysis:
 		self.Modify_odd()
 
 	def Modify_even(self):
+		print 'Modifying even settings file...', ; sys.stdout.flush()
 		Replace_Settings_Line(self.settings_dir + '/even/settings.{r}.ini'.format(r=self.run), 'Dia_channel_screen_channels', 'even')
+		print 'Done'
 
 	def Modify_odd(self):
+		print 'Modifying odd settings file...', ; sys.stdout.flush()
 		Replace_Settings_Line(self.settings_dir + '/odd/settings.{r}.ini'.format(r=self.run), 'Dia_channel_screen_channels', 'odd')
+		print 'Done'
 
 	def ModifySettingsOneChannel(self, ch=0, sub_dir='no_mask'):
 		CreateDirectoryIfNecessary(self.settings_dir + '/{sd}/channels'.format(sd=sub_dir))
@@ -149,6 +161,7 @@ class RD42Analysis:
 			print 'Finish first analysis :)'
 		else:
 			print 'First analysis already exists :)'
+
 
 	def GetIndividualChannelHitmap(self, subdir=''):
 		print 'Starting channel occupancy plots...'
@@ -191,6 +204,10 @@ class RD42Analysis:
 		self.Create_Run_List_full()
 		self.Copy_settings_to_even_odd()
 		self.Modify_even_odd()
+		if self.deleteold:
+			DeleteDirectoryContents(self.out_dir + '/full/' + str(self.run))
+			DeleteDirectoryContents(self.out_dir + '/even/' + str(self.run))
+			DeleteDirectoryContents(self.out_dir + '/odd/' + str(self.run))
 		CreateDirectoryIfNecessary(self.out_dir + '/full/' + str(self.run))
 		CreateDirectoryIfNecessary(self.out_dir + '/even/' + str(self.run))
 		CreateDirectoryIfNecessary(self.out_dir + '/odd/' + str(self.run))
@@ -198,7 +215,28 @@ class RD42Analysis:
 		RecreateSoftLink(self.out_dir + '/even/' + str(self.run), scratch_path, str(self.run) + '_even')
 		RecreateSoftLink(self.out_dir + '/odd/' + str(self.run), scratch_path, str(self.run) + '_odd')
 		if os.path.isfile(self.out_dir + '/no_mask/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run)):
-			self.LinkRootFiles(self.out_dir + '/no_mask/' + str(self.run), self.out_dir + '/full/' + str(self.run), 'raw')
+			if self.firstev == 0 and self.num_ev_ana == self.num_ev:
+				print 'Linking raw file from no_mask...',; sys.stdout.flush()
+				self.LinkRootFiles(self.out_dir + '/no_mask/' + str(self.run), self.out_dir + '/full/' + str(self.run), 'raw')
+				print 'Done'
+			else:
+				print 'Extracting only {eva} events starting from {evi} for analysis...'.format(eva=self.num_ev_ana, evi=self.firstev),; sys.stdout.flush()
+				tempf = ro.TFile(self.out_dir + '/no_mask/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'READ')
+				tempt = tempf.Get('rawTree')
+				leng = tempt.Draw('>>evlist', 'abs(2*EventNumber-{eva}-2*{evi}+1)<=({eva}-1)'.format(evi=self.firstev, eva=self.num_ev_ana))
+				# leng = tempt.Draw('>>evlist', 'abs(2*EventNumber-{evf}-{evi})<=({evf}-{evi})'.format(evi=self.firstev, evf=self.firstev+self.num_ev_ana-1))
+				while leng > tempt.GetEstimate():
+					tempt.SetEstimate(leng)
+					leng = tempt.Draw('>>evlist', 'abs(2*EventNumber-{eva}-2*{evi}+1)<=({eva}-1)'.format(evi=self.firstev, eva=self.num_ev_ana))
+				# leng = tempt.Draw('>>evlist', 'abs(2*EventNumber-{evf}-{evi})<=({evf}-{evi})'.format(evi=self.firstev, evf=self.firstev+self.num_ev_ana-1))
+				evlist = ro.gDirectory.Get('evlist')
+				tempt.SetEventList(evlist)
+				tempnf = ro.TFile(self.out_dir + '/full/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'RECREATE')
+				tempnt = tempt.CopyTree('')
+				tempnt.Write()
+				tempnf.Close()
+				tempf.Close()
+				print 'Done'
 		self.process_f = subp.Popen(['diamondAnalysis', '-r', '{d}/full/RunList_{r}.ini'.format(d=self.runlist_dir, r=self.run), '-s', self.settings_dir + '/full', '-o', self.out_dir + '/full', '-i', self.in_dir], bufsize=-1, stdin=subp.PIPE, close_fds=True)
 		is_finished_cluster = False
 		is_even_odd_started = False
@@ -309,12 +347,17 @@ if __name__ == '__main__':
 	parser.add_option('-l', '--runlistdir', dest='runlist', default='~/RunLists', help='folder which contains the RunLists files')
 	parser.add_option('-s', '--settingsdir', dest='sett', default='~/settings', help='folder which contains the settings files')
 	parser.add_option('-n', '--numevents', dest='numevents', default=0, type='int', help='number of events to analyse')
-	parser.add_option('-p', '--pedestal', dest='pedestal', default=False, action='store_true', help='enables pedestal analysis')
-	parser.add_option('-c', '--cluster', dest='cluster', default=False, action='store_true', help='enables cluster analysis')
-	parser.add_option('-e', '--selection', dest='selection', default=False, action='store_true', help='enables selection analysis')
-	parser.add_option('-a', '--all', dest='all', default=False, action='store_true', help='enables all types of analysis. Creates odd, even and full')
-	parser.add_option('-f', '--first', dest='first', default=False, action='store_true', help='enables first analysis wich has everything un-masked')
-	parser.add_option('-x', '--singlechannel', dest='signlech', default=False, action='store_true', help='enables single channel study. Requires a preexiting first analysis')
+	parser.add_option('--pedestal', dest='pedestal', default=False, action='store_true', help='enables pedestal analysis')
+	parser.add_option('--cluster', dest='cluster', default=False, action='store_true', help='enables cluster analysis')
+	parser.add_option('--selection', dest='selection', default=False, action='store_true', help='enables selection analysis')
+	parser.add_option('--alignment', dest='alignment', default=False, action='store_true', help='enables alignment')
+	parser.add_option('--transparent', dest='transparent', default=False, action='store_true', help='enables transparent analysis')
+	parser.add_option('--full', dest='full', default=False, action='store_true', help='enables all types of analysis. Creates odd, even and full')
+	parser.add_option('--first', dest='first', default=False, action='store_true', help='enables first analysis wich has everything un-masked')
+	parser.add_option('-x', '--singlechannel', dest='singlech', default=False, action='store_true', help='enables single channel study. Requires a preexiting first analysis')
+	parser.add_option('--firstevent', dest='firstevent', default=0, type='int', help='first event to analyse')
+	parser.add_option('--numevsana', dest='numevsana', default=0, type='int', help='number of events to analyse')
+	parser.add_option('--deleteold', dest='deleteold', default=False, action='store_true', help='deletes previous analysis and creates a new one')
 
 	(options, args) = parser.parse_args()
 	run = int(options.run)
@@ -326,22 +369,29 @@ if __name__ == '__main__':
 	pedestal = bool(options.pedestal)
 	cluster = bool(options.cluster)
 	selec = bool(options.selection)
-	autom_all = bool(options.all)
+	alig = bool(options.alignment)
+	tran = bool(options.transparent)
+	fullana = bool(options.full)
 	first_ana = bool(options.first)
 	single_ch = bool(options.singlech)
+	firstev = int(options.firstevent)
+	numevsana = int(options.numevsana)
+	deleteold = bool(options.deleteold)
 
-	rd42 = RD42Analysis(run=run, source_dir=input, numev=numev, runlistdir=runlist, settings_dir=settings_dir, pedestal=pedestal, cluster=cluster, selec=selec, autom_all=autom_all)
+	rd42 = RD42Analysis(run=run, source_dir=input, numev=numev, runlistdir=runlist, settings_dir=settings_dir, pedestal=pedestal, cluster=cluster, selec=selec, doAlign=alig, transparent=tran, evini=firstev, numEvsAna=numevsana, deleteold=deleteold)
 
 	if first_ana:
+		print 'Starting first analysis (no_mask)...\n'
 		rd42.First_Analysis()
-	elif autom_all:
+	elif fullana:
+		print 'Starting full analysis (full)...\n'
 		rd42.Full_Analysis()
 	else:
 		pass  # run analysis for full with existing runlist file
 	if single_ch:
 		if first_ana:
 			rd42.GetIndividualChannelHitmap(subdir='no_mask')
-		elif autom_all:
+		elif fullana:
 			rd42.GetIndividualChannelHitmap(subdir='full')
 		else:
 			rd42.GetIndividualChannelHitmap()
