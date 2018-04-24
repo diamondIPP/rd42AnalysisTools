@@ -11,6 +11,7 @@ from NoiseExtraction import NoiseExtraction
 import os, sys, shutil
 from Utils import *
 import subprocess as subp
+import multiprocessing as mp
 
 __author__ = 'DA'
 
@@ -21,18 +22,20 @@ diaChs = 128
 
 fillColor = ro.TColor.GetColor(125, 153, 209)
 sigma_axis = {'min': 0, 'max': 35}
-adc_axis = {'min': 0, 'max': 2**12 - 1}
-ped_axis = {'min': 0, 'max': 2**12 - 1}
+adc_axis = {'min': 0, 'max': 2**12}
+ped_axis = {'min': 0, 'max': 2**12}
 cm_axis = {'min': -100, 'max': 100}
 
-scratch_path = '/scratch/strip_telescope_tests/runDiego/output'
+# scratch_path = '/scratch/strip_telescope_tests/runDiego/output'  # at snickers
+scratch_path = '/eos/user/d/dsanzbec'  # at lxplus
 
 class RD42Analysis:
-	def __init__(self, run, source_dir, numev, runlistdir, settings_dir, pedestal=False, cluster=False, selec=False, doAlign=False, transparent=False, evini=0, numEvsAna=0, deleteold=False):
+	def __init__(self, run, source_dir, output_subdir, numev, runlistdir, settings_dir, pedestal=False, cluster=False, selec=False, doAlign=False, transparent=False, evini=0, numEvsAna=0, deleteold=False):
 		print 'Creating RD42Analysis instance for run:', run
 		self.run = run
 		self.in_dir = source_dir + str(self.run)
 		self.out_dir = source_dir + 'output'
+		self.subdir = output_subdir
 		CreateDirectoryIfNecessary(self.out_dir)
 		if numev != 0:
 			self.num_ev = numev
@@ -64,7 +67,7 @@ class RD42Analysis:
 		ro.gStyle.SetNumberContours(999)
 		self.deleteold = deleteold
 
-	def Create_Run_List_full(self):
+	def Create_Run_List(self, subdir='full'):
 		if not os.path.isdir(self.runlist_dir):
 			os.makedirs(self.runlist_dir)
 		ped = 1 if self.do_pedestal_ana else 0
@@ -72,18 +75,19 @@ class RD42Analysis:
 		sele = 1 if self.do_selec_ana else 0
 		alig = 1 if self.do_align else 0
 		tran = 1 if self.do_trans else 0
-		if not os.path.isdir(self.runlist_dir+'/full'):
-			os.makedirs(self.runlist_dir+'/full')
-		with open(self.runlist_dir + '/full/RunList_'+str(self.run)+'.ini', 'w') as rlf:
+		if not os.path.isdir(self.runlist_dir+'/{f}'.format(f=subdir)):
+			os.makedirs(self.runlist_dir+'/{f}'.format(f=subdir))
+		with open(self.runlist_dir + '/{f}/RunList_'.format(f=subdir)+str(self.run)+'.ini', 'w') as rlf:
 			rlf.write('{r}\t0\t0\t{n}\t0\t{p}\t{c}\t{s}\t{al}\t0\t{t}\n#\n'.format(r=self.run, n=self.num_ev_ana, p=ped, c=clu, s=sele, al=alig, t=tran))
-		if not os.path.isdir(self.runlist_dir+'/odd'):
-			os.makedirs(self.runlist_dir+'/odd')
-		with open(self.runlist_dir+'/odd' + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
-			rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.num_ev_ana, p=ped, c=clu, s=sele))
-		if not os.path.isdir(self.runlist_dir+'/even'):
-			os.makedirs(self.runlist_dir+'/even')
-		with open(self.runlist_dir+'/even' + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
-			rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.num_ev_ana, p=ped, c=clu, s=sele))
+		if subdir == 'full':
+			if not os.path.isdir(self.runlist_dir+'/odd'):
+				os.makedirs(self.runlist_dir+'/odd')
+			with open(self.runlist_dir+'/odd' + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
+				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.num_ev_ana, p=ped, c=clu, s=sele))
+			if not os.path.isdir(self.runlist_dir+'/even'):
+				os.makedirs(self.runlist_dir+'/even')
+			with open(self.runlist_dir+'/even' + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
+				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.num_ev_ana, p=ped, c=clu, s=sele))
 
 	def Copy_settings_to_even_odd(self):
 		self.Check_settings_full()
@@ -150,7 +154,8 @@ class RD42Analysis:
 			print 'Starting first analysis...'
 			with open(self.runlist_dir + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
 				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n'.format(r=self.run, n=self.num_ev))
-			CreateDefaultSettingsFile(self.settings_dir + '/no_mask', self.run, self.num_ev)
+			if not os.path.isfile(self.settings_dir + '/no_mask/settings.' + str(self.run) + '.ini'):
+				CreateDefaultSettingsFile(self.settings_dir + '/no_mask', self.run, self.num_ev)
 			CreateDirectoryIfNecessary(self.out_dir + '/no_mask')
 			CreateDirectoryIfNecessary(self.out_dir + '/no_mask/' + str(self.run))
 			RecreateSoftLink(self.out_dir + '/no_mask/' + str(self.run), scratch_path, str(self.run) + '_no_mask')
@@ -166,7 +171,7 @@ class RD42Analysis:
 	def GetIndividualChannelHitmap(self, subdir=''):
 		print 'Starting channel occupancy plots...'
 		cont = False
-		sub_dir = ''
+		sub_dir = subdir
 		valid_subdir_options = ['no_mask', 'full']
 		if subdir not in valid_subdir_options:
 			while not cont:
@@ -181,7 +186,10 @@ class RD42Analysis:
 			CreateDirectoryIfNecessary(self.out_dir + '/{sd}/{r}/channel_sweep/{c}/{r}'.format(sd=sub_dir, c=ch, r=self.run))
 			self.LinkRootFiles(self.out_dir + '/{sd}/' + str(self.run), self.out_dir + '/{sd}/{r}/channel_sweep/{c}/{r}'.format(sd=sub_dir, c=ch, r=self.run), 'cluster')
 			self.ModifySettingsOneChannel(ch, sub_dir)
-		channel_runs = np.arange(diaChs).reshape([16, 8])
+		num_cores = mp.cpu_count()
+		num_parrallel = 1 if num_cores < 4 else 2 if num_cores < 8 else 4 if num_cores < 16 else 8 if num_cores < 32 else 16
+		num_jobs = diaChs / num_parrallel
+		channel_runs = np.arange(diaChs).reshape([num_jobs, num_parrallel])
 		for bat in xrange(channel_runs.shape[0]):
 			procx = []
 			for proc in xrange(channel_runs.shape[1]):
@@ -201,7 +209,7 @@ class RD42Analysis:
 
 	def Full_Analysis(self):
 		CreateDirectoryIfNecessary(self.runlist_dir)
-		self.Create_Run_List_full()
+		self.Create_Run_List('full')
 		self.Copy_settings_to_even_odd()
 		self.Modify_even_odd()
 		if self.deleteold:
@@ -220,23 +228,30 @@ class RD42Analysis:
 				self.LinkRootFiles(self.out_dir + '/no_mask/' + str(self.run), self.out_dir + '/full/' + str(self.run), 'raw')
 				print 'Done'
 			else:
-				print 'Extracting only {eva} events starting from {evi} for analysis...'.format(eva=self.num_ev_ana, evi=self.firstev),; sys.stdout.flush()
-				tempf = ro.TFile(self.out_dir + '/no_mask/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'READ')
-				tempt = tempf.Get('rawTree')
-				leng = tempt.Draw('>>evlist', 'abs(2*EventNumber-{eva}-2*{evi}+1)<=({eva}-1)'.format(evi=self.firstev, eva=self.num_ev_ana))
-				# leng = tempt.Draw('>>evlist', 'abs(2*EventNumber-{evf}-{evi})<=({evf}-{evi})'.format(evi=self.firstev, evf=self.firstev+self.num_ev_ana-1))
-				while leng > tempt.GetEstimate():
-					tempt.SetEstimate(leng)
+				recreate = True
+				if os.path.isfile(self.out_dir + '/full/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run)) or os.path.islink(self.out_dir + '/full/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run)):
+					tempf0 = ro.TFile(self.out_dir + '/full/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'READ')
+					tempt0 = tempf0.Get('rawTree')
+					recreate = False if tempt0.GetEntries() == self.num_ev_ana else True
+					tempf0.Close()
+				if recreate:
+					tempf = ro.TFile(self.out_dir + '/no_mask/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'READ')
+					tempt = tempf.Get('rawTree')
+					print 'Extracting only {eva} events starting from {evi} for analysis...'.format(eva=self.num_ev_ana, evi=self.firstev),; sys.stdout.flush()
 					leng = tempt.Draw('>>evlist', 'abs(2*EventNumber-{eva}-2*{evi}+1)<=({eva}-1)'.format(evi=self.firstev, eva=self.num_ev_ana))
-				# leng = tempt.Draw('>>evlist', 'abs(2*EventNumber-{evf}-{evi})<=({evf}-{evi})'.format(evi=self.firstev, evf=self.firstev+self.num_ev_ana-1))
-				evlist = ro.gDirectory.Get('evlist')
-				tempt.SetEventList(evlist)
-				tempnf = ro.TFile(self.out_dir + '/full/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'RECREATE')
-				tempnt = tempt.CopyTree('')
-				tempnt.Write()
-				tempnf.Close()
-				tempf.Close()
-				print 'Done'
+					# leng = tempt.Draw('>>evlist', 'abs(2*EventNumber-{evf}-{evi})<=({evf}-{evi})'.format(evi=self.firstev, evf=self.firstev+self.num_ev_ana-1))
+					while leng > tempt.GetEstimate():
+						tempt.SetEstimate(leng)
+						leng = tempt.Draw('>>evlist', 'abs(2*EventNumber-{eva}-2*{evi}+1)<=({eva}-1)'.format(evi=self.firstev, eva=self.num_ev_ana))
+					# leng = tempt.Draw('>>evlist', 'abs(2*EventNumber-{evf}-{evi})<=({evf}-{evi})'.format(evi=self.firstev, evf=self.firstev+self.num_ev_ana-1))
+					evlist = ro.gDirectory.Get('evlist')
+					tempt.SetEventList(evlist)
+					tempnf = ro.TFile(self.out_dir + '/full/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'RECREATE')
+					tempnt = tempt.CopyTree('')
+					tempnt.Write()
+					tempnf.Close()
+					tempf.Close()
+					print 'Done'
 		self.process_f = subp.Popen(['diamondAnalysis', '-r', '{d}/full/RunList_{r}.ini'.format(d=self.runlist_dir, r=self.run), '-s', self.settings_dir + '/full', '-o', self.out_dir + '/full', '-i', self.in_dir], bufsize=-1, stdin=subp.PIPE, close_fds=True)
 		is_finished_cluster = False
 		is_even_odd_started = False
@@ -326,7 +341,28 @@ class RD42Analysis:
 		if not os.path.isfile(dest + '/Results.{r}.root'.format(r=self.run)):
 			RecreateLink(source + '/Results.{r}.root'.format(r=self.run), dest, 'Results.{r}.root'.format(r=self.run))
 
-	def CreateProgressBar(self, maxVal=1):
+	def RunNormalAnalysis(self, subdir=''):
+		cont = False
+		sub_dir = subdir
+		valid_subdir_options = ['no_mask', 'full', '3D', 'strip', 'phantom', 'poly']
+		if subdir not in valid_subdir_options:
+			while not cont:
+				temp = raw_input('type "no_mask" or "full" or other subdirectory to do the single channel study: ')
+				if temp in valid_subdir_options:
+					cont = True
+					sub_dir = deepcopy(temp)
+		CreateDirectoryIfNecessary(self.runlist_dir)
+		self.Create_Run_List(sub_dir)
+		CreateDirectoryIfNecessary(self.out_dir + '/' + sub_dir + '/' + str(self.run))
+		RecreateSoftLink(self.out_dir + '/' + sub_dir + '/' + str(self.run), scratch_path, str(self.run) + '_' + sub_dir)
+		self.process_f = subp.Popen(['diamondAnalysis', '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.runlist_dir, sd=sub_dir, r=self.run), '-s', self.settings_dir + '/' + sub_dir, '-o', self.out_dir + '/' + sub_dir, '-i', self.in_dir], bufsize=-1, stdin=subp.PIPE, close_fds=True)
+		while self.process_f.poll() is None:
+			pass
+		print 'Process finished'
+		CloseSubprocess(self.process_f, True, False)
+
+
+def CreateProgressBar(self, maxVal=1):
 		widgets = [
 			'Processed: ', progressbar.Counter(),
 			' out of {mv} '.format(mv=maxVal), progressbar.Percentage(),
@@ -343,7 +379,7 @@ if __name__ == '__main__':
 	parser = OptionParser()
 	parser.add_option('-r', '--run', dest='run', default=0, type='int', help='Run to be analysed (e.g. 22011)')
 	parser.add_option('-i', '--input', dest='input', default='.', type='string', help='folder containing the different folder runs')
-	# parser.add_option('-o', '--output', dest='output', default='.', type='string', help='foler where to save the structures (will contain, full, even and odd subfolders)')
+	parser.add_option('-o', '--output', dest='output', default='', type='string', help='subfoler where to save the structures (e.g. full, no_mask, poly, etc...)')
 	parser.add_option('-l', '--runlistdir', dest='runlist', default='~/RunLists', help='folder which contains the RunLists files')
 	parser.add_option('-s', '--settingsdir', dest='sett', default='~/settings', help='folder which contains the settings files')
 	parser.add_option('-n', '--numevents', dest='numevents', default=0, type='int', help='number of events to analyse')
@@ -362,7 +398,7 @@ if __name__ == '__main__':
 	(options, args) = parser.parse_args()
 	run = int(options.run)
 	input = str(options.input)
-	# output = bool(options.output)
+	output = bool(options.output)
 	numev = int(options.numevents)
 	runlist = str(options.runlist)
 	settings_dir = str(options.sett)
@@ -378,7 +414,7 @@ if __name__ == '__main__':
 	numevsana = int(options.numevsana)
 	deleteold = bool(options.deleteold)
 
-	rd42 = RD42Analysis(run=run, source_dir=input, numev=numev, runlistdir=runlist, settings_dir=settings_dir, pedestal=pedestal, cluster=cluster, selec=selec, doAlign=alig, transparent=tran, evini=firstev, numEvsAna=numevsana, deleteold=deleteold)
+	rd42 = RD42Analysis(run=run, source_dir=input, output_subdir=output, numev=numev, runlistdir=runlist, settings_dir=settings_dir, pedestal=pedestal, cluster=cluster, selec=selec, doAlign=alig, transparent=tran, evini=firstev, numEvsAna=numevsana, deleteold=deleteold)
 
 	if first_ana:
 		print 'Starting first analysis (no_mask)...\n'

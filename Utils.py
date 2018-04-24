@@ -51,12 +51,14 @@ def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0):
 		f.write('alignment_training_fidcuts = {1}\n')
 		f.write('alignment_training_track_number = {e}\n'.format(e=int(round(num_evs_ana)/10.0)))
 		f.write('alignment_training_method = 1\n')
-		f.write('alignment_chi2 = 5\n\n')
+		f.write('AlignmentIgnoreChannelDia = {0,127}\n')
+		f.write('alignment_chi2 = 4\n\n')
 		f.write('Double_t detectorD0Z = 0.725\n')
 		f.write('Double_t detectorD1Z = 1.625\n')
 		f.write('Double_t detectorD2Z = 18.725\n')
 		f.write('Double_t detectorD3Z = 19.625\n')
 		f.write('Double_t detectorDiaZ = 10.2\n\n')
+		f.write('TransparentAlignment = 0\n\n')
 		f.write('3dShortAnalysis = 0;\n')
 		f.write('3dLongAnalysis = 0;\n')
 		f.write('3dTransparentAnalysis = 0;\n')
@@ -104,7 +106,13 @@ def Select_fiducial_region(s_file):
 	xhigh = Replace_Settings_Line(s_file, 'si_avg_fidcut_xhigh')
 	ylow = Replace_Settings_Line(s_file, 'si_avg_fidcut_ylow')
 	yhigh = Replace_Settings_Line(s_file, 'si_avg_fidcut_yhigh')
-	Replace_Settings_Line(s_file, 'selectionFidCut', action='value', value=('{' + xlow + '-' + xhigh + ',' + ylow + '-' + yhigh + '}').replace(' ', ''))
+	num_patt = 0
+	with open(s_file, 'r') as f0:
+		for line in f0:
+			if line.lower().startswith('diamondPattern'.lower()):
+				num_patt += 1
+	if num_patt == 1:
+		Replace_Settings_Line(s_file, 'selectionFidCut', action='value', value=('{' + xlow + '-' + xhigh + ',' + ylow + '-' + yhigh + '}').replace(' ', ''))
 
 def Replace_Settings_Line(s_file, setting_option, action='user', value=''):
 	if not os.path.isfile(s_file):
@@ -227,10 +235,11 @@ def Modify_String_Even_or_Odd(channel_old, type='even'):
 
 def RecreateLink(source, dest, name):
 	# if os.path.isfile(source) or os.path.isdir(source):
-	if os.path.isfile(source):
-		if os.path.islink(dest + '/' + name):
-			os.unlink(dest + '/' + name)
-		os.link(source, dest + '/' + name)
+	if not os.path.isfile(source):
+		# if os.path.islink(dest + '/' + name):
+		# 	os.unlink(dest + '/' + name)
+		if not os.path.islink(source):
+			os.link(source, dest + '/' + name)
 		# os.symlink(source, dest + '/' + name)
 
 def RecreateSoftLink(source, dest, name, type='dir'):
