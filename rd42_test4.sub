@@ -1,0 +1,11 @@
+executable	= rd42Batch.py
+universe	= vanilla
++JobFlavour	= "longlunch"
+arguments   = settings3.ini
+transfer_input_files    = settings3.ini
+getenv      = true
+RequestCpus	= 8
+output		= /afs/cern.ch/user/d/dsanzbec/condor/output/test.$(ClusterId).$(ProcId).out
+error		= /afs/cern.ch/user/d/dsanzbec/condor/error/test.$(ClusterId).$(ProcId).err
+log		= /afs/cern.ch/user/d/dsanzbec/condor/log/test.$(ClusterId).log
+queue

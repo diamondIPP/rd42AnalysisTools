@@ -1,0 +1,10 @@
+executable	= /afs/cern.ch/user/d/dsanzbec/StripTelescopeAnalysis/diamondAnalysis
+universe	= vanilla
++JobFlavour	= "longlunch"
+arguments   = "-r /afs/cern.ch/user/d/dsanzbec/RunLists/no_mask/RunList_17107.ini -s /afs/cern.ch/user/d/dsanzbec/settings/no_mask -i /eos/user/d/dsanzbec/data/rd42/2012/cern_RD42_08_2012/17107 -o /eos/user/d/dsanzbec/data/rd42/2012/cern_RD42_08_2012/output3/no_mask"
+getenv      = true
+RequestCpus	= 4
+output		= /afs/cern.ch/user/d/dsanzbec/condor/output/test.$(ClusterId).$(ProcId).out
+error		= /afs/cern.ch/user/d/dsanzbec/condor/error/test.$(ClusterId).$(ProcId).err
+log		= /afs/cern.ch/user/d/dsanzbec/condor/log/test.$(ClusterId).log
+queue
