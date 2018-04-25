@@ -27,7 +27,7 @@ ped_axis = {'min': 0, 'max': 2**12}
 cm_axis = {'min': -100, 'max': 100}
 
 # scratch_path = '/scratch/strip_telescope_tests/runDiego/output'  # at snickers
-scratch_path = '/eos/user/d/dsanzbec'  # at lxplus
+scratch_path = '/eos/user/d/dsanzbec/scratch/output'  # at lxplus
 
 class RD42Analysis:
 	def __init__(self, run, source_dir, output_subdir, numev, runlistdir, settings_dir, pedestal=False, cluster=False, selec=False, doAlign=False, transparent=False, evini=0, numEvsAna=0, deleteold=False):

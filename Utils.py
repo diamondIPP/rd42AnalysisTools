@@ -15,7 +15,7 @@ def IsFloat(f):
 	except ValueError:
 		return False
 
-def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0):
+def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0, dia_input=0):
 	if not os.path.isdir(diri):
 		os.makedirs(diri)
 	with open(diri + '/settings.{r}.ini'.format(r=run_no), 'w') as f:
@@ -30,7 +30,7 @@ def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0):
 		f.write('currentEnd = 0\n\n')
 		f.write('diamondPattern = {0,50,0,127}\n\n')
 		f.write('Iter_Size = 500\n\n')
-		f.write('dia_input = 0\n\n')
+		f.write('dia_input = {d}\n\n'.format(d=dia_input))
 		f.write('Dia_channel_screen_channels = {}\n\n')
 		f.write('Dia_channel_not_connected = {}\n\n')
 		f.write('Dia_channel_noisy = {}\n\n')
@@ -269,8 +269,7 @@ def CloseSubprocess(p, stdin=False, stdout=False):
 		print 'Could not terminate subprocess... forcing termination'
 		p.kill()
 		if p.wait() is None:
-			print 'Could not kill subprocess... quitting'
-			exit()
+			ExitMessage('Could not kill subprocess... quitting')
 	try:
 		os.kill(pid, 0)
 	except OSError:
@@ -283,10 +282,10 @@ def CloseSubprocess(p, stdin=False, stdout=False):
 		except OSError:
 			pass
 		else:
-			print 'The process does not die... quitting program'
-			exit()
+			ExitMessage('The process does not die... quitting program')
 	del p, pid
 	p = None
+	print 'Subprocess terminated successfully'
 
 def ReturnRGB(val, min, max):
 		hue = (val - min) * 1.0 / (max - min) if max != min else 0
@@ -334,3 +333,6 @@ def DeleteDirectoryContents(dir):
 				print(e)
 		print 'Done'
 
+def ExitMessage(txt):
+	print txt
+	sys.exit(os.EX_SOFTWARE)
