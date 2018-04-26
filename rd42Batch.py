@@ -39,6 +39,7 @@ class RD42Analysis:
 		self.batch = True
 		self.StripTelescopeAnalysis_path = '/afs/cern.ch/user/d/dsanzbec/StripTelescopeAnalysis'
 		self.scratch_path = '/eos/user/d/dsanzbec/scratch/output'  # at lxplus
+		self.symlinks = True
 		# self.scratch_path = '/scratch/strip_telescope_tests/runDiego/output'  # at snickers
 
 		self.first_event = 0
@@ -98,6 +99,8 @@ class RD42Analysis:
 						self.do_chs = pars.getboolean('RUN', 'do_chs')
 					if pars.has_option('RUN', 'batch'):
 						self.batch = pars.getboolean('RUN', 'batch')
+					if pars.has_option('RUN', 'symlinks'):
+						self.symlinks = pars.getboolean('RUN', 'symlinks')
 
 				if pars.has_section('ANALYSIS'):
 					if pars.has_option('ANALYSIS', 'first_event'):
