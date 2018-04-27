@@ -251,7 +251,7 @@ class RD42Analysis:
 	def Print_subprocess_command(self, runlist, setting, outdir, inputdir):
 		print 'Executing:\n{p}/diamondAnalysis -r {r} -s {s} -o {o} -i {i}\n'.format(p=self.StripTelescopeAnalysis_path, r=runlist, s=setting, o=outdir, i=inputdir)
 
-	def LinkRootFiles(self, source, dest, upto='selection', doSymlink=True, doCopy=True):
+	def LinkRootFiles(self, source, dest, upto='selection', doSymlink=True, doCopy=True, nodir=False):
 		steps = ['raw', 'pedestal', 'cluster', 'selection', 'align', 'transparent', '3d']
 		cumulative = []
 		for elem in steps:
@@ -267,12 +267,12 @@ class RD42Analysis:
 			if not os.path.isfile(dest + '/pedestalData.{r}.root'.format(r=self.run)):
 				successful2 = RecreateLink(source + '/pedestalData.{r}.root'.format(r=self.run), dest, 'pedestalData.{r}.root'.format(r=self.run), doSymlink, doCopy)
 				successful = successful and successful2
-				RecreateLink(source + '/pedestalAnalysis', dest, 'pedestalAnalysis', doSymlink, doCopy)
+				if not nodir: RecreateLink(source + '/pedestalAnalysis', dest, 'pedestalAnalysis', doSymlink, doCopy)
 		if 'cluster' in cumulative:
 			if not os.path.isfile(dest + '/clusterData.{r}.root'.format(r=self.run)):
 				successful2 = RecreateLink(source + '/clusterData.{r}.root'.format(r=self.run), dest, 'clusterData.{r}.root'.format(r=self.run), doSymlink, doCopy)
 				successful = successful and successful2
-				RecreateLink(source + '/clustering', dest, 'clustering', doSymlink, doCopy)
+				if not nodir: RecreateLink(source + '/clustering', dest, 'clustering', doSymlink, doCopy)
 			if not os.path.isfile(dest + '/etaCorrection.{r}.root'.format(r=self.run)):
 				successful2 = RecreateLink(source + '/etaCorrection.{r}.root'.format(r=self.run), dest, 'etaCorrection.{r}.root'.format(r=self.run), doSymlink, doCopy)
 				successful = successful and successful2
@@ -282,17 +282,18 @@ class RD42Analysis:
 			if not os.path.isfile(dest + '/selectionData.{r}.root'.format(r=self.run)):
 				successful2 = RecreateLink(source + '/selectionData.{r}.root'.format(r=self.run), dest, 'selectionData.{r}.root'.format(r=self.run), doSymlink, doCopy)
 				successful = successful and successful2
-				RecreateLink(source + '/selectionAnalysis', dest, 'selectionAnalysis', doSymlink, doCopy)
-				RecreateLink(source + '/selections', dest, 'selections', doSymlink, doCopy)
+				if not nodir: RecreateLink(source + '/selectionAnalysis', dest, 'selectionAnalysis', doSymlink, doCopy)
+				if not nodir: RecreateLink(source + '/selections', dest, 'selections', doSymlink, doCopy)
 		if 'align' in cumulative:
 			if not os.path.isfile(dest + '/alignment.{r}.root'.format(r=self.run)):
 				successful2 = RecreateLink(source + '/alignment.{r}.root'.format(r=self.run), dest, 'alignment.{r}.root'.format(r=self.run), doSymlink, doCopy)
 				successful = successful and successful2
-				RecreateLink(source + '/alignment', dest, 'alignment', doSymlink, doCopy)
+				if not nodir: RecreateLink(source + '/alignment', dest, 'alignment', doSymlink, doCopy)
 		if 'transparent' in cumulative:
 			if not os.path.isfile(dest + '/transparentAnalysis'):
-				successful2 = RecreateLink(source + '/transparentAnalysis', dest, 'transparentAnalysis', doSymlink, doCopy)
-				successful = successful and successful2
+				if not nodir:
+					successful2 = RecreateLink(source + '/transparentAnalysis', dest, 'transparentAnalysis', doSymlink, doCopy)
+					successful = successful and successful2
 		if '3d' in cumulative:
 			if not os.path.isfile(dest + '/analysis3d.root.{r}.root'.format(r=self.run)):
 				successful2 = RecreateLink(source + '/analysis3d.root.{r}.root'.format(r=self.run), dest, 'analysis3d.root.{r}.root'.format(r=self.run), doSymlink, doCopy)
@@ -301,8 +302,9 @@ class RD42Analysis:
 				successful2 = RecreateLink(source + '/analysis3d-2.root.{r}.root'.format(r=self.run), dest, 'analysis3d-2.root.{r}.root'.format(r=self.run), doSymlink, doCopy)
 				successful = successful and successful2
 			if not os.path.isfile(dest + '/3dDiamondAnalysis'):
-				successful2 = RecreateLink(source + '/3dDiamondAnalysis', dest, '3dDiamondAnalysis', doSymlink, doCopy)
-				successful = successful and successful2
+				if not nodir:
+					successful2 = RecreateLink(source + '/3dDiamondAnalysis', dest, '3dDiamondAnalysis', doSymlink, doCopy)
+					successful = successful and successful2
 
 		if os.path.isfile(source + '/index.php'):
 			shutil.copyfile(source + '/index.php', dest + '/index.php')
@@ -429,7 +431,7 @@ class RD42Analysis:
 		for ch in xrange(diaChs):
 			CreateDirectoryIfNecessary(self.out_dir + '/{sd}/{r}/channel_sweep/{c}'.format(sd=self.subdir, c=ch, r=self.run))
 			CreateDirectoryIfNecessary(self.out_dir + '/{sd}/{r}/channel_sweep/{c}/{r}'.format(sd=self.subdir, c=ch, r=self.run))
-			do_continue = self.LinkRootFiles(self.out_dir + '/'+self.subdir+'/' + str(self.run), self.out_dir + '/{sd}/{r}/channel_sweep/{c}/{r}'.format(sd=self.subdir, c=ch, r=self.run), 'cluster', doSymlink=True, doCopy=False)
+			do_continue = self.LinkRootFiles(self.out_dir + '/'+self.subdir+'/' + str(self.run), self.out_dir + '/{sd}/{r}/channel_sweep/{c}/{r}'.format(sd=self.subdir, c=ch, r=self.run), 'cluster', doSymlink=True, doCopy=False, nodir=True)
 			if not do_continue:
 				ExitMessage('Cannot create symlinks. Exiting...')
 			self.ModifySettingsOneChannel(ch, self.subdir)

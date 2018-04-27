@@ -285,8 +285,6 @@ def RecreateSoftLink(source, dest, name, type='dir', doCopy=True):
 				if doCopy:
 					shutil.copytree(source, dest + '/' + name)
 					return True
-				else:
-					print 'Could not link', source, 'to', dest, 'and copy was disabled'
 	else:
 		if os.path.isfile(source):
 			if os.path.isfile(dest + '/' + name):
@@ -298,8 +296,6 @@ def RecreateSoftLink(source, dest, name, type='dir', doCopy=True):
 				if doCopy:
 					shutil.copy2(source, dest + '/' + name)
 					return True
-				else:
-					print 'Could not link', source, 'to', dest, 'and copy was disabled'
 	return False
 
 def CloseSubprocess(p, stdin=False, stdout=False):
