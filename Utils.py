@@ -233,31 +233,72 @@ def Modify_String_Even_or_Odd(channel_old, type='even'):
 	channel_new = channel_new[:-1]
 	return '{' + channel_new + '}'
 
-def RecreateLink(source, dest, name):
-	# if os.path.isfile(source) or os.path.isdir(source):
-	if not os.path.isfile(source):
-		# if os.path.islink(dest + '/' + name):
-		# 	os.unlink(dest + '/' + name)
-		if not os.path.islink(source):
-			os.link(source, dest + '/' + name)
-		# os.symlink(source, dest + '/' + name)
-
-def RecreateSoftLink(source, dest, name, type='dir'):
-	# if os.path.isfile(source) or os.path.isdir(source):
-	if type != 'dir':
-		if os.path.isfile(source):
+def RecreateLink(source, dest, name, doSymlink=True, doCopy=True):
+	successful = True
+	if os.path.isdir(source):
+		if doSymlink:
+			successful = RecreateSoftLink(source, dest, name, type='dir', doCopy=doCopy)
+		elif doCopy:
 			if os.path.islink(dest + '/' + name):
 				os.unlink(dest + '/' + name)
-			# os.link(source, dest + '/' + name)
-			os.symlink(source, dest + '/' + name)
-	else:
+			elif os.path.isdir(dest + '/' + name):
+				shutil.rmtree(dest + '/' + name, True)
+			shutil.copytree(source, dest + '/' + name)
+			successful = True
+		else:
+			successful = False
+			print 'Could not link', source, 'to', dest, 'and copy was disabled'
+
+	elif os.path.isfile(source):
+		if os.path.isfile(dest + '/' + name):
+			os.unlink(dest + '/' + name)
+		if doSymlink:
+			successful = RecreateSoftLink(source, dest, name, type='file', doCopy=doCopy)
+		if not doSymlink or not successful:
+			if os.path.isfile(dest + '/' + name):
+				os.unlink(dest + '/' + name)
+			try:
+				os.link(source, dest + '/' + name)
+				successful = True
+			except OSError:
+				if doCopy:
+					shutil.copy2(source, dest + '/' + name)
+					successful = True
+				else:
+					successful = False
+					print 'Could not link', source, 'to', dest, 'and copy was disabled'
+	return successful
+
+def RecreateSoftLink(source, dest, name, type='dir', doCopy=True):
+	if type == 'dir':
 		if os.path.isdir(source):
 			if os.path.islink(dest + '/' + name):
 				os.unlink(dest + '/' + name)
 			elif os.path.isdir(dest + '/' + name):
-				print 'There is an existing directory already there!'
-				return
-			os.symlink(source, dest + '/' + name)
+				shutil.rmtree(dest + '/' + name, True)
+			try:
+				os.symlink(source, dest + '/' + name)
+				return True
+			except OSError:
+				if doCopy:
+					shutil.copytree(source, dest + '/' + name)
+					return True
+				else:
+					print 'Could not link', source, 'to', dest, 'and copy was disabled'
+	else:
+		if os.path.isfile(source):
+			if os.path.isfile(dest + '/' + name):
+				os.unlink(dest + '/' + name)
+			try:
+				os.symlink(source, dest + '/' + name)
+				return True
+			except OSError:
+				if doCopy:
+					shutil.copy2(source, dest + '/' + name)
+					return True
+				else:
+					print 'Could not link', source, 'to', dest, 'and copy was disabled'
+	return False
 
 def CloseSubprocess(p, stdin=False, stdout=False):
 	pid = p.pid
