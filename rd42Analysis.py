@@ -261,38 +261,48 @@ class RD42Analysis:
 		successful = True
 		if 'raw' in cumulative:
 			if not os.path.isfile(dest + '/rawData.{r}.root'.format(r=self.run)):
-				successful = successful and RecreateLink(source + '/rawData.{r}.root'.format(r=self.run), dest, 'rawData.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful2 = RecreateLink(source + '/rawData.{r}.root'.format(r=self.run), dest, 'rawData.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful = successful and successful2
 		if 'pedestal' in cumulative:
 			if not os.path.isfile(dest + '/pedestalData.{r}.root'.format(r=self.run)):
-				successful = successful and RecreateLink(source + '/pedestalData.{r}.root'.format(r=self.run), dest, 'pedestalData.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful2 = RecreateLink(source + '/pedestalData.{r}.root'.format(r=self.run), dest, 'pedestalData.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful = successful and successful2
 				RecreateLink(source + '/pedestalAnalysis', dest, 'pedestalAnalysis', doSymlink, doCopy)
 		if 'cluster' in cumulative:
 			if not os.path.isfile(dest + '/clusterData.{r}.root'.format(r=self.run)):
-				successful = successful and RecreateLink(source + '/clusterData.{r}.root'.format(r=self.run), dest, 'clusterData.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful2 = RecreateLink(source + '/clusterData.{r}.root'.format(r=self.run), dest, 'clusterData.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful = successful and successful2
 				RecreateLink(source + '/clustering', dest, 'clustering', doSymlink, doCopy)
 			if not os.path.isfile(dest + '/etaCorrection.{r}.root'.format(r=self.run)):
-				successful = successful and RecreateLink(source + '/etaCorrection.{r}.root'.format(r=self.run), dest, 'etaCorrection.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful2 = RecreateLink(source + '/etaCorrection.{r}.root'.format(r=self.run), dest, 'etaCorrection.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful = successful and successful2
 			if os.path.isfile(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run)) and doCopy:
 				shutil.copy(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run), dest + '/')
 		if 'selection' in cumulative:
 			if not os.path.isfile(dest + '/selectionData.{r}.root'.format(r=self.run)):
-				successful = successful and RecreateLink(source + '/selectionData.{r}.root'.format(r=self.run), dest, 'selectionData.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful2 = RecreateLink(source + '/selectionData.{r}.root'.format(r=self.run), dest, 'selectionData.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful = successful and successful2
 				RecreateLink(source + '/selectionAnalysis', dest, 'selectionAnalysis', doSymlink, doCopy)
 				RecreateLink(source + '/selections', dest, 'selections', doSymlink, doCopy)
 		if 'align' in cumulative:
 			if not os.path.isfile(dest + '/alignment.{r}.root'.format(r=self.run)):
-				successful = successful and RecreateLink(source + '/alignment.{r}.root'.format(r=self.run), dest, 'alignment.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful2 = RecreateLink(source + '/alignment.{r}.root'.format(r=self.run), dest, 'alignment.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful = successful and successful2
 				RecreateLink(source + '/alignment', dest, 'alignment', doSymlink, doCopy)
 		if 'transparent' in cumulative:
 			if not os.path.isfile(dest + '/transparentAnalysis'):
-				successful = successful and RecreateLink(source + '/transparentAnalysis', dest, 'transparentAnalysis', doSymlink, doCopy)
+				successful2 = RecreateLink(source + '/transparentAnalysis', dest, 'transparentAnalysis', doSymlink, doCopy)
+				successful = successful and successful2
 		if '3d' in cumulative:
 			if not os.path.isfile(dest + '/analysis3d.root.{r}.root'.format(r=self.run)):
-				successful = successful and RecreateLink(source + '/analysis3d.root.{r}.root'.format(r=self.run), dest, 'analysis3d.root.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful2 = RecreateLink(source + '/analysis3d.root.{r}.root'.format(r=self.run), dest, 'analysis3d.root.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful = successful and successful2
 			if not os.path.isfile(dest + '/analysis3d-2.root.{r}.root'.format(r=self.run)):
-				successful = successful and RecreateLink(source + '/analysis3d-2.root.{r}.root'.format(r=self.run), dest, 'analysis3d-2.root.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful2 = RecreateLink(source + '/analysis3d-2.root.{r}.root'.format(r=self.run), dest, 'analysis3d-2.root.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				successful = successful and successful2
 			if not os.path.isfile(dest + '/3dDiamondAnalysis'):
-				successful = successful and RecreateLink(source + '/3dDiamondAnalysis', dest, '3dDiamondAnalysis', doSymlink, doCopy)
+				successful2 = RecreateLink(source + '/3dDiamondAnalysis', dest, '3dDiamondAnalysis', doSymlink, doCopy)
+				successful = successful and successful2
 
 		if os.path.isfile(source + '/index.php'):
 			shutil.copyfile(source + '/index.php', dest + '/index.php')
@@ -419,7 +429,7 @@ class RD42Analysis:
 		for ch in xrange(diaChs):
 			CreateDirectoryIfNecessary(self.out_dir + '/{sd}/{r}/channel_sweep/{c}'.format(sd=self.subdir, c=ch, r=self.run))
 			CreateDirectoryIfNecessary(self.out_dir + '/{sd}/{r}/channel_sweep/{c}/{r}'.format(sd=self.subdir, c=ch, r=self.run))
-			do_continue = self.LinkRootFiles(self.out_dir + '/{sd}/' + str(self.run), self.out_dir + '/{sd}/{r}/channel_sweep/{c}/{r}'.format(sd=self.subdir, c=ch, r=self.run), 'cluster', doSymlink=True, doCopy=False)
+			do_continue = self.LinkRootFiles(self.out_dir + '/'+self.subdir+'/' + str(self.run), self.out_dir + '/{sd}/{r}/channel_sweep/{c}/{r}'.format(sd=self.subdir, c=ch, r=self.run), 'cluster', doSymlink=True, doCopy=False)
 			if not do_continue:
 				ExitMessage('Cannot create symlinks. Exiting...')
 			self.ModifySettingsOneChannel(ch, self.subdir)
