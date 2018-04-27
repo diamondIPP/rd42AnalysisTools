@@ -138,26 +138,26 @@ class RD42Analysis:
 				return
 		ExitMessage('Input file "{i}" does not exist. Must input a valid file. Exiting'.format(i=in_file))
 
-	def Create_Run_List(self):
-		if not os.path.isdir(self.run_lists_dir):
-			os.makedirs(self.run_lists_dir)
+	def Create_Run_List(self, do_single_ch=False):
+		CreateDirectoryIfNecessary(self.run_lists_dir)
 		ped = 1 if self.do_pedestal else 0
 		clu = 1 if self.do_cluster else 0
 		sele = 1 if self.do_selection else 0
 		alig = 1 if self.do_alignment else 0
 		tran = 1 if self.do_transparent else 0
-		if not os.path.isdir(self.run_lists_dir+'/{f}'.format(f=self.subdir)):
-			os.makedirs(self.run_lists_dir+'/{f}'.format(f=self.subdir))
+		CreateDirectoryIfNecessary(self.run_lists_dir+'/{f}'.format(f=self.subdir))
 		with open(self.run_lists_dir + '/{f}/RunList_'.format(f=self.subdir)+str(self.run)+'.ini', 'w') as rlf:
 			rlf.write('{r}\t0\t0\t{n}\t0\t{p}\t{c}\t{s}\t{al}\t0\t{t}\n#\n'.format(r=self.run, n=self.num_events, p=ped, c=clu, s=sele, al=alig, t=tran))
 		if self.do_even or self.do_odd:
-			if not os.path.isdir(self.run_lists_dir+'/'+self.subdir+'/odd'):
-				os.makedirs(self.run_lists_dir+'/'+self.subdir+'/odd')
+			CreateDirectoryIfNecessary(self.run_lists_dir+'/'+self.subdir+'/odd')
 			with open(self.run_lists_dir+'/'+self.subdir+'/odd' + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
 				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.num_events, p=ped, c=clu, s=sele))
-			if not os.path.isdir(self.run_lists_dir+'/'+self.subdir+'/even'):
-				os.makedirs(self.run_lists_dir+'/'+self.subdir+'/even')
+			CreateDirectoryIfNecessary(self.run_lists_dir+'/'+self.subdir+'/even')
 			with open(self.run_lists_dir+'/'+self.subdir+'/even' + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
+				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.num_events, p=ped, c=clu, s=sele))
+		if do_single_ch:
+			CreateDirectoryIfNecessary(self.run_lists_dir+'/'+self.subdir+'/channels')
+			with open(self.run_lists_dir + '/' + self.subdir + '/channels/RunList_' + str(self.run) + '.ini', 'w') as rlf:
 				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.num_events, p=ped, c=clu, s=sele))
 
 	def Check_settings_file(self):
@@ -198,8 +198,13 @@ class RD42Analysis:
 		else:
 			ExitMessage('{d} does not exist. Exiting'.format(d=self.StripTelescopeAnalysis_path))
 
-	def Print_subprocess_command(self, runlist, setting, outdir, inputdir):
-		print 'Executing:\n{p}/diamondAnalysis -r {r} -s {s} -o {o} -i {i}\n'.format(p=self.StripTelescopeAnalysis_path, r=runlist, s=setting, o=outdir, i=inputdir)
+	def First_Analysis(self):
+		self.subdir = 'no_mask'
+		if self.delete_old:
+			self.Delete_old()
+		print 'Starting first analysis (no_mask)...'
+		self.RunAnalysis()
+		print 'Finished with first analysis :)'
 
 	def RunAnalysis(self):
 		CreateDirectoryIfNecessary(self.out_dir + '/' + self.subdir + '/' + str(self.run))
@@ -242,6 +247,90 @@ class RD42Analysis:
 			else:
 				print 'Run even could have failed. Obtained return code:', self.sub_pro_e.poll()
 			CloseSubprocess(self.sub_pro_e, True, False)
+
+	def Print_subprocess_command(self, runlist, setting, outdir, inputdir):
+		print 'Executing:\n{p}/diamondAnalysis -r {r} -s {s} -o {o} -i {i}\n'.format(p=self.StripTelescopeAnalysis_path, r=runlist, s=setting, o=outdir, i=inputdir)
+
+	def LinkRootFiles(self, source, dest, upto='selection', doSymlink=True, doCopy=True):
+		steps = ['raw', 'pedestal', 'cluster', 'selection', 'align', 'transparent', '3d']
+		cumulative = []
+		for elem in steps:
+			cumulative.append(elem)
+			if elem == upto:
+				break
+		successful = True
+		if 'raw' in cumulative:
+			if not os.path.isfile(dest + '/rawData.{r}.root'.format(r=self.run)):
+				successful = successful and RecreateLink(source + '/rawData.{r}.root'.format(r=self.run), dest, 'rawData.{r}.root'.format(r=self.run), doSymlink, doCopy)
+		if 'pedestal' in cumulative:
+			if not os.path.isfile(dest + '/pedestalData.{r}.root'.format(r=self.run)):
+				successful = successful and RecreateLink(source + '/pedestalData.{r}.root'.format(r=self.run), dest, 'pedestalData.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				RecreateLink(source + '/pedestalAnalysis', dest, 'pedestalAnalysis', doSymlink, doCopy)
+		if 'cluster' in cumulative:
+			if not os.path.isfile(dest + '/clusterData.{r}.root'.format(r=self.run)):
+				successful = successful and RecreateLink(source + '/clusterData.{r}.root'.format(r=self.run), dest, 'clusterData.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				RecreateLink(source + '/clustering', dest, 'clustering', doSymlink, doCopy)
+			if not os.path.isfile(dest + '/etaCorrection.{r}.root'.format(r=self.run)):
+				successful = successful and RecreateLink(source + '/etaCorrection.{r}.root'.format(r=self.run), dest, 'etaCorrection.{r}.root'.format(r=self.run), doSymlink, doCopy)
+			if os.path.isfile(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run)) and doCopy:
+				shutil.copy(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run), dest + '/')
+		if 'selection' in cumulative:
+			if not os.path.isfile(dest + '/selectionData.{r}.root'.format(r=self.run)):
+				successful = successful and RecreateLink(source + '/selectionData.{r}.root'.format(r=self.run), dest, 'selectionData.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				RecreateLink(source + '/selectionAnalysis', dest, 'selectionAnalysis', doSymlink, doCopy)
+				RecreateLink(source + '/selections', dest, 'selections', doSymlink, doCopy)
+		if 'align' in cumulative:
+			if not os.path.isfile(dest + '/alignment.{r}.root'.format(r=self.run)):
+				successful = successful and RecreateLink(source + '/alignment.{r}.root'.format(r=self.run), dest, 'alignment.{r}.root'.format(r=self.run), doSymlink, doCopy)
+				RecreateLink(source + '/alignment', dest, 'alignment', doSymlink, doCopy)
+		if 'transparent' in cumulative:
+			if not os.path.isfile(dest + '/transparentAnalysis'):
+				successful = successful and RecreateLink(source + '/transparentAnalysis', dest, 'transparentAnalysis', doSymlink, doCopy)
+		if '3d' in cumulative:
+			if not os.path.isfile(dest + '/analysis3d.root.{r}.root'.format(r=self.run)):
+				successful = successful and RecreateLink(source + '/analysis3d.root.{r}.root'.format(r=self.run), dest, 'analysis3d.root.{r}.root'.format(r=self.run), doSymlink, doCopy)
+			if not os.path.isfile(dest + '/analysis3d-2.root.{r}.root'.format(r=self.run)):
+				successful = successful and RecreateLink(source + '/analysis3d-2.root.{r}.root'.format(r=self.run), dest, 'analysis3d-2.root.{r}.root'.format(r=self.run), doSymlink, doCopy)
+			if not os.path.isfile(dest + '/3dDiamondAnalysis'):
+				successful = successful and RecreateLink(source + '/3dDiamondAnalysis', dest, '3dDiamondAnalysis', doSymlink, doCopy)
+
+		if os.path.isfile(source + '/index.php'):
+			shutil.copyfile(source + '/index.php', dest + '/index.php')
+		if os.path.isfile(source + '/overview.html'):
+			shutil.copyfile(source + '/overview.html', dest + '/overview.html')
+		if os.path.isfile(source + '/results_{r}.res'.format(r=self.run)) and doCopy:
+			shutil.copyfile(source + '/results_{r}.res'.format(r=self.run), dest + '/results_{r}.res'.format(r=self.run))
+		if os.path.isfile(source + '/results_{r}.txt'.format(r=self.run)) and doCopy:
+			shutil.copyfile(source + '/results_{r}.txt'.format(r=self.run), dest + '/results_{r}.txt'.format(r=self.run))
+		if not os.path.isfile(dest + '/Results.{r}.root'.format(r=self.run)):
+			RecreateLink(source + '/Results.{r}.root'.format(r=self.run), dest, 'Results.{r}.root'.format(r=self.run), doSymlink, doCopy)
+		return successful
+
+	def Normal_Analysis(self):
+		if self.delete_old:
+			self.Delete_old()
+		if os.path.isfile(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run)):
+			if self.Get_num_events(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'rawTree') < self.num_events:
+				print 'Rerunning first event (no_mask) as it has less entries than required...'
+				self.subdir = 'no_mask'
+				self.num_events = self.total_events
+				self.Create_Run_List()
+				self.Check_settings_file()
+				self.First_Analysis()
+			elif self.Get_num_events(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'rawTree') > self.num_events:
+				print 'Need to recreate the rawTree'
+				self.ExtractFromOriginalRawTree('no_mask')
+		elif os.path.isfile(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)):
+			if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)) > self.num_events:
+				print 'Extracting', self.num_events, 'events from no_mask run'
+				self.ExtractFromOriginalRawTree('no_mask')
+			else:
+				if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)) < self.num_events:
+					print 'The no_mask raw file has', self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)), 'events which is less than the requested. Will analyse all events'
+					self.num_events = self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run))
+				self.LinkRootFiles(self.out_dir + '/no_mask', self.out_dir + '/' + self.subdir, 'raw', True, True)
+		self.RunAnalysis()
+		print 'Finished :)'
 
 	def Delete_old(self, upto='3d'):
 		print 'Deleting old upto', upto, ; sys.stdout.flush()
@@ -296,93 +385,6 @@ class RD42Analysis:
 				shutil.rmtree('{sd}/3dDiamondAnalysis'.format(sd=stem_dir))
 		print 'Done'
 
-	def ModifySettingsOneChannel(self, ch=0, sub_dir='no_mask'):
-		CreateDirectoryIfNecessary(self.settings_dir + '/{sd}/channels'.format(sd=sub_dir))
-		CreateDirectoryIfNecessary(self.settings_dir + '/{sd}/channels/{c}'.format(sd=sub_dir, c=ch))
-		with open(self.settings_dir + '/{sd}/settings.{r}.ini'.format(sd=sub_dir, r=self.run), 'r') as fin:
-			with open(self.settings_dir + '/{sd}/channels/{c}/settings.{r}.ini'.format(sd=sub_dir, c=ch, r=self.run), 'w') as fch:
-				for line in fin:
-					if not line.startswith('Dia_channel_screen_channels'):
-						fch.write(line)
-					else:
-						channel_str_new = self.ModifyStringOneChannel(ch)
-						fch.write('Dia_channel_screen_channels = {' + channel_str_new + '}\n')
-
-	def ModifyStringOneChannel(self, ch=0):
-		if ch == 0:
-			return '1-{d}'.format(d=diaChs - 1)
-		elif ch == diaChs - 1:
-			return '0-{d}'.format(d=diaChs - 2)
-		else:
-			return '0-{cp},{cn}-{d}'.format(cp=ch - 1, cn = ch + 1, d=diaChs - 1)
-
-	def First_Analysis(self):
-		self.subdir = 'no_mask'
-		if self.delete_old:
-			self.Delete_old()
-		print 'Starting first analysis (no_mask)...'
-		self.RunAnalysis()
-		print 'Finished with first analysis :)'
-
-	def GetIndividualChannelHitmap(self):
-		print 'Starting channel occupancy plots...'
-		cont = False
-		CreateDirectoryIfNecessary(self.out_dir + '/{sd}/{r}/channel_sweep'.format(sd=self.subdir, r=self.run))
-		for ch in xrange(diaChs):
-			CreateDirectoryIfNecessary(self.out_dir + '/{sd}/{r}/channel_sweep/{c}'.format(sd=self.subdir, c=ch, r=self.run))
-			CreateDirectoryIfNecessary(self.out_dir + '/{sd}/{r}/channel_sweep/{c}/{r}'.format(sd=self.subdir, c=ch, r=self.run))
-			if self.symlinks:
-				self.LinkRootFiles(self.out_dir + '/{sd}/' + str(self.run), self.out_dir + '/{sd}/{r}/channel_sweep/{c}/{r}'.format(sd=self.subdir, c=ch, r=self.run), 'cluster')
-			else:
-				ExitMessage('Cannot create symlinks. Exiting...')
-			self.ModifySettingsOneChannel(ch, self.subdir)
-		num_cores = mp.cpu_count()
-		num_parrallel = 1 if num_cores < 4 else 2 if num_cores < 8 else 4 if num_cores < 16 else 8 if num_cores < 32 else 16
-		num_jobs = diaChs / num_parrallel
-		channel_runs = np.arange(diaChs).reshape([num_jobs, num_parrallel])
-		for bat in xrange(channel_runs.shape[0]):
-			procx = []
-			for proc in xrange(channel_runs.shape[1]):
-				print 'Getting channel:', channel_runs[bat, proc], '...'
-				procx.append(subp.Popen(
-					['diamondAnalysis', '-r', '{d}/no_mask/RunList_{r}.ini'.format(sd=self.subdir, d=self.run_lists_dir, r=self.run), '-s', self.settings_dir + '/{sd}/channels/{c}'.format(sd=self.subdir, c=channel_runs[bat, proc]),
-					 '-o', self.out_dir + '/{sd}/{r}/channel_sweep/{c}'.format(sd=self.subdir, c=channel_runs[bat, proc], r=self.run), '-i', self.data_dir], bufsize=-1, stdin=subp.PIPE,
-					stdout=open('/dev/null', 'w'), stderr=subp.STDOUT, close_fds=True))
-			for proc in xrange(channel_runs.shape[1]):
-				while procx[proc].poll() is None:
-					# procx[proc].stdout.
-					continue
-			for proc in xrange(channel_runs.shape[1]):
-				CloseSubprocess(procx[proc], stdin=True, stdout=False)
-				print 'Done with channel:', channel_runs[bat, proc], ':)'
-			del procx
-
-	def Normal_Analysis(self):
-		if self.delete_old:
-			self.Delete_old()
-		if os.path.isfile(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run)):
-			if self.Get_num_events(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'rawTree') < self.num_events:
-				print 'Rerunning first event (no_mask) as it has less entries than required...'
-				self.subdir = 'no_mask'
-				self.num_events = self.total_events
-				self.Create_Run_List()
-				self.Check_settings_file()
-				self.First_Analysis()
-			elif self.Get_num_events(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'rawTree') > self.num_events:
-				print 'Need to recreate the rawTree'
-				self.ExtractFromOriginalRawTree('no_mask')
-		elif os.path.isfile(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)):
-			if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)) > self.num_events:
-				print 'Extracting', self.num_events, 'events from no_mask run'
-				self.ExtractFromOriginalRawTree('no_mask')
-			else:
-				if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)) < self.num_events:
-					print 'The no_mask raw file has', self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)), 'events which is less than the requested. Will analyse all events'
-					self.num_events = self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run))
-				self.LinkRootFiles(self.out_dir + '/no_mask', self.out_dir + '/' + self.subdir, 'raw', True, True)
-		self.RunAnalysis()
-		print 'Finished :)'
-
 	def Get_num_events(self, rootfile, treename):
 		tempf = ro.TFile(rootfile, 'READ')
 		tempt = tempf.Get(treename)
@@ -410,79 +412,59 @@ class RD42Analysis:
 		else:
 			ExitMessage('Cannot extract from ' + originalsubdir + ' as it does not exist. Runn first the analysis with sub directory: ' + originalsubdir)
 
-	def LinkRootFiles(self, source, dest, upto='selection', doSymlink=True, doCopy=True):
-		steps = ['raw', 'pedestal', 'cluster', 'selection', 'align', 'transparent', '3d']
-		cumulative = []
-		for elem in steps:
-			cumulative.append(elem)
-			if elem == upto:
-				break
-		if 'raw' in cumulative:
-			if not os.path.isfile(dest + '/rawData.{r}.root'.format(r=self.run)):
-				RecreateLink(source + '/rawData.{r}.root'.format(r=self.run), dest, 'rawData.{r}.root'.format(r=self.run), doSymlink, doCopy)
-		if 'pedestal' in cumulative:
-			if not os.path.isfile(dest + '/pedestalData.{r}.root'.format(r=self.run)):
-				RecreateLink(source + '/pedestalData.{r}.root'.format(r=self.run), dest, 'pedestalData.{r}.root'.format(r=self.run), doSymlink, doCopy)
-				RecreateLink(source + '/pedestalAnalysis', dest, 'pedestalAnalysis', doSymlink, doCopy)
-		if 'cluster' in cumulative:
-			if not os.path.isfile(dest + '/clusterData.{r}.root'.format(r=self.run)):
-				RecreateLink(source + '/clusterData.{r}.root'.format(r=self.run), dest, 'clusterData.{r}.root'.format(r=self.run), doSymlink, doCopy)
-				RecreateLink(source + '/clustering', dest, 'clustering', doSymlink, doCopy)
-			if not os.path.isfile(dest + '/etaCorrection.{r}.root'.format(r=self.run)):
-				RecreateLink(source + '/etaCorrection.{r}.root'.format(r=self.run), dest, 'etaCorrection.{r}.root'.format(r=self.run), doSymlink, doCopy)
-			if os.path.isfile(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run)) and doCopy:
-				shutil.copy(source + '/crossTalkCorrectionFactors.{r}.txt'.format(r=self.run), dest + '/')
-		if 'selection' in cumulative:
-			if not os.path.isfile(dest + '/selectionData.{r}.root'.format(r=self.run)):
-				RecreateLink(source + '/selectionData.{r}.root'.format(r=self.run), dest, 'selectionData.{r}.root'.format(r=self.run), doSymlink, doCopy)
-				RecreateLink(source + '/selectionAnalysis', dest, 'selectionAnalysis', doSymlink, doCopy)
-				RecreateLink(source + '/selections', dest, 'selections', doSymlink, doCopy)
-		if 'align' in cumulative:
-			if not os.path.isfile(dest + '/alignment.{r}.root'.format(r=self.run)):
-				RecreateLink(source + '/alignment.{r}.root'.format(r=self.run), dest, 'alignment.{r}.root'.format(r=self.run), doSymlink, doCopy)
-				RecreateLink(source + '/alignment', dest, 'alignment', doSymlink, doCopy)
-		if 'transparent' in cumulative:
-			if not os.path.isfile(dest + '/transparentAnalysis'):
-				RecreateLink(source + '/transparentAnalysis', dest, 'transparentAnalysis', doSymlink, doCopy)
-		if '3d' in cumulative:
-			if not os.path.isfile(dest + '/analysis3d.root.{r}.root'.format(r=self.run)):
-				RecreateLink(source + '/analysis3d.root.{r}.root'.format(r=self.run), dest, 'analysis3d.root.{r}.root'.format(r=self.run), doSymlink, doCopy)
-			if not os.path.isfile(dest + '/analysis3d-2.root.{r}.root'.format(r=self.run)):
-				RecreateLink(source + '/analysis3d-2.root.{r}.root'.format(r=self.run), dest, 'analysis3d-2.root.{r}.root'.format(r=self.run), doSymlink, doCopy)
-			if not os.path.isfile(dest + '/3dDiamondAnalysis'):
-				RecreateLink(source + '/3dDiamondAnalysis', dest, '3dDiamondAnalysis', doSymlink, doCopy)
-
-		if os.path.isfile(source + '/index.php'):
-			shutil.copyfile(source + '/index.php', dest + '/index.php')
-		if os.path.isfile(source + '/overview.html'):
-			shutil.copyfile(source + '/overview.html', dest + '/overview.html')
-		if os.path.isfile(source + '/results_{r}.res'.format(r=self.run)) and doCopy:
-			shutil.copyfile(source + '/results_{r}.res'.format(r=self.run), dest + '/results_{r}.res'.format(r=self.run))
-		if os.path.isfile(source + '/results_{r}.txt'.format(r=self.run)) and doCopy:
-			shutil.copyfile(source + '/results_{r}.txt'.format(r=self.run), dest + '/results_{r}.txt'.format(r=self.run))
-		if not os.path.isfile(dest + '/Results.{r}.root'.format(r=self.run)):
-			RecreateLink(source + '/Results.{r}.root'.format(r=self.run), dest, 'Results.{r}.root'.format(r=self.run), doSymlink, doCopy)
-
-	def RunNormalAnalysis(self, subdir=''):
+	def GetIndividualChannelHitmap(self):
+		print 'Starting channel occupancy plots...'
 		cont = False
-		sub_dir = subdir
-		valid_subdir_options = ['no_mask', 'full', '3D', 'strip', 'phantom', 'poly']
-		if subdir not in valid_subdir_options:
-			while not cont:
-				temp = raw_input('type "no_mask" or "full" or other subdirectory to do the single channel study: ')
-				if temp in valid_subdir_options:
-					cont = True
-					sub_dir = deepcopy(temp)
-		CreateDirectoryIfNecessary(self.runlist_dir)
-		self.Create_Run_List(sub_dir)
-		CreateDirectoryIfNecessary(self.out_dir + '/' + sub_dir + '/' + str(self.run))
-		RecreateSoftLink(self.out_dir + '/' + sub_dir + '/' + str(self.run), scratch_path, str(self.run) + '_' + sub_dir)
-		self.process_f = subp.Popen(['diamondAnalysis', '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.runlist_dir, sd=sub_dir, r=self.run), '-s', self.settings_dir + '/' + sub_dir, '-o', self.out_dir + '/' + sub_dir, '-i', self.in_dir], bufsize=-1, stdin=subp.PIPE, close_fds=True)
-		while self.process_f.poll() is None:
-			pass
-		print 'Process finished'
-		CloseSubprocess(self.process_f, True, False)
+		CreateDirectoryIfNecessary(self.out_dir + '/{sd}/{r}/channel_sweep'.format(sd=self.subdir, r=self.run))
+		for ch in xrange(diaChs):
+			CreateDirectoryIfNecessary(self.out_dir + '/{sd}/{r}/channel_sweep/{c}'.format(sd=self.subdir, c=ch, r=self.run))
+			CreateDirectoryIfNecessary(self.out_dir + '/{sd}/{r}/channel_sweep/{c}/{r}'.format(sd=self.subdir, c=ch, r=self.run))
+			do_continue = self.LinkRootFiles(self.out_dir + '/{sd}/' + str(self.run), self.out_dir + '/{sd}/{r}/channel_sweep/{c}/{r}'.format(sd=self.subdir, c=ch, r=self.run), 'cluster', doSymlink=True, doCopy=False)
+			if not do_continue:
+				ExitMessage('Cannot create symlinks. Exiting...')
+			self.ModifySettingsOneChannel(ch, self.subdir)
+		num_cores = mp.cpu_count()
+		num_parrallel = 1 if num_cores < 4 else 2 if num_cores < 8 else 4 if num_cores < 16 else 8 if num_cores < 32 else 16
+		num_jobs = diaChs / num_parrallel
+		channel_runs = np.arange(diaChs).reshape([num_jobs, num_parrallel])
+		for bat in xrange(channel_runs.shape[0]):
+			procx = []
+			for proc in xrange(channel_runs.shape[1]):
+				print 'Getting channel:', channel_runs[bat, proc], '...'
+				procx.append(subp.Popen(
+					['diamondAnalysis', '-r', '{d}/{sd}/channels/RunList_{r}.ini'.format(sd=self.subdir, d=self.run_lists_dir, r=self.run), '-s', self.settings_dir + '/{sd}/channels/{c}'.format(sd=self.subdir, c=channel_runs[bat, proc]),
+					 '-o', self.out_dir + '/{sd}/{r}/channel_sweep/{c}'.format(sd=self.subdir, c=channel_runs[bat, proc], r=self.run), '-i', self.data_dir], bufsize=-1, stdin=subp.PIPE,
+					stdout=open('/dev/null', 'w'), stderr=subp.STDOUT, close_fds=True))
+			for proc in xrange(channel_runs.shape[1]):
+				while procx[proc].poll() is None:
+					# procx[proc].stdout.
+					continue
+				CloseSubprocess(procx[proc], stdin=True, stdout=False)
+				print 'Done with channel:', channel_runs[bat, proc], ':)'
+			# for proc in xrange(channel_runs.shape[1]):
+			# 	CloseSubprocess(procx[proc], stdin=True, stdout=False)
+			# 	print 'Done with channel:', channel_runs[bat, proc], ':)'
+			del procx
 
+	def ModifySettingsOneChannel(self, ch=0, sub_dir='no_mask'):
+		CreateDirectoryIfNecessary(self.settings_dir + '/{sd}/channels'.format(sd=sub_dir))
+		CreateDirectoryIfNecessary(self.settings_dir + '/{sd}/channels/{c}'.format(sd=sub_dir, c=ch))
+		with open(self.settings_dir + '/{sd}/settings.{r}.ini'.format(sd=sub_dir, r=self.run), 'r') as fin:
+			with open(self.settings_dir + '/{sd}/channels/{c}/settings.{r}.ini'.format(sd=sub_dir, c=ch, r=self.run), 'w') as fch:
+				for line in fin:
+					if not line.startswith('Dia_channel_screen_channels'):
+						fch.write(line)
+					else:
+						channel_str_new = self.ModifyStringOneChannel(ch)
+						fch.write('Dia_channel_screen_channels = {' + channel_str_new + '}\n')
+
+	def ModifyStringOneChannel(self, ch=0):
+		if ch == 0:
+			return '1-{d}'.format(d=diaChs - 1)
+		elif ch == diaChs - 1:
+			return '0-{d}'.format(d=diaChs - 2)
+		else:
+			return '0-{cp},{cn}-{d}'.format(cp=ch - 1, cn = ch + 1, d=diaChs - 1)
 
 def main():
 	parser = OptionParser()
@@ -499,7 +481,7 @@ def main():
 
 	rd42 = RD42Analysis()
 	rd42.ReadInputFile(settings_f)
-	rd42.Create_Run_List()
+	rd42.Create_Run_List(do_single_ch=single_ch)
 	rd42.Check_settings_file()
 	rd42.CheckStripTelescopeAnalysis()
 

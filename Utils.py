@@ -267,6 +267,8 @@ def RecreateLink(source, dest, name, doSymlink=True, doCopy=True):
 				else:
 					successful = False
 					print 'Could not link', source, 'to', dest, 'and copy was disabled'
+	else:
+		successful = False
 	return successful
 
 def RecreateSoftLink(source, dest, name, type='dir', doCopy=True):
