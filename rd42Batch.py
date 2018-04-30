@@ -89,6 +89,8 @@ class RD42Analysis:
 						self.run_lists_dir = pars.get('RUN', 'runlistsdir')
 					else:
 						ExitMessage('Must specify runlistsdir under [RUN]. Exiting...')
+					if pars.has_option('RUN', 'scratch_path'):
+						self.scratch_path = pars.get('RUN', 'scratch_path')
 					if pars.has_option('RUN', 'subdir'):
 						self.subdir = pars.get('RUN', 'subdir')
 					if pars.has_option('RUN', 'do_even'):

@@ -22,8 +22,8 @@ diaChs = 128
 
 fillColor = ro.TColor.GetColor(125, 153, 209)
 sigma_axis = {'min': 0, 'max': 100}
-adc_axis = {'min': 0, 'max': 2**12 - 1}
-ped_axis = {'min': 0, 'max': 2**12 - 1}
+adc_axis = {'min': 0, 'max': 2**12}
+ped_axis = {'min': 0, 'max': 2**12}
 cm_axis = {'min': -100, 'max': 100}
 ev_axis = {'min': 0, 'max': 0, 'bins': 1000}
 ch_axis = {'min': -0.5, 'max': diaChs - 0.5, 'bins': diaChs}
