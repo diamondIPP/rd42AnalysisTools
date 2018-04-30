@@ -15,7 +15,7 @@ def IsFloat(f):
 	except ValueError:
 		return False
 
-def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0, dia_input=0):
+def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0, dia_input=0, dia_sat=4095, max_trans_clust=10):
 	if not os.path.isdir(diri):
 		os.makedirs(diri)
 	with open(diri + '/settings.{r}.ini'.format(r=run_no), 'w') as f:
@@ -31,6 +31,7 @@ def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0, dia
 		f.write('diamondPattern = {0,50,0,127}\n\n')
 		f.write('Iter_Size = 500\n\n')
 		f.write('dia_input = {d}\n\n'.format(d=dia_input))
+		f.write('dia_saturation = {d}\n\n'.format(d=dia_sat))
 		f.write('Dia_channel_screen_channels = {}\n\n')
 		f.write('Dia_channel_not_connected = {}\n\n')
 		f.write('Dia_channel_noisy = {}\n\n')
@@ -59,6 +60,7 @@ def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0, dia
 		f.write('Double_t detectorD3Z = 19.625\n')
 		f.write('Double_t detectorDiaZ = 10.2\n\n')
 		f.write('TransparentAlignment = 0\n\n')
+		f.write('max_transparent_cluster_size = {d}\n\n'.format(d=max_trans_clust))
 		f.write('3dShortAnalysis = 0;\n')
 		f.write('3dLongAnalysis = 0;\n')
 		f.write('3dTransparentAnalysis = 0;\n')

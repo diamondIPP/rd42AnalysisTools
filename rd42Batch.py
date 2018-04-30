@@ -28,6 +28,8 @@ class RD42Analysis:
 		self.run = 0
 		self.total_events = 0
 		self.dia_input = 0
+		self.dia_saturation = 4095
+		self.max_transparent_cluster_size = 10
 		self.data_dir = ''
 		self.out_dir = ''
 		self.settings_dir = ''
@@ -73,6 +75,10 @@ class RD42Analysis:
 						ExitMessage('Must specify events under [RUN]. Exiting...')
 					if pars.has_option('RUN', 'dia_input'):
 						self.dia_input = pars.getint('RUN', 'dia_input')
+					if pars.has_option('RUN', 'dia_saturation'):
+						self.dia_saturation = pars.getint('RUN', 'dia_saturation')
+					if pars.has_option('RUN', 'max_transparent_cluster_size'):
+						self.max_transparent_cluster_size = pars.getint('RUN', 'max_transparent_cluster_size')
 					if pars.has_option('RUN', 'datadir'):
 						self.data_dir = pars.get('RUN', 'datadir')
 					else:
@@ -152,7 +158,7 @@ class RD42Analysis:
 		if not os.path.isdir(self.settings_dir + '/' + self.subdir):
 			os.makedirs(self.settings_dir + '/' + self.subdir)
 		if not os.path.isfile(self.settings_dir + '/' + self.subdir + '/settings.{r}.ini'.format(r=self.run)):
-			CreateDefaultSettingsFile(self.settings_dir + '/' + self.subdir, self.run, self.total_events, ev_ini=self.first_event, num_evs_ana=self.num_events, dia_input=self.dia_input)
+			CreateDefaultSettingsFile(self.settings_dir + '/' + self.subdir, self.run, self.total_events, ev_ini=self.first_event, num_evs_ana=self.num_events, dia_input=self.dia_input, dia_sat=self.dia_saturation, max_trans_clust=self.max_transparent_cluster_size)
 		if self.do_even or self.do_odd:
 			self.Copy_settings_to_even_odd()
 
