@@ -339,13 +339,13 @@ class RD42Analysis:
 				print 'Need to recreate the rawTree'
 				self.ExtractFromOriginalRawTree('no_mask')
 		elif os.path.isfile(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)):
-			if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)) > self.num_events:
+			if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree') > self.num_events:
 				print 'Extracting', self.num_events, 'events from no_mask run'
 				self.ExtractFromOriginalRawTree('no_mask')
 			else:
-				if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)) < self.num_events:
-					print 'The no_mask raw file has', self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)), 'events which is less than the requested. Will analyse all events'
-					self.num_events = self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run))
+				if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree') < self.num_events:
+					print 'The no_mask raw file has', self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree'), 'events which is less than the requested. Will analyse all events'
+					self.num_events = self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree')
 				self.LinkRootFiles(self.out_dir + '/no_mask', self.out_dir + '/' + self.subdir, 'raw', True, True)
 		self.RunAnalysis()
 		print 'Finished :)'
