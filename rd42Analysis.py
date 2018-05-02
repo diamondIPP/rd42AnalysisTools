@@ -8,7 +8,7 @@ import ROOT as ro
 import ipdb  # set_trace, launch_ipdb_on_exception
 import progressbar
 from copy import deepcopy
-from NoiseExtraction import NoiseExtraction
+# from NoiseExtraction import NoiseExtraction
 import os, sys, shutil
 from Utils import *
 import subprocess as subp
