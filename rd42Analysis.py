@@ -499,6 +499,8 @@ def main():
 
 	rd42 = RD42Analysis()
 	rd42.ReadInputFile(settings_f)
+	if first_ana:
+		rd42.subdir = 'no_mask'
 	rd42.Create_Run_List(do_single_ch=single_ch)
 	rd42.Check_settings_file()
 	rd42.CheckStripTelescopeAnalysis()
