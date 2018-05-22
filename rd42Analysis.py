@@ -411,6 +411,7 @@ class RD42Analysis:
 		return num_evts
 
 	def ExtractFromOriginalRawTree(self, originalsubdir='no_mask'):
+		CreateDirectoryIfNecessary(self.out_dir + '/' + originalsubdir + '/{r}'.format(r=self.run))
 		if os.path.isfile(self.out_dir + '/' + originalsubdir + '/{r}/rawData.{r}.root'.format(r=self.run)):
 			tempf = ro.TFile(self.out_dir + '/' + originalsubdir + '/{r}/rawData.{r}.root'.format(r=self.run), 'READ')
 			tempt = tempf.Get('rawTree')
