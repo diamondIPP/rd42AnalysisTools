@@ -50,7 +50,7 @@ class PedestalAnalysis:
 		self.signal_ch_hist, self.signal_cmc_ch_hist, self.biggest_adc_ch_hist = ro.TH2F(), ro.TH2F(), ro.TH2F()
 		self.ped_ch_hist, self.ped_cmc_ch_hist, self.sigma_ch_hist, self.sigma_cmc_ch_hist, self.adc_ch_hist = ro.TH2F(), ro.TH2F(), ro.TH2F(), ro.TH2F(), ro.TH2F()
 		self.dicBraNames = {'rawTree.DiaADC': 'adc', 'diaPedestalMean': 'ped', 'diaPedestaSigma': 'sigma', 'diaPedestalMeanCMN': 'ped_cmc', 'diaPedestaSigmaCMN': 'sigma_cmc', 'commonModeNoise': 'cm',
-		                    'eventNumber': 'event', 'diaChannel': 'dia_ch'}
+		                    'eventNumber': 'event', 'diaChannel': 'dia_ch', 'diaPedestalSigma': 'sigma', 'diaPedestalSigmaCMN': 'sigma_cmc'}
 		self.allBranches = self.dicBraNames.keys()
 		self.listBraNames1ch = ['commonModeNoise']
 		self.listBraNamesChs = [x for x in self.allBranches if x not in self.listBraNames1ch]
@@ -213,7 +213,7 @@ class PedestalAnalysis:
 			return adc_axis['min'], adc_axis['max'], int(min((adc_axis['max'] - adc_axis['min']) / 1, 10000))
 		if branch.lower().startswith('diaPedestalM'.lower()):
 			return adc_axis['min'], adc_axis['max'], int(min((adc_axis['max'] - adc_axis['min']) / 0.5, 10000))
-		if branch.lower().startswith('diaPedestaS'.lower()):
+		if branch.lower().startswith('diaPedestaS'.lower()) or branch.lower().startswith('diaPedestalS'.lower()):
 			return sigma_axis['min'], sigma_axis['max'], int(min((sigma_axis['max'] - sigma_axis['min']) / 0.01, 10000))
 		if branch.lower().startswith('common'.lower()):
 			return cm_axis['min'], cm_axis['max'], int(min((cm_axis['max'] - cm_axis['min']) / 0.01, 10000))
