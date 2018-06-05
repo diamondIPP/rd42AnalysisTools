@@ -48,7 +48,8 @@ class PHTranspXAndYProfiles:
 		self.GetTransparentProfiles('Y')
 
 	def GetTransparentProfiles(self, var='X'):
-		self.blaf[var] = ro.TFile('{d}/transparentAnalysis/root/hLandau2HighestPredHit{v}_2outOf10.{r}.root'.format(d=self.dir, v=var, r=self.run))
+		#ipdb.set_trace()
+		self.blaf[var] = ro.TFile('{d}/{r}/transparentAnalysis/root/hLandau2HighestPredHit{v}_2outOf10.{r}.root'.format(d=self.dir, v=var, r=self.run))
 		self.blac[var] = self.blaf[var].Get('cRoot_hLandau2HighestPredHit{v}_2outOf10'.format(v=var))
 		self.blah[var] = self.blac[var].GetPrimitive('hLandau2HighestPredHit{v}_2outOf10'.format(v=var))
 		self.blahp[var] = self.blah[var].ProfileY('PH2outOf10_{v}_mean'.format(v=var))
