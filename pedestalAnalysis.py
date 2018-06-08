@@ -27,6 +27,7 @@ ped_axis = {'min': 0, 'max': 2**12}
 cm_axis = {'min': -100, 'max': 100}
 ev_axis = {'min': 0, 'max': 0, 'bins': 1000}
 ch_axis = {'min': -0.5, 'max': diaChs - 0.5, 'bins': diaChs}
+bin_axis = {'min': -0.5, 'max': 1.5, 'bins': 2}
 
 ro.gStyle.SetPalette(55)
 ro.gStyle.SetNumberContours(999)
@@ -50,7 +51,7 @@ class PedestalAnalysis:
 		self.signal_ch_hist, self.signal_cmc_ch_hist, self.biggest_adc_ch_hist = ro.TH2F(), ro.TH2F(), ro.TH2F()
 		self.ped_ch_hist, self.ped_cmc_ch_hist, self.sigma_ch_hist, self.sigma_cmc_ch_hist, self.adc_ch_hist = ro.TH2F(), ro.TH2F(), ro.TH2F(), ro.TH2F(), ro.TH2F()
 		self.dicBraNames = {'rawTree.DiaADC': 'adc', 'diaPedestalMean': 'ped', 'diaPedestaSigma': 'sigma', 'diaPedestalMeanCMN': 'ped_cmc', 'diaPedestaSigmaCMN': 'sigma_cmc', 'commonModeNoise': 'cm',
-		                    'eventNumber': 'event', 'diaChannel': 'dia_ch', 'diaPedestalSigma': 'sigma', 'diaPedestalSigmaCMN': 'sigma_cmc'}
+		                    'eventNumber': 'event', 'diaChannel': 'dia_ch', 'diaPedestalSigma': 'sigma', 'diaPedestalSigmaCMN': 'sigma_cmc', 'diaHitChs': 'dia_hit_ch', 'diaSeedChs': 'dia_seed_ch', 'diaCmChs': 'dia_cm_ch', 'diaHitChsCmc': 'dia_hit_ch_cmc', 'diaSeedChsCmc': 'dia_seed_ch_cmc'}
 		self.allBranches = self.dicBraNames.keys()
 		self.listBraNames1ch = ['commonModeNoise']
 		self.listBraNamesChs = [x for x in self.allBranches if x not in self.listBraNames1ch]
@@ -221,6 +222,8 @@ class PedestalAnalysis:
 			return ch_axis['min'], ch_axis['max'], ch_axis['bins']
 		if branch.lower().startswith('event'.lower()):
 			return ev_axis['min'], ev_axis['max'], int(min((ev_axis['max'] - ev_axis['min']) / 100.0, 10000))
+		if branch.lower().startswith('diaHitC'.lower()) or branch.lower().startswith('diaSeedC'.lower()) or branch.lower().startswith('diaCmC'.lower()):
+			return bin_axis['min'], bin_axis['max'], bin_axis['bins']
 
 	def CreateCanvas(self, name='0'):
 		self.CleanCanvasList()
