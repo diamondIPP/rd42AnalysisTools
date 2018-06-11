@@ -15,7 +15,7 @@ def IsFloat(f):
 	except ValueError:
 		return False
 
-def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0, dia_input=0, dia_sat=4095, max_trans_clust=10):
+def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0, dia_input=0, dia_sat=4095, max_trans_clust=10, num_highest_trans=2):
 	if not os.path.isdir(diri):
 		os.makedirs(diri)
 	with open(diri + '/settings.{r}.ini'.format(r=run_no), 'w') as f:
@@ -60,7 +60,8 @@ def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0, dia
 		f.write('Double_t detectorD3Z = 19.625\n')
 		f.write('Double_t detectorDiaZ = 10.2\n\n')
 		f.write('TransparentAlignment = 0\n\n')
-		f.write('max_transparent_cluster_size = {d}\n\n'.format(d=max_trans_clust))
+		f.write('max_transparent_cluster_size = {d}\n'.format(d=max_trans_clust))
+		f.write('num_highest_transparent_cluster = {d}\n\n'.format(d=num_highest_trans))
 		f.write('3dShortAnalysis = 0;\n')
 		f.write('3dLongAnalysis = 0;\n')
 		f.write('3dTransparentAnalysis = 0;\n')
