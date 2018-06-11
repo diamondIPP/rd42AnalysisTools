@@ -173,7 +173,7 @@ class RD42Analysis:
 		if not os.path.isdir(self.settings_dir + '/' + self.subdir):
 			os.makedirs(self.settings_dir + '/' + self.subdir)
 		if not os.path.isfile(self.settings_dir + '/' + self.subdir + '/settings.{r}.ini'.format(r=self.run)):
-			CreateDefaultSettingsFile(self.settings_dir + '/' + self.subdir, self.run, self.total_events, ev_ini=self.first_event, num_evs_ana=self.num_events, dia_input=self.dia_input, dia_sat=self.dia_saturation, max_trans_clust=self.max_transparent_cluster_size, num_highest_trans= self.num_highest_transparent_cluster)
+			CreateDefaultSettingsFile(self.settings_dir + '/' + self.subdir, self.run, self.total_events, ev_ini=self.first_event, num_evs_ana=self.num_events, dia_input=self.dia_input, dia_sat=self.dia_saturation, max_trans_clust=self.max_transparent_cluster_size, num_highest_trans=self.num_highest_transparent_cluster)
 		if self.do_even or self.do_odd:
 			self.Copy_settings_to_even_odd()
 

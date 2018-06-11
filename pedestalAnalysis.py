@@ -50,8 +50,9 @@ class PedestalAnalysis:
 		self.signal_ev_hist, self.signal_cmc_ev_hist, self.biggest_adc_ev_hist = None, None, None
 		self.signal_ch_hist, self.signal_cmc_ch_hist, self.biggest_adc_ch_hist = ro.TH2F(), ro.TH2F(), ro.TH2F()
 		self.ped_ch_hist, self.ped_cmc_ch_hist, self.sigma_ch_hist, self.sigma_cmc_ch_hist, self.adc_ch_hist = ro.TH2F(), ro.TH2F(), ro.TH2F(), ro.TH2F(), ro.TH2F()
-		self.dicBraNames = {'rawTree.DiaADC': 'adc', 'diaPedestalMean': 'ped', 'diaPedestaSigma': 'sigma', 'diaPedestalMeanCMN': 'ped_cmc', 'diaPedestaSigmaCMN': 'sigma_cmc', 'commonModeNoise': 'cm',
-		                    'eventNumber': 'event', 'diaChannel': 'dia_ch', 'diaPedestalSigma': 'sigma', 'diaPedestalSigmaCMN': 'sigma_cmc', 'diaHitChs': 'dia_hit_ch', 'diaSeedChs': 'dia_seed_ch', 'diaCmChs': 'dia_cm_ch', 'diaHitChsCmc': 'dia_hit_ch_cmc', 'diaSeedChsCmc': 'dia_seed_ch_cmc'}
+		self.dicBraNames = {'rawTree.DiaADC': 'adc', 'diaPedestalMean': 'ped', 'diaPedestaSigma': 'sigma', 'diaPedestalMeanCMN': 'ped_cmc', 'diaPedestaSigmaCMN': 'sigma_cmc', 'commonModeNoise': 'cm', 'eventNumber': 'event', 'diaChannel': 'dia_ch', 'diaPedestalSigma': 'sigma',
+		                    'diaPedestalSigmaCMN': 'sigma_cmc', 'diaPedChs': 'dia_ped_ch', 'diaHitChs': 'dia_hit_ch', 'diaSeedChs': 'dia_seed_ch', 'diaCmChs': 'dia_cm_ch', 'diaPedChsCmc': 'dia_ped_ch_cmc', 'diaHitChsCmc': 'dia_hit_ch_cmc', 'diaSeedChsCmc': 'dia_seed_ch_cmc', 'diaNcChs': 'dia_nc_ch',
+		                    'diaNoisyChs': 'dia_noisy_ch', 'diaMaskedChs': 'dia_masked_ch'}
 		self.allBranches = self.dicBraNames.keys()
 		self.listBraNames1ch = ['commonModeNoise']
 		self.listBraNamesChs = [x for x in self.allBranches if x not in self.listBraNames1ch]
@@ -222,7 +223,7 @@ class PedestalAnalysis:
 			return ch_axis['min'], ch_axis['max'], ch_axis['bins']
 		if branch.lower().startswith('event'.lower()):
 			return ev_axis['min'], ev_axis['max'], int(min((ev_axis['max'] - ev_axis['min']) / 100.0, 10000))
-		if branch.lower().startswith('diaHitC'.lower()) or branch.lower().startswith('diaSeedC'.lower()) or branch.lower().startswith('diaCmC'.lower()):
+		if branch.lower().startswith('diaMask'.lower()) or branch.lower().startswith('diaNc'.lower()) or branch.lower().startswith('diaNoisy'.lower()) or branch.lower().startswith('diaPedC'.lower()) or branch.lower().startswith('diaHitC'.lower()) or branch.lower().startswith('diaSeedC'.lower()) or branch.lower().startswith('diaCmC'.lower()):
 			return bin_axis['min'], bin_axis['max'], bin_axis['bins']
 
 	def CreateCanvas(self, name='0'):
