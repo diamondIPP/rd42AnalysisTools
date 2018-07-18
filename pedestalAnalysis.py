@@ -508,4 +508,4 @@ if __name__ == '__main__':
 	# low = int(options.low)
 	# high = int(options.high)
 
-	pedAna = PedestalAnalysis(run, dir, force)
+	pa = PedestalAnalysis(run, dir, force)

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-# from ROOT import TFile, TH2F, TH3F, TH1F, TCanvas, TCutG, kRed, gStyle, TBrowser, Long, TF1
-from optparse import OptionParser
+import os, sys, shutil
+sys.path.append('/home/sandiego/rd42AnalysisTools')  # TODO: HARDCODED!!! NEEDED TO RUN IN BATCH!!! CHANGE ACCORDINGLY
 from ConfigParser import ConfigParser
+from optparse import OptionParser
 # from numpy import array, floor, average, std
 import numpy as np
 import ROOT as ro
@@ -9,7 +10,6 @@ import ipdb  # set_trace, launch_ipdb_on_exception
 import progressbar
 from copy import deepcopy
 # from NoiseExtraction import NoiseExtraction
-import os, sys, shutil
 from Utils import *
 import subprocess as subp
 import multiprocessing as mp
@@ -29,9 +29,12 @@ ped_axis = {'min': 0, 'max': 2**12}
 cm_axis = {'min': -100, 'max': 100}
 
 
-class RD42Analysis:
-	def __init__(self):
-		print 'Creating RD42Analysis'
+class RD42AnalysisBatch:
+	def __init__(self, working_dir='.', verb=False):
+		self.working_dir = working_dir
+		os.chdir(self.working_dir)
+		self.verb = verb
+		if self.verb: print 'Creating RD42Analysis'
 		self.run = 0
 		self.total_events = 0
 		self.dia_input = 0
@@ -63,7 +66,6 @@ class RD42Analysis:
 		self.do_transparent = False
 		self.do_3d = False
 		self.current_dir = os.getcwd()
-		self.working_dir = os.getcwd()
 
 		self.sub_pro, self.sub_pro_e, self.sub_pro_o = None, None, None
 		self.process_f = None
@@ -77,7 +79,7 @@ class RD42Analysis:
 			if os.path.isfile(in_file):
 				pars = ConfigParser()
 				pars.read(in_file)
-				print 'Loading job description from file:', in_file
+				if self.verb: print 'Loading job description from file:', in_file
 
 				if pars.has_section('RUN'):
 					if pars.has_option('RUN', 'StripTelescopeAnalysis_path'):
@@ -261,44 +263,45 @@ class RD42Analysis:
 	def RunAnalysis(self):
 		CreateDirectoryIfNecessary(self.out_dir + '/' + self.subdir + '/' + str(self.run))
 		RecreateSoftLink(self.out_dir + '/' + self.subdir + '/' + str(self.run), self.scratch_path, str(self.run) + '_' + self.subdir, 'dir', False)
-		self.Print_subprocess_command('{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), self.settings_dir + '/' + self.subdir, self.out_dir + '/' + self.subdir, self.data_dir + '/' + str(self.run))
-		if self.batch:
-			self.sub_pro = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir, '-o', self.out_dir + '/' + self.subdir, '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, stdout=open('/dev/null', 'w'), close_fds=True)
-		else:
-			self.sub_pro = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir, '-o', self.out_dir + '/' + self.subdir, '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, close_fds=True)
-		while self.sub_pro.poll() is None:
-			time.sleep(2)
-		if self.sub_pro.poll() == 0:
-			print 'Run finished successfully'
-		else:
-			print 'Run could have failed. Obtained return code:', self.sub_pro.poll()
-		CloseSubprocess(self.sub_pro, True, False)
+		if self.verb: self.Print_subprocess_command('{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), self.settings_dir + '/' + self.subdir, self.out_dir + '/' + self.subdir, self.data_dir + '/' + str(self.run))
+		with open(os.devnull, 'w') as FNULL:
+			if self.batch or not self.verb:
+				self.sub_pro = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir, '-o', self.out_dir + '/' + self.subdir, '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True)
+			else:
+				self.sub_pro = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir, '-o', self.out_dir + '/' + self.subdir, '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, close_fds=True)
+			while self.sub_pro.poll() is None:
+				time.sleep(2)
+			if self.sub_pro.poll() == 0:
+				print 'Run', self.run, 'finished successfully'
+			else:
+				print 'Run', self.run, 'could have failed. Obtained return code:', self.sub_pro.poll()
+			CloseSubprocess(self.sub_pro, True, False)
 
-		if self.do_odd:
-			CreateDirectoryIfNecessary(self.out_dir + '/' + self.subdir + '/odd/' + str(self.run))
-			self.LinkRootFiles(self.out_dir + '/' + self.subdir + '/' + str(self.run), self.out_dir + '/' + self.subdir + '/odd/' + str(self.run), upto='cluster', doCopy=True)
-			self.Print_subprocess_command('{d}/{sd}/odd/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), self.settings_dir + '/' + self.subdir + '/odd', self.out_dir + '/' + self.subdir + '/odd', self.data_dir + '/' + str(self.run))
-			self.sub_pro_o = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/odd/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir + '/odd', '-o', self.out_dir + '/' + self.subdir + '/odd', '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, stdout=open('/dev/null', 'w'), close_fds=True)
-		if self.do_even:
-			CreateDirectoryIfNecessary(self.out_dir + '/' + self.subdir + '/even/' + str(self.run))
-			self.Print_subprocess_command('{d}/{sd}/even/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), self.settings_dir + '/' + self.subdir + '/even', self.out_dir + '/' + self.subdir + '/even', self.data_dir + '/' + str(self.run))
-			self.sub_pro_e = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/even/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir + '/even', '-o', self.out_dir + '/' + self.subdir + '/even', '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, stdout=open('/dev/null', 'w'), close_fds=True)
-		if self.do_odd:
-			while self.sub_pro_o.poll() is None:
-				time.sleep(2)
-			if self.sub_pro_o.poll() == 0:
-				print 'Run odd finished'
-			else:
-				print 'Run odd could have failed. Obtained return code:', self.sub_pro_o.poll()
-			CloseSubprocess(self.sub_pro_o, True, False)
-		if self.do_even:
-			while self.sub_pro_e.poll() is None:
-				time.sleep(2)
-			if self.sub_pro_e.poll() == 0:
-				print 'Run even finished'
-			else:
-				print 'Run even could have failed. Obtained return code:', self.sub_pro_e.poll()
-			CloseSubprocess(self.sub_pro_e, True, False)
+		# if self.do_odd:
+		# 	CreateDirectoryIfNecessary(self.out_dir + '/' + self.subdir + '/odd/' + str(self.run))
+		# 	self.LinkRootFiles(self.out_dir + '/' + self.subdir + '/' + str(self.run), self.out_dir + '/' + self.subdir + '/odd/' + str(self.run), upto='cluster', doCopy=True)
+		# 	self.Print_subprocess_command('{d}/{sd}/odd/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), self.settings_dir + '/' + self.subdir + '/odd', self.out_dir + '/' + self.subdir + '/odd', self.data_dir + '/' + str(self.run))
+		# 	self.sub_pro_o = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/odd/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir + '/odd', '-o', self.out_dir + '/' + self.subdir + '/odd', '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, stdout=open('/dev/null', 'w'), close_fds=True)
+		# if self.do_even:
+		# 	CreateDirectoryIfNecessary(self.out_dir + '/' + self.subdir + '/even/' + str(self.run))
+		# 	self.Print_subprocess_command('{d}/{sd}/even/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), self.settings_dir + '/' + self.subdir + '/even', self.out_dir + '/' + self.subdir + '/even', self.data_dir + '/' + str(self.run))
+		# 	self.sub_pro_e = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/even/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir + '/even', '-o', self.out_dir + '/' + self.subdir + '/even', '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, stdout=open('/dev/null', 'w'), close_fds=True)
+		# if self.do_odd:
+		# 	while self.sub_pro_o.poll() is None:
+		# 		time.sleep(2)
+		# 	if self.sub_pro_o.poll() == 0:
+		# 		print 'Run odd finished'
+		# 	else:
+		# 		print 'Run odd could have failed. Obtained return code:', self.sub_pro_o.poll()
+		# 	CloseSubprocess(self.sub_pro_o, True, False)
+		# if self.do_even:
+		# 	while self.sub_pro_e.poll() is None:
+		# 		time.sleep(2)
+		# 	if self.sub_pro_e.poll() == 0:
+		# 		print 'Run even finished'
+		# 	else:
+		# 		print 'Run even could have failed. Obtained return code:', self.sub_pro_e.poll()
+		# 	CloseSubprocess(self.sub_pro_e, True, False)
 
 	def Print_subprocess_command(self, runlist, setting, outdir, inputdir):
 		print 'Executing:\n{p}/diamondAnalysis -r {r} -s {s} -o {o} -i {i}\n'.format(p=self.StripTelescopeAnalysis_path, r=runlist, s=setting, o=outdir, i=inputdir)
@@ -559,18 +562,22 @@ class RD42Analysis:
 
 def main():
 	parser = OptionParser()
+	parser.add_option('-w', '--workingdir', dest='workingdir', type='string', help='Working directory')
 	parser.add_option('-s', '--settings', dest='settings_f', type='string', help='Settings file containing the information on the run and the analysis to do (e.g. settings.ini)')
 	parser.add_option('--first', dest='first', default=False, action='store_true', help='enables first analysis wich has everything un-masked')
 	parser.add_option('--normal', dest='normal', default=False, action='store_true', help='enables normal analysis')
 	parser.add_option('--singlechannel', dest='singlech', default=False, action='store_true', help='enables single channel study. Requires a preexiting first analysis')
+	parser.add_option('-q', '--quiet', dest='quiet', default=False, action='store_true', help='enables quiet mode: no verbose')
 
 	(options, args) = parser.parse_args()
+	working_dir = str(options.workingdir)
 	settings_f = str(options.settings_f)
 	first_ana = bool(options.first)
 	normal_ana = bool(options.normal)
 	single_ch = bool(options.singlech)
+	verb = not bool(options.quiet)
 
-	rd42 = RD42Analysis()
+	rd42 = RD42AnalysisBatch(working_dir=working_dir, verb=verb)
 	rd42.ReadInputFile(settings_f)
 	if first_ana:
 		rd42.subdir = 'no_mask'
