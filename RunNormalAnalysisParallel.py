@@ -15,7 +15,6 @@ class RunNormalAnalysisParallel:
 		self.job_chunks = []
 		self.analysis_processes = {}
 		self.workind_dir = os.getcwd()
-		# ipdb.set_trace()
 		if not os.path.isfile(self.runlist):
 			print 'File', self.runlist, 'does not exist. Exiting'
 			exit(os.EX_CONFIG)
@@ -29,6 +28,7 @@ class RunNormalAnalysisParallel:
 			self.settings_list = [line.split('\n')[0] for line in lines if os.path.isfile(line.split('\n')[0])]
 			self.num_runs = len(self.settings_list)
 			self.job_chunks = [self.settings_list[i:i + self.num_cores] for i in xrange(0, self.num_runs, self.num_cores)]
+			print 'Jobs are grouped as following:', self.job_chunks
 
 	def RunParallelAnalysis(self):
 		with open(os.devnull, 'w') as FNULL:
@@ -37,9 +37,9 @@ class RunNormalAnalysisParallel:
 				for it, run in enumerate(jobs):
 					if it == len(jobs) - 1:
 						print 'Showing output for run', run
-						self.analysis_processes.append(subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-s', os.path.abspath(run), '--normal'], bufsize=-1, stdin=subp.PIPE, close_fds=True))
+						self.analysis_processes.append(subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(run), '--normal'], bufsize=-1, stdin=subp.PIPE, close_fds=True))
 					else:
-						self.analysis_processes.append(subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-s', os.path.abspath(run), '--normal', '-q'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True))
+						self.analysis_processes.append(subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(run), '--normal', '-q'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True))
 				for job_i in xrange(len(self.analysis_processes)):
 					while self.analysis_processes[job_i].poll() is None:
 						time.sleep(2)
@@ -80,7 +80,6 @@ class RunNormalAnalysisParallel:
 		p = None
 
 def main():
-	ipdb.set_trace()
 	parser = OptionParser()
 	parser.add_option('-r', '--runlist', dest='runlist', type='string', help='File containing a list of the RunSettings for each run')
 	parser.add_option('-n', '--numcores', dest='numcores', type='int', default=2, help='number of runs to execute in parallel')
@@ -91,5 +90,6 @@ def main():
 
 	pp = RunNormalAnalysisParallel(runlist=runlist, num_cores=num)
 
-if __name__ == 'main':
+
+if __name__ == '__main__':
 	main()
