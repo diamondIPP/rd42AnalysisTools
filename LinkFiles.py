@@ -12,7 +12,7 @@ link_list = {'raw': ['rawData.{r}.root'], 'pedestal': ['pedestalData.{r}.root', 
 copy_list = {'cluster': ['crossTalkCorrectionFactors.{r}.txt']}
 
 class LinkFiles:
-	def __init__(self, source_subdir='', dest_subdir='', run=0, upto='raw', force=False):
+	def __init__(self, source_subdir='', dest_subdir='', run=0, upto='alignment', force=False):
 		print 'Linking files for run:', run, 'upto', upto
 		self.run = run
 		self.upto = upto
@@ -73,7 +73,7 @@ class LinkFiles:
 		if not self.bar:
 			self.bar.finish()
 
-		print 'Finished linking files :)'
+		print 'Finished linking files upto', self.upto, 'for run', self.run, ':)'
 		exit(os.EX_OK)
 
 	def CreateProgressBar(self, maxVal=1):
@@ -93,7 +93,7 @@ if __name__ == '__main__':
 	parser.add_option('-r', '--run', dest='run', default=22022, type='int', help='Run to be analysed (e.g. 22022)')
 	parser.add_option('-s', '--sourcesubdir', dest='sdir', default='.', type='string', help='Source subdir containing the run folder')
 	parser.add_option('-d', '--destsubdir', dest='ddir', default='.', type='string', help='Destination subdir where the run folder will have links')
-	parser.add_option('-u', '--upto', dest='upto', default='raw', type='string', help='The input can be "raw", "pedestal", "cluster", "selection", "alignment", "transparent". Example: If "cluster" is entered, then it will only link "raw", "pedestal" and "cluster"')
+	parser.add_option('-u', '--upto', dest='upto', default='alignment', type='string', help='The input can be "raw", "pedestal", "cluster", "selection", "alignment", "transparent". Example: If "cluster" is entered, then it will only link "raw", "pedestal" and "cluster"')
 
 	(options, args) = parser.parse_args()
 	run = int(options.run)

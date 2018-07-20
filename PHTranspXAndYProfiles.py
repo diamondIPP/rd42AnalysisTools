@@ -58,6 +58,9 @@ class PHTranspXAndYProfiles:
 		self.blac1[var].cd()
 		self.blahp[var].Draw()
 
+	def Get2DPHMap(self):
+
+
 if __name__ == '__main__':
 	parser = OptionParser()
 	parser.add_option('-r', '--run', dest='run', default=22022, type='int', help='Run to be analysed (e.g. 22022)')

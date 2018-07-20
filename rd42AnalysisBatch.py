@@ -270,7 +270,7 @@ class RD42AnalysisBatch:
 			else:
 				self.sub_pro = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir, '-o', self.out_dir + '/' + self.subdir, '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, close_fds=True)
 			while self.sub_pro.poll() is None:
-				time.sleep(2)
+				time.sleep(3)
 			if self.sub_pro.poll() == 0:
 				print 'Run', self.run, 'finished successfully'
 			else:

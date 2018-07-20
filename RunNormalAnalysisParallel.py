@@ -15,6 +15,8 @@ class RunNormalAnalysisParallel:
 		self.job_chunks = []
 		self.analysis_processes = {}
 		self.workind_dir = os.getcwd()
+		self.queue = {}
+		self.queue_running = {}
 		if not os.path.isfile(self.runlist):
 			print 'File', self.runlist, 'does not exist. Exiting'
 			exit(os.EX_CONFIG)
@@ -42,11 +44,41 @@ class RunNormalAnalysisParallel:
 						self.analysis_processes.append(subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(run), '--normal', '-q'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True))
 				for job_i in xrange(len(self.analysis_processes)):
 					while self.analysis_processes[job_i].poll() is None:
-						time.sleep(2)
+						time.sleep(5)
 					self.CloseSubprocess(self.analysis_processes[job_i], stdin=True, stdout=False)
 				print 'Done with', jobs
 
+	def RunParallelAnalysis2(self):
+		self.queue = {i: None for i in xrange(self.num_cores)}
+		self.queue_running = {i: False for i in xrange(self.num_cores)}
+		with open(os.devnull, 'w') as FNULL:
+			do_add_queue = True
+			for jobi in self.settings_list:
+				if do_add_queue:
+					pos_q, nfree = self.GetAvailablePos()
+					if nfree > 0:
+						if nfree == 1:
+							print 'Showing output for run', jobi
+							self.queue[pos_q] = subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal'], bufsize=-1, stdin=subp.PIPE, close_fds=True)
+							do_add_queue = False
+						else:
+							self.queue[pos_q] = subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True)
+						self.queue_running[pos_q] = True
+					else:
+						do_add_queue = False
+				# if not do_add_queue:
+				# 	if np.all
 
+
+	def GetAvailablePos(self):
+		pos = -1
+		num_free = 0
+		for p, elem in self.queue.iteritems():
+			if not elem:
+				if pos == -1:
+					pos = p
+				num_free += 1
+		return pos, num_free
 
 	def CloseSubprocess(self, p, stdin=False, stdout=False):
 		pid = p.pid
