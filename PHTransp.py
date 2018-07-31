@@ -31,7 +31,7 @@ ch_axis = {'min': -0.5, 'max': diaChs - 0.5, 'bins': diaChs}
 ro.gStyle.SetPalette(55)
 ro.gStyle.SetNumberContours(999)
 
-class PHTranspXAndYProfiles:
+class PHTransp:
 	def __init__(self, run=22011, dir=''):
 		self.dir = dir
 		self.run = run
@@ -59,6 +59,7 @@ class PHTranspXAndYProfiles:
 		self.blahp[var].Draw()
 
 	def Get2DPHMap(self):
+		pass
 
 
 if __name__ == '__main__':
@@ -74,6 +75,6 @@ if __name__ == '__main__':
 	# low = int(options.low)
 	# high = int(options.high)
 
-	bla = PHTranspXAndYProfiles(run, dir)
+	bla = PHTransp(run, dir)
 	bla.GetXTransparentProfiles()
 	bla.GetYTransparentProfiles()
