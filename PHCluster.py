@@ -32,7 +32,7 @@ ch_axis = {'min': -0.5, 'max': diaChs - 0.5, 'bins': diaChs}
 ro.gStyle.SetPalette(55)
 ro.gStyle.SetNumberContours(999)
 
-class PHCluster:
+class PHTransparent:
 	def __init__(self, run=22011, dir=''):
 		self.dir = dir
 		self.run = run
@@ -48,7 +48,7 @@ class PHCluster:
 			ExitMessage('The path {d}/{r}/selectionAnalysis/root does not exist. Exiting'.format(d=self.dir, r=self.run))
 		os.chdir('{d}/{r}/selectionAnalysis/root'.format(d=self.dir, r=self.run))
 
-	def ExtractHistoAndPlot(self, nameFile, nameDic, canvas_prefix='cRoot_', histoname='', option='colz'):
+	def ExtractHistoAndPlot(self, nameFile, nameDic, canvas_name='', histoname='', option='colz'):
 		areaFiles = glob.glob(nameFile)
 		self.blaf[nameDic] = {}
 		self.blac[nameDic] = {}
@@ -63,6 +63,13 @@ class PHCluster:
 			self.blac1[nameDic][areai].cd()
 			self.blah[nameDic][areai].Draw(option)
 
+	def GetNoiseDistributions(self):
+		fileStem = 'cNonHitPulseHeightDitribution_*OutOf10*'
+		clusterFiles = glob.glob(fileStem)
+		canvasNames = [cfile.split('.{r}'.format(r=self.run))[0] for cfile in clusterFiles]
+		self.blaf['noise']
+
+
 	def GetHighestChannelVsChargeSize1and2(self):
 		self.ExtractHistoAndPlot('hChargeOfCluster_ClusterSize_1_2_2D_area*', 'chVs1and2', 'cRoot_')
 
@@ -75,6 +82,9 @@ class PHCluster:
 
 	def GetMeanPhHisto(self):
 		self.ExtractHistoAndPlot('hMeanChargeFiducialCut*', 'phFidCut')
+
+	def GetClusterSizes(self):
+		self.ExtractHistoAndPlot('hClusterSizeVsChannelPos_Area*', 'chVsClustSize')
 
 	def GetPhAllSizes(self):
 		self.ExtractHistoAndPlot('cPulseHeightDiamondAll*', 'phAllSizes', '', 'hPulseHeightDiamondAll')
@@ -95,11 +105,14 @@ if __name__ == '__main__':
 	# low = int(options.low)
 	# high = int(options.high)
 
-	bla = PHCluster(run, dir)
+	bla = PHTransparent(run, dir)
+
+	bla.GetNoiseDistributions()
 	bla.GetHighestChannelVsChargeSize1and2()
 	bla.GetFidHitVsCharge()
 	bla.GetEntriesMeanPhHisto()
 	bla.GetMeanPhHisto()
+	bla.GetClusterSizes()
 	bla.GetPhAllSizes()
 	bla.GetPhSize1and2()
 

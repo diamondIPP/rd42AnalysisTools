@@ -2,8 +2,9 @@
 # from ROOT import TFile, TH2F, TH3F, TH1F, TCanvas, TCutG, kRed, gStyle, TBrowser, Long, TF1
 from optparse import OptionParser
 # from numpy import array, floor, average, std
-import numpy as np
+import glob
 import ROOT as ro
+import numpy as np
 import ipdb  # set_trace, launch_ipdb_on_exception
 import progressbar
 from copy import deepcopy
@@ -40,26 +41,46 @@ class PHTransp:
 		self.blah = {}
 		self.blahp = {}
 		self.blac1 = {}
+		self.workingDir = os.getcwd()
+		ro.gStyle.SetPalette(55)
+		ro.gStyle.SetNumberContours(999)
+		if not os.path.isdir('{d}/{r}/transparentAnalysis/root'.format(d=self.dir, r=self.run)):
+			ExitMessage('The path {d}/{r}/transparentAnalysis/root does not exist. Exiting'.format(d=self.dir, r=self.run))
+		os.chdir('{d}/{r}/transparentAnalysis/root'.format(d=self.dir, r=self.run))
 
-	def GetXTransparentProfiles(self):
-		self.GetTransparentProfiles('X')
+	def ExtractHistoAndPlot(self, nameFile, nameDic, canvas_prefix='cRoot_', histoname='', option='colz'):
+		areaFiles = glob.glob(nameFile)
+		self.blaf[nameDic] = {}
+		self.blac[nameDic] = {}
+		self.blah[nameDic] = {}
+		self.blac1[nameDic] = {}
+		for areai, areaFile in enumerate(areaFiles):
+			histoname = areaFile.split('.{r}'.format(r=self.run))[0] if histoname == '' else histoname
+			self.blaf[nameDic][areai] = ro.TFile(areaFile)
+			self.blac[nameDic][areai] = self.blaf[nameDic][areai].Get(canvas_prefix + areaFile.split('.{r}'.format(r=self.run))[0])
+			self.blah[nameDic][areai] = self.blac[nameDic][areai].GetPrimitive(histoname)
+			self.blac1[nameDic][areai] = ro.TCanvas(nameDic + '_area_' + str(areai), nameDic + '_area_' + str(areai), 1)
+			self.blac1[nameDic][areai].cd()
+			self.blah[nameDic][areai].Draw(option)
 
-	def GetYTransparentProfiles(self):
-		self.GetTransparentProfiles('Y')
+	def GetHighestChannelVsChargeSize1and2(self):
+		clusterFiles = glob.glob('cNonHitPulseHeightDitribution_*OutOf10*')
+		canvasNames = [clustf.split('.{r}'.format(r=self.run))[0] for clustf in clusterFiles]
+		histoNames = [{'noCMC': 'h' + caNa[1:].replace('_',''), 'CMC': 'h' + caNa[1:].replace('_','').replace('tion','tionCMC')} for caNa in canvasNames]
+		self.blaf['noise'] = {}
+		self.blac['noise'] = {}
+		self.blah['noise'] = {}
+		self.blac1['noise'] = {}
+		for i, filei in enumerate(clusterFiles):
+			self.blaf['noise'][i] = ro.TFile(filei)
+			self.blac['noise'][i] = self.blaf['noise'][i].Get(canvasNames[i])
+			self.blah['noise'][i] = {}
+			self.blac1['noise'][i] = {}
+			for keyi, histoi in histoNames[i].iteritems():
+				self.blah['noise'][i][keyi] = self.blac['noise'][i].GetPrimitive(histoi)
+				self.blac1['noise'][i][keyi] = ro.TCanvas('noise_' + str(i) + '_' + keyi, 'noise_' + str(i) + '_' + keyi, 1)
+				self.blah['noise'][i][keyi].Draw()
 
-	def GetTransparentProfiles(self, var='X'):
-		#ipdb.set_trace()
-		self.blaf[var] = ro.TFile('{d}/{r}/transparentAnalysis/root/hLandau2HighestPredHit{v}_2outOf10.{r}.root'.format(d=self.dir, v=var, r=self.run))
-		self.blac[var] = self.blaf[var].Get('cRoot_hLandau2HighestPredHit{v}_2outOf10'.format(v=var))
-		self.blah[var] = self.blac[var].GetPrimitive('hLandau2HighestPredHit{v}_2outOf10'.format(v=var))
-		self.blahp[var] = self.blah[var].ProfileY('PH2outOf10_{v}_mean'.format(v=var))
-		self.blahp[var].SetTitle('PH2outOf10_{r}_{v}_mean'.format(r=self.run, v=var))
-		self.blac1[var] = ro.TCanvas('blac1{v}'.format(v=var), 'blac1{v}'.format(v=var), 1)
-		self.blac1[var].cd()
-		self.blahp[var].Draw()
-
-	def Get2DPHMap(self):
-		pass
 
 
 if __name__ == '__main__':
@@ -76,5 +97,5 @@ if __name__ == '__main__':
 	# high = int(options.high)
 
 	bla = PHTransp(run, dir)
-	bla.GetXTransparentProfiles()
-	bla.GetYTransparentProfiles()
+	bla.GetHighestChannelVsChargeSize1and2()
+
