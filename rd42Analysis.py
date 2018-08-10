@@ -37,7 +37,7 @@ class RD42Analysis:
 		self.dia_input = 0
 		self.dia_saturation = 4095
 		self.max_transparent_cluster_size = 10
-		self.num_highest_transparent_cluster = 2
+		self.num_highest_transparent_cluster = 5
 		self.data_dir = ''
 		self.out_dir = ''
 		self.settings_dir = ''
