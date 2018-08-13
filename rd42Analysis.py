@@ -383,7 +383,7 @@ class RD42Analysis:
 				self.First_Analysis()
 			elif self.Get_num_events(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'rawTree') > self.num_events:
 				print 'Need to recreate the rawTree'
-				self.ExtractFromOriginalRawTree('no_mask')
+				self.ExtractFromOriginalRawTree(self.subdir)
 		elif os.path.isfile(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)):
 			if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree') > self.num_events:
 				print 'Extracting', self.num_events, 'events from no_mask run'
@@ -494,14 +494,18 @@ class RD42Analysis:
 				leng = tempt.Draw('>>evlist', 'abs(2*EventNumber-{eva}-2*{evi}+1)<=({eva}-1)'.format(evi=self.first_event, eva=self.num_events))
 			evlist = ro.gDirectory.Get('evlist')
 			tempt.SetEventList(evlist)
-			tempnf = ro.TFile(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'RECREATE')
+			tempnf = ro.TFile(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData2.{r}.root'.format(r=self.run), 'RECREATE')
 			tempnt = tempt.CopyTree('')
+			tempnt.SetName('rawTree')
 			tempnt.Write()
 			tempnf.Close()
 			tempf.Close()
+			if os.path.islink(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run)):
+				os.unlink(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run))
+			shutil.move(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData2.{r}.root'.format(r=self.run), self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run))
 			print 'Done'
 		else:
-			ExitMessage('Cannot extract from ' + originalsubdir + ' as it does not exist. Runn first the analysis with sub directory: ' + originalsubdir)
+			ExitMessage('Cannot extract from ' + originalsubdir + ' as it does not exist. Run first the analysis with sub directory: ' + originalsubdir)
 
 	def GetIndividualChannelHitmap(self):
 		print 'Starting channel occupancy plots...'
@@ -528,8 +532,7 @@ class RD42Analysis:
 					stdout=open('/dev/null', 'w'), stderr=subp.STDOUT, close_fds=True))
 			for proc in xrange(channel_runs.shape[1]):
 				while procx[proc].poll() is None:
-					# procx[proc].stdout.
-					continue
+					time.sleep(2)
 				CloseSubprocess(procx[proc], stdin=True, stdout=False)
 				print 'Done with channel:', channel_runs[bat, proc], ':)'
 			# for proc in xrange(channel_runs.shape[1]):
