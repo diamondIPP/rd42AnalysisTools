@@ -42,7 +42,7 @@ def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0, dia
 		f.write('D2X_channel_screen_channels = {0,255}\n')
 		f.write('D2Y_channel_screen_channels = {0,127,255}\n')
 		f.write('D3X_channel_screen_channels = {0,1,2,3,127,255}\n')
-		f.wrtie('D3Y_channel_screen_channels = {0,1,2,3,246,247,253,254,255}\n\n')
+		f.write('D3Y_channel_screen_channels = {0,1,2,3,246,247,253,254,255}\n\n')
 		f.write('Si_Pedestal_Hit_Factor = 5\n')
 		f.write('Di_Pedestal_Hit_Factor = 3\n\n')
 		f.write('DO_CMC = 1\n\n')
