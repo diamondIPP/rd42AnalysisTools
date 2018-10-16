@@ -35,6 +35,8 @@ class RD42Analysis:
 		self.run = 0
 		self.total_events = 0
 		self.dia_input = 0
+		self.dut_name = 'default'
+		self.dut_volt = 0
 		self.dia_saturation = 4095
 		self.max_transparent_cluster_size = 10
 		self.num_highest_transparent_cluster = 5
@@ -90,6 +92,10 @@ class RD42Analysis:
 						self.total_events = pars.getint('RUN', 'events')
 					else:
 						ExitMessage('Must specify events under [RUN]. Exiting...')
+					if pars.has_option('RUN', 'dut_name'):
+						self.dut_name = pars.get('RUN', 'dut_name')
+					if pars.has_option('RUN', 'dut_volt'):
+						self.dut_volt = pars.get('RUN', 'dut_volt')
 					if pars.has_option('RUN', 'dia_input'):
 						self.dia_input = pars.getint('RUN', 'dia_input')
 					if pars.has_option('RUN', 'dia_saturation'):
@@ -179,7 +185,7 @@ class RD42Analysis:
 		if not os.path.isdir(self.settings_dir + '/' + self.subdir):
 			os.makedirs(self.settings_dir + '/' + self.subdir)
 		if not os.path.isfile(self.settings_dir + '/' + self.subdir + '/settings.{r}.ini'.format(r=self.run)):
-			CreateDefaultSettingsFile(self.settings_dir + '/' + self.subdir, self.run, self.total_events, ev_ini=self.first_event, num_evs_ana=self.num_events, dia_input=self.dia_input, dia_sat=self.dia_saturation, max_trans_clust=self.max_transparent_cluster_size, num_highest_trans=self.num_highest_transparent_cluster)
+			CreateDefaultSettingsFile(self.settings_dir + '/' + self.subdir, self.run, self.total_events, dut_name=self.dut_name, dut_volt=self.dut_volt, ev_ini=self.first_event, num_evs_ana=self.num_events, dia_input=self.dia_input, dia_sat=self.dia_saturation, max_trans_clust=self.max_transparent_cluster_size, num_highest_trans=self.num_highest_transparent_cluster)
 		else:
 			with open(self.settings_dir + '/' + self.subdir + '/settings.{r}.ini'.format(r=self.run), 'r') as f0:
 				with open(self.settings_dir + '/' + self.subdir + '/settings.{r}.ini.temp'.format(r=self.run), 'w') as ftemp:
@@ -191,6 +197,10 @@ class RD42Analysis:
 						ftemp.write('dia_saturation = {d}\n'.format(d=self.dia_saturation))
 					if 'dia_input' not in lines_params:
 						ftemp.write('dia_input = {d}\n'.format(d=self.dia_input))
+					if 'diamondName' not in lines_params:
+						ftemp.write('diamondName = {dn}\n'.format(dn=self.dut_name))
+					if 'voltage' not in lines_params:
+						ftemp.write('voltage = {v}\n'.format(v=self.dut_volt))
 					if 'num_highest_transparent_cluster' not in lines_params:
 						ftemp.write('num_highest_transparent_cluster = {d}\n'.format(d=self.num_highest_transparent_cluster))
 					if 'alignment_training_track_number' not in lines_params:
@@ -198,6 +208,10 @@ class RD42Analysis:
 					for line in lines:
 						if line.startswith('runNo'):
 							ftemp.write('runNo = {r}\n'.format(r=self.run))
+						elif line.startswith('diamondName'):
+							ftemp.write('diamondName = {dn}\n'.format(dn=self.dut_name))
+						elif line.startswith('voltage'):
+							ftemp.write('voltage = {v}\n'.format(v=self.dut_volt))
 						elif line.startswith('Event'):
 							ftemp.write('Events = {e}\n'.format(e=self.total_events))
 						elif line.startswith('Ev_i'):

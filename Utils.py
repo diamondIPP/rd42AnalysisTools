@@ -15,7 +15,7 @@ def IsFloat(f):
 	except ValueError:
 		return False
 
-def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0, dia_input=0, dia_sat=4095, max_trans_clust=10, num_highest_trans=5):
+def CreateDefaultSettingsFile(diri, run_no, events, dut_name='default', dut_volt=0, ev_ini=0, num_evs_ana=0, dia_input=0, dia_sat=4095, max_trans_clust=10, num_highest_trans=5):
 	if not os.path.isdir(diri):
 		os.makedirs(diri)
 	with open(diri + '/settings.{r}.ini'.format(r=run_no), 'w') as f:
@@ -24,8 +24,8 @@ def CreateDefaultSettingsFile(diri, run_no, events, ev_ini=0, num_evs_ana=0, dia
 		f.write('Ev_ini = {ei}\n'.format(ei=ev_ini))
 		f.write('Events_ana = {ea}\n'.format(ea=events-ev_ini if num_evs_ana == 0 else num_evs_ana))
 		f.write('repeaterCardNo = 2\n')
-		f.write('voltage = 0\n')
-		f.write('diamondName = default\n')
+		f.write('voltage = {v}\n'.format(v=dut_volt))
+		f.write('diamondName = {dn}\n'.format(dn=dut_name))
 		f.write('currentBegin = 0\n')
 		f.write('currentEnd = 0\n\n')
 		f.write('diamondPattern = {0,50,0,127}\n\n')
