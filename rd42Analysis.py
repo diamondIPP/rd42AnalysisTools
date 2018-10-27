@@ -34,6 +34,7 @@ class RD42Analysis:
 		print 'Creating RD42Analysis'
 		self.run = 0
 		self.total_events = 0
+		self.run1, self.run2, self.total_events1, self.total_events2, self.merged_run_number, self.num_events_merged, self.do_merged = 0, 0, 0, 0, 0, 0, False
 		self.dia_input = 0
 		self.dut_name = 'default'
 		self.dut_volt = 0
@@ -67,7 +68,7 @@ class RD42Analysis:
 		self.current_dir = os.getcwd()
 		self.working_dir = os.getcwd()
 
-		self.sub_pro, self.sub_pro_e, self.sub_pro_o = None, None, None
+		self.sub_pro, self.sub_pro_e, self.sub_pro_o, self.sub_pro1, self.sub_pro2 = None, None, None, None, None
 		self.process_f = None
 		self.process_e = None
 		self.process_o = None
@@ -88,6 +89,16 @@ class RD42Analysis:
 						self.run = pars.getint('RUN', 'run')
 					else:
 						ExitMessage('Must specify run under [RUN]. Exiting...')
+					if pars.has_option('RUN', 'run2') and pars.has_option('RUN', 'events2') and pars.has_option('RUN', 'merged_run_number'):
+						self.run1 = pars.getint('RUN', 'run')
+						self.run2 = pars.getint('RUN', 'run2')
+						self.total_events1 = pars.getint('RUN', 'events')
+						self.total_events2 = pars.getint('RUN', 'events2')
+						self.merged_run_number = pars.getint('RUN', 'merged_run_number')
+						self.do_merged = True
+						if pars.has_section('ANALYSIS'):
+							if pars.has_option('ANALYSIS', 'num_events'):
+								self.num_events_merged = pars.getint('ANALYSIS', 'num_events')
 					if pars.has_option('RUN', 'events'):
 						self.total_events = pars.getint('RUN', 'events')
 					else:
@@ -158,6 +169,96 @@ class RD42Analysis:
 				self.num_events = self.total_events if self.num_events == 0 else self.num_events
 				return
 		ExitMessage('Input file "{i}" does not exist. Must input a valid file. Exiting'.format(i=in_file))
+
+	def Convert_Files(self):
+		CreateDirectoryIfNecessary(self.run_lists_dir)
+		ped1 = clu1 = sele1 = alig1 = tran1 = ped2 = clu2 = sele2 = alig2 = tran2 = 0
+		CreateDirectoryIfNecessary(self.run_lists_dir+'/{f}'.format(f=self.subdir))
+		with open(self.run_lists_dir + '/{f}/RunList_'.format(f=self.subdir)+str(self.run1)+'.ini', 'w') as rlf:
+			rlf.write('{r}\t0\t0\t{n}\t0\t{p}\t{c}\t{s}\t{al}\t0\t{t}\n#\n'.format(r=self.run1, n=self.total_events1, p=ped1, c=clu1, s=sele1, al=alig1, t=tran1))
+		with open(self.run_lists_dir + '/{f}/RunList_'.format(f=self.subdir)+str(self.run2)+'.ini', 'w') as rlf:
+			rlf.write('{r}\t0\t0\t{n}\t0\t{p}\t{c}\t{s}\t{al}\t0\t{t}\n#\n'.format(r=self.run2, n=self.total_events2, p=ped2, c=clu2, s=sele2, al=alig2, t=tran2))
+		CreateDirectoryIfNecessary(self.settings_dir + '/' + self.subdir)
+		CreateDefaultSettingsFile(self.settings_dir + '/' + self.subdir, self.run1, self.total_events1, dut_name=self.dut_name, dut_volt=self.dut_volt, ev_ini=0, num_evs_ana=self.total_events1, dia_input=self.dia_input, dia_sat=self.dia_saturation, max_trans_clust=self.max_transparent_cluster_size, num_highest_trans=self.num_highest_transparent_cluster)
+		CreateDefaultSettingsFile(self.settings_dir + '/' + self.subdir, self.run2, self.total_events2, dut_name=self.dut_name, dut_volt=self.dut_volt, ev_ini=0, num_evs_ana=self.total_events2, dia_input=self.dia_input, dia_sat=self.dia_saturation, max_trans_clust=self.max_transparent_cluster_size, num_highest_trans=self.num_highest_transparent_cluster)
+
+		CreateDirectoryIfNecessary(self.out_dir + '/' + self.subdir + '/' + str(self.run1))
+		CreateDirectoryIfNecessary(self.out_dir + '/' + self.subdir + '/' + str(self.run2))
+		RecreateSoftLink(self.out_dir + '/' + self.subdir + '/' + str(self.run1), self.scratch_path, str(self.run1) + '_' + self.subdir, 'dir', False)
+		RecreateSoftLink(self.out_dir + '/' + self.subdir + '/' + str(self.run2), self.scratch_path, str(self.run2) + '_' + self.subdir, 'dir', False)
+		self.Print_subprocess_command('{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run1), self.settings_dir + '/' + self.subdir, self.out_dir + '/' + self.subdir, self.data_dir + '/' + str(self.run1))
+		self.Print_subprocess_command('{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run2), self.settings_dir + '/' + self.subdir, self.out_dir + '/' + self.subdir, self.data_dir + '/' + str(self.run2))
+		with open(os.devnull, 'w') as FNULL:
+			self.sub_pro1 = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run1), '-s', self.settings_dir + '/' + self.subdir, '-o', self.out_dir + '/' + self.subdir, '-i',
+		                                self.data_dir + '/' + str(self.run1)], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True)
+			if self.batch:
+				self.sub_pro2 = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run2), '-s', self.settings_dir + '/' + self.subdir, '-o', self.out_dir + '/' + self.subdir, '-i',
+			                                self.data_dir + '/' + str(self.run2)], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True)
+			else:
+				self.sub_pro2 = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run2), '-s', self.settings_dir + '/' + self.subdir, '-o', self.out_dir + '/' + self.subdir, '-i',
+		                                    self.data_dir + '/' + str(self.run2)], bufsize=-1, stdin=subp.PIPE, close_fds=True)
+		while (self.sub_pro1.poll() is None) or (self.sub_pro2.poll() is None):
+			time.sleep(5)
+		if self.sub_pro1.poll() == 0 and self.sub_pro2.poll() == 0:
+			print 'Run finished successfully'
+		else:
+			print 'Run could have failed. Obtained return code:', self.sub_pro1.poll(), 'and', self.sub_pro2.poll()
+		CloseSubprocess(self.sub_pro1, True, False)
+		CloseSubprocess(self.sub_pro2, True, False)
+
+	def Merge_Files(self):
+		CreateDirectoryIfNecessary(self.out_dir + '/' + self.subdir + '/' + str(self.merged_run_number))
+		CreateDirectoryIfNecessary(self.data_dir + '/' + str(self.merged_run_number))
+		if os.path.isfile('{d}/{s}/{r}/rawData.{r}.root'.format(d=self.out_dir, s=self.subdir, r=self.merged_run_number)):
+			tempf = ro.TFile('{d}/{s}/{r}/rawData.{r}.root'.format(d=self.out_dir, s=self.subdir, r=self.merged_run_number))
+			tempt = tempf.Get('rawTree')
+			if tempt.GetEntries() >= self.total_events1 + self.total_events2:
+				print 'File already merged :), continueing with the analysis :D...'
+				self.run = self.merged_run_number
+				self.total_events = self.total_events1 + self.total_events2
+				self.num_events = self.num_events_merged
+				self.num_events = self.total_events if self.num_events == 0 else self.num_events
+				return
+			else:
+				tempf.Close()
+		command = ['hadd', '{d}/{s}/{r}/rawData.{r}.root'.format(d=self.out_dir, s=self.subdir, r=self.merged_run_number)]
+		if os.path.isfile('{d}/{s}/{r}/rawData.{r}.root'.format(d=self.out_dir, s=self.subdir, r=self.run1)) and os.path.isfile('{d}/{s}/{r}/rawData.{r}.root'.format(d=self.out_dir, s=self.subdir, r=self.run2)):
+			command.append('{d}/{s}/{r}/rawData.{r}.root'.format(d=self.out_dir, s=self.subdir, r=self.run1))
+			command.append('{d}/{s}/{r}/rawData.{r}.root'.format(d=self.out_dir, s=self.subdir, r=self.run2))
+		else:
+			print 'At least one of the files corresponding for runs {r1} and {r2} does not exist! Exiting...'.format(d=self.out_dir, r1=self.run1, r2=self.run2)
+			sys.exit(os.EX_SOFTWARE)
+		print 'Merging files with the following command:', command, '...', ; sys.stdout.flush()
+		self.sub_pro = subp.Popen(command, bufsize=-1, stdin=subp.PIPE, stdout=subp.PIPE, close_fds=True)
+		while self.sub_pro.poll() is None:
+			time.sleep(5)
+		print 'Done'
+		CloseSubprocess(self.sub_pro, True, True)
+		print 'Correcting event numbers...'
+		tempf = ro.TFile('{d}/{s}/{r}/rawData.{r}.root'.format(d=self.out_dir, s=self.subdir, r=self.merged_run_number), 'READ')
+		tempt = tempf.Get('rawTree')
+		event_new = np.zeros(1, 'I')
+		tempt.SetBranchAddress('EventNumber', event_new)
+		tempf_n = ro.TFile('{d}/{s}/{r}/rawData_n.{r}.root'.format(d=self.out_dir, s=self.subdir, r=self.merged_run_number), 'RECREATE')
+		tempt_n = tempt.CloneTree(0)
+		self.total_events = self.total_events1 + self.total_events2
+		temp_bar = CreateProgressBarUtils(self.total_events)
+		temp_bar.start()
+		for ev in range(self.total_events):
+			tempt.GetEntry(ev)
+			event_new.fill(ev)
+			tempt_n.Fill()
+			event_new.fill(0)
+			temp_bar.update(ev + 1)
+
+		tempt_n.AutoSave()
+		del tempf, tempf_n
+		print 'blaaa'
+		ipdb.set_trace()
+		shutil.move('{d}/{s}/{r}/rawData_n.{r}.root'.format(d=self.out_dir, s=self.subdir, r=self.merged_run_number), '{d}/{s}/{r}/rawData.{r}.root'.format(d=self.out_dir, s=self.subdir, r=self.merged_run_number))
+		self.run = self.merged_run_number
+		self.num_events = self.num_events_merged
+		self.num_events = self.total_events if self.num_events == 0 else self.num_events
 
 	def Create_Run_List(self, do_single_ch=False):
 		CreateDirectoryIfNecessary(self.run_lists_dir)
@@ -589,6 +690,9 @@ def main():
 
 	rd42 = RD42Analysis()
 	rd42.ReadInputFile(settings_f)
+	if rd42.do_merged:
+		rd42.Convert_Files()
+		rd42.Merge_Files()
 	if first_ana:
 		rd42.subdir = 'no_mask'
 	rd42.Create_Run_List(do_single_ch=single_ch)

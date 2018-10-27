@@ -1,4 +1,4 @@
-import os, shutil, sys
+import os, shutil, sys, progressbar
 # import ipdb
 
 def IsInt(i):
@@ -382,6 +382,19 @@ def DeleteDirectoryContents(dir):
 			except Exception as e:
 				print(e)
 		print 'Done'
+
+def CreateProgressBarUtils(maxVal=1):
+	widgets = [
+		'Processed: ', progressbar.Counter(),
+		' out of {mv} '.format(mv=maxVal), progressbar.Percentage(),
+		' ', progressbar.Bar(marker='>'),
+		' ', progressbar.Timer(),
+		' ', progressbar.ETA()
+		# ' ', progressbar.AdaptativeETA(),
+		#  ' ', progressbar.AdaptativeTransferSpeed()
+	]
+	bar = progressbar.ProgressBar(widgets=widgets, maxval=maxVal)
+	return bar
 
 def ExitMessage(txt):
 	print txt
