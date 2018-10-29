@@ -7,9 +7,9 @@ import ipdb
 from optparse import OptionParser
 
 class RunNormalAnalysisParallel:
-	def __init__(self, runlist, num_cores=2):
+	def __init__(self, runlist, num_cores=2, force=False):
 		self.runlist = runlist
-		self.num_cores = num_cores if num_cores <= int(mp.cpu_count()/2.0) else int(mp.cpu_count()/2.0)
+		self.num_cores = num_cores if num_cores <= int(mp.cpu_count()/2.0) or force else int(mp.cpu_count()/2.0)
 		self.num_runs = 0
 		self.settings_list = []
 		self.job_chunks = []
@@ -115,12 +115,14 @@ def main():
 	parser = OptionParser()
 	parser.add_option('-r', '--runlist', dest='runlist', type='string', help='File containing a list of the RunSettings for each run')
 	parser.add_option('-n', '--numcores', dest='numcores', type='int', default=2, help='number of runs to execute in parallel')
+	parser.add_option('-f', '--force', dest='force', default=False, action='store_true', help='force to use the specified number of cores')
 
 	(options, args) = parser.parse_args()
 	runlist = options.runlist
 	num = options.numcores
+	force = options.force
 
-	pp = RunNormalAnalysisParallel(runlist=runlist, num_cores=num)
+	pp = RunNormalAnalysisParallel(runlist=runlist, num_cores=num, force=force)
 
 
 if __name__ == '__main__':
