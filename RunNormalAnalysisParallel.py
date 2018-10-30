@@ -5,6 +5,8 @@ import multiprocessing as mp
 import os, shutil
 import ipdb
 from optparse import OptionParser
+from copy import deepcopy
+import numpy as np
 
 class RunNormalAnalysisParallel:
 	def __init__(self, runlist, num_cores=2, force=False):
@@ -17,12 +19,17 @@ class RunNormalAnalysisParallel:
 		self.workind_dir = os.getcwd()
 		self.queue = {}
 		self.queue_running = {}
+		self.queue_showing = {}
+		self.queue_runs = {}
+		self.runs_dic_completed = {}
+		self.runs_dic_running = {}
+		self.all_completed = False
 		if not os.path.isfile(self.runlist):
 			print 'File', self.runlist, 'does not exist. Exiting'
 			exit(os.EX_CONFIG)
 		print 'Starting parallel analysis using runlist', self.runlist, 'and using', self.num_cores, 'cores simultaneously'
 		self.ReadRunList()
-		self.RunParallelAnalysis()
+		self.RunParallelAnalysis2()
 
 	def ReadRunList(self):
 		with open(self.runlist, 'r') as rl:
@@ -30,6 +37,7 @@ class RunNormalAnalysisParallel:
 			self.settings_list = [line.split('\n')[0] for line in lines if os.path.isfile(line.split('\n')[0])]
 			self.num_runs = len(self.settings_list)
 			self.job_chunks = [self.settings_list[i:i + self.num_cores] for i in xrange(0, self.num_runs, self.num_cores)]
+			self.num_cores = min(self.num_cores, self.num_runs)
 			print 'Jobs are grouped as following:', self.job_chunks
 
 	def RunParallelAnalysis(self):
@@ -49,26 +57,47 @@ class RunNormalAnalysisParallel:
 				print 'Done with', jobs
 
 	def RunParallelAnalysis2(self):
-		self.queue = {i: None for i in xrange(self.num_cores)}
-		self.queue_running = {i: False for i in xrange(self.num_cores)}
+		self.runs_dic_completed = {run: False for run in self.settings_list}
+		self.runs_dic_running = {run: False for run in self.settings_list}
+		self.queue = {c: None for c in xrange(self.num_cores)}
+		self.queue_running = {c: False for c in xrange(self.num_cores)}
+		self.queue_showing = {c: False for c in xrange(self.num_cores)}
+		self.queue_runs = {c: None for c in xrange(self.num_cores)}
+		first_time = True
 		with open(os.devnull, 'w') as FNULL:
-			do_add_queue = True
-			for jobi in self.settings_list:
-				if do_add_queue:
-					pos_q, nfree = self.GetAvailablePos()
-					if nfree > 0:
-						if nfree == 1:
+			while not np.array(self.runs_dic_completed.values(), '?').all():
+				pos_run = np.bitwise_xor(self.runs_dic_completed.values(), self.runs_dic_running.values()).argmin()
+				with self.settings_list[pos_run] as jobi:
+					do_add_queue = not np.array(self.queue_running.values(), '?').all()
+					if do_add_queue:
+						pos_q, nfree = np.array(self.queue_running.values(), '?').argmin(), np.bitwise_not(self.queue_running.values()).sum()
+						if nfree == 1 and not np.array(self.queue_showing.values(), '?').any():
 							print 'Showing output for run', jobi
 							self.queue[pos_q] = subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal'], bufsize=-1, stdin=subp.PIPE, close_fds=True)
-							do_add_queue = False
+							self.queue_showing[pos_q] = True
 						else:
 							self.queue[pos_q] = subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True)
 						self.queue_running[pos_q] = True
+						self.runs_dic_running[jobi] = True
+						self.queue_runs[pos_q] = jobi
+					if not first_time:
+						temp = deepcopy(self.queue_running)
+						for p, queue_p in temp.itervalues():
+							if queue_p:
+								if self.queue[p]:
+									temp2 = self.queue[p]
+									if temp2.poll():
+										self.CloseSubprocess(self.queue[p], stdin=True, stdout=False)
+										self.queue[p] = None
+										self.queue_running[p] = False
+										if self.queue_showing[p]:
+											self.queue_showing[p] = False
+										with self.queue_runs[p] as jobj:
+											self.runs_dic_running[jobj] = False
+											self.runs_dic_completed[jobj] = True
+						time.sleep(3)
 					else:
-						do_add_queue = False
-				# if not do_add_queue:
-				# 	if np.all
-
+						first_time = not np.array(self.queue_running.values(), '?').all()
 
 	def GetAvailablePos(self):
 		pos = -1
