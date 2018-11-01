@@ -7,6 +7,7 @@ import ipdb
 from optparse import OptionParser
 from copy import deepcopy
 import numpy as np
+from collections import OrderedDict
 
 class RunNormalAnalysisParallel:
 	def __init__(self, runlist, num_cores=2, force=False):
@@ -23,7 +24,6 @@ class RunNormalAnalysisParallel:
 		self.queue_runs = {}
 		self.runs_dic_completed = {}
 		self.runs_dic_running = {}
-		self.all_completed = False
 		if not os.path.isfile(self.runlist):
 			print 'File', self.runlist, 'does not exist. Exiting'
 			exit(os.EX_CONFIG)
@@ -57,8 +57,8 @@ class RunNormalAnalysisParallel:
 				print 'Done with', jobs
 
 	def RunParallelAnalysis2(self):
-		self.runs_dic_completed = {run: False for run in self.settings_list}
-		self.runs_dic_running = {run: False for run in self.settings_list}
+		self.runs_dic_completed = OrderedDict(zip(self.settings_list, [False for r in self.settings_list]))
+		self.runs_dic_running = OrderedDict(zip(self.settings_list, [False for r in self.settings_list]))
 		self.queue = {c: None for c in xrange(self.num_cores)}
 		self.queue_running = {c: False for c in xrange(self.num_cores)}
 		self.queue_showing = {c: False for c in xrange(self.num_cores)}
@@ -67,37 +67,39 @@ class RunNormalAnalysisParallel:
 		with open(os.devnull, 'w') as FNULL:
 			while not np.array(self.runs_dic_completed.values(), '?').all():
 				pos_run = np.bitwise_xor(self.runs_dic_completed.values(), self.runs_dic_running.values()).argmin()
-				with self.settings_list[pos_run] as jobi:
-					do_add_queue = not np.array(self.queue_running.values(), '?').all()
-					if do_add_queue:
-						pos_q, nfree = np.array(self.queue_running.values(), '?').argmin(), np.bitwise_not(self.queue_running.values()).sum()
-						if nfree == 1 and not np.array(self.queue_showing.values(), '?').any():
-							print 'Showing output for run', jobi
-							self.queue[pos_q] = subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal'], bufsize=-1, stdin=subp.PIPE, close_fds=True)
-							self.queue_showing[pos_q] = True
-						else:
-							self.queue[pos_q] = subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True)
-						self.queue_running[pos_q] = True
-						self.runs_dic_running[jobi] = True
-						self.queue_runs[pos_q] = jobi
-					if not first_time:
-						temp = deepcopy(self.queue_running)
-						for p, queue_p in temp.itervalues():
-							if queue_p:
-								if self.queue[p]:
-									temp2 = self.queue[p]
-									if temp2.poll():
-										self.CloseSubprocess(self.queue[p], stdin=True, stdout=False)
-										self.queue[p] = None
-										self.queue_running[p] = False
-										if self.queue_showing[p]:
-											self.queue_showing[p] = False
-										with self.queue_runs[p] as jobj:
-											self.runs_dic_running[jobj] = False
-											self.runs_dic_completed[jobj] = True
-						time.sleep(3)
+				jobi = self.settings_list[pos_run]
+				do_add_queue = not np.array(self.queue_running.values(), '?').all()
+				if do_add_queue:
+					pos_q, nfree = np.array(self.queue_running.values(), '?').argmin(), np.bitwise_not(self.queue_running.values()).sum()
+					if nfree == 1 and not np.array(self.queue_showing.values(), '?').any():
+						print 'Showing output for run', jobi
+						self.queue[pos_q] = subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal'], bufsize=-1, stdin=subp.PIPE, close_fds=True)
+						# self.queue[pos_q] = 'blaa'
+						self.queue_showing[pos_q] = True
 					else:
-						first_time = not np.array(self.queue_running.values(), '?').all()
+						self.queue[pos_q] = subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True)
+						# self.queue[pos_q] = 'baaf'
+					self.queue_running[pos_q] = True
+					self.runs_dic_running[jobi] = True
+					self.queue_runs[pos_q] = jobi
+				if not first_time:
+					temp = deepcopy(self.queue_running)
+					for p, queue_p in temp.itervalues():
+						if queue_p:
+							if self.queue[p]:
+								temp2 = self.queue[p]
+								if temp2.poll():
+									self.CloseSubprocess(self.queue[p], stdin=True, stdout=False)
+									self.queue[p] = None
+									self.queue_running[p] = False
+									if self.queue_showing[p]:
+										self.queue_showing[p] = False
+									jobj = self.queue_runs[p]
+									self.runs_dic_running[jobj] = False
+									self.runs_dic_completed[jobj] = True
+					time.sleep(3)
+				else:
+					first_time = not np.array(self.queue_running.values(), '?').all()
 
 	def GetAvailablePos(self):
 		pos = -1
