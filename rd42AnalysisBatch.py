@@ -277,32 +277,6 @@ class RD42AnalysisBatch:
 				print 'Run', self.run, 'could have failed. Obtained return code:', self.sub_pro.poll()
 			CloseSubprocess(self.sub_pro, True, False)
 
-		# if self.do_odd:
-		# 	CreateDirectoryIfNecessary(self.out_dir + '/' + self.subdir + '/odd/' + str(self.run))
-		# 	self.LinkRootFiles(self.out_dir + '/' + self.subdir + '/' + str(self.run), self.out_dir + '/' + self.subdir + '/odd/' + str(self.run), upto='cluster', doCopy=True)
-		# 	self.Print_subprocess_command('{d}/{sd}/odd/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), self.settings_dir + '/' + self.subdir + '/odd', self.out_dir + '/' + self.subdir + '/odd', self.data_dir + '/' + str(self.run))
-		# 	self.sub_pro_o = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/odd/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir + '/odd', '-o', self.out_dir + '/' + self.subdir + '/odd', '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, stdout=open('/dev/null', 'w'), close_fds=True)
-		# if self.do_even:
-		# 	CreateDirectoryIfNecessary(self.out_dir + '/' + self.subdir + '/even/' + str(self.run))
-		# 	self.Print_subprocess_command('{d}/{sd}/even/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), self.settings_dir + '/' + self.subdir + '/even', self.out_dir + '/' + self.subdir + '/even', self.data_dir + '/' + str(self.run))
-		# 	self.sub_pro_e = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/even/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir + '/even', '-o', self.out_dir + '/' + self.subdir + '/even', '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, stdout=open('/dev/null', 'w'), close_fds=True)
-		# if self.do_odd:
-		# 	while self.sub_pro_o.poll() is None:
-		# 		time.sleep(2)
-		# 	if self.sub_pro_o.poll() == 0:
-		# 		print 'Run odd finished'
-		# 	else:
-		# 		print 'Run odd could have failed. Obtained return code:', self.sub_pro_o.poll()
-		# 	CloseSubprocess(self.sub_pro_o, True, False)
-		# if self.do_even:
-		# 	while self.sub_pro_e.poll() is None:
-		# 		time.sleep(2)
-		# 	if self.sub_pro_e.poll() == 0:
-		# 		print 'Run even finished'
-		# 	else:
-		# 		print 'Run even could have failed. Obtained return code:', self.sub_pro_e.poll()
-		# 	CloseSubprocess(self.sub_pro_e, True, False)
-
 	def Print_subprocess_command(self, runlist, setting, outdir, inputdir):
 		print 'Executing:\n{p}/diamondAnalysis -r {r} -s {s} -o {o} -i {i}\n'.format(p=self.StripTelescopeAnalysis_path, r=runlist, s=setting, o=outdir, i=inputdir)
 

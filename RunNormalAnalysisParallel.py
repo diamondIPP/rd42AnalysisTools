@@ -10,7 +10,8 @@ import numpy as np
 from collections import OrderedDict
 
 class RunNormalAnalysisParallel:
-	def __init__(self, runlist, num_cores=2, force=False):
+	def __init__(self, runlist, num_cores=2, force=False, verb=True):
+		self.verb = verb
 		self.runlist = runlist
 		self.num_cores = num_cores if num_cores <= int(mp.cpu_count()/2.0) or force else int(mp.cpu_count()/2.0)
 		self.num_runs = 0
@@ -48,9 +49,9 @@ class RunNormalAnalysisParallel:
 				for it, run in enumerate(jobs):
 					if it == len(jobs) - 1:
 						print 'Showing output for run', run
-						self.analysis_processes.append(subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(run), '--normal'], bufsize=-1, stdin=subp.PIPE, close_fds=True))
+						self.analysis_processes.append(subp.Popen(['{wd}/rd42Analysis.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(run), '--normal'], bufsize=-1, stdin=subp.PIPE, close_fds=True))
 					else:
-						self.analysis_processes.append(subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(run), '--normal', '-q'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True))
+						self.analysis_processes.append(subp.Popen(['{wd}/rd42Analysis.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(run), '--normal', '-q'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True))
 				for job_i in xrange(len(self.analysis_processes)):
 					while self.analysis_processes[job_i].poll() is None:
 						time.sleep(5)
@@ -72,13 +73,13 @@ class RunNormalAnalysisParallel:
 				do_add_queue = not np.array(self.queue_running.values(), '?').all()
 				if do_add_queue:
 					pos_q, nfree = np.array(self.queue_running.values(), '?').argmin(), np.bitwise_not(self.queue_running.values()).sum()
-					if nfree == 1 and not np.array(self.queue_showing.values(), '?').any():
+					if nfree == 1 and not np.array(self.queue_showing.values(), '?').any() and self.verb:
 						print 'Showing output for run', jobi
-						self.queue[pos_q] = subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal'], bufsize=-1, stdin=subp.PIPE, close_fds=True)
+						self.queue[pos_q] = subp.Popen(['{wd}/rd42Analysis.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal', '-q'], bufsize=-1, stdin=subp.PIPE, close_fds=True)
 						# self.queue[pos_q] = 'blaa'
 						self.queue_showing[pos_q] = True
 					else:
-						self.queue[pos_q] = subp.Popen(['{wd}/rd42AnalysisBatch.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True)
+						self.queue[pos_q] = subp.Popen(['{wd}/rd42Analysis.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True)
 						# self.queue[pos_q] = 'baaf'
 					self.queue_running[pos_q] = True
 					self.runs_dic_running[jobi] = True
@@ -98,6 +99,7 @@ class RunNormalAnalysisParallel:
 									jobj = self.queue_runs[p]
 									self.runs_dic_running[jobj] = False
 									self.runs_dic_completed[jobj] = True
+									print 'Closed job for run', jobj, ':)'
 					time.sleep(3)
 				else:
 					first_time = not np.array(self.queue_running.values(), '?').all()
@@ -148,13 +150,15 @@ def main():
 	parser.add_option('-r', '--runlist', dest='runlist', type='string', help='File containing a list of the RunSettings for each run')
 	parser.add_option('-n', '--numcores', dest='numcores', type='int', default=2, help='number of runs to execute in parallel')
 	parser.add_option('-f', '--force', dest='force', default=False, action='store_true', help='force to use the specified number of cores')
+	parser.add_option('-q', '--quiet', dest='quiet', default=False, action='store_true', help='enables quiet mode: no verbose')
 
 	(options, args) = parser.parse_args()
 	runlist = options.runlist
 	num = options.numcores
 	force = options.force
+	verb = not bool(options.quiet)
 
-	pp = RunNormalAnalysisParallel(runlist=runlist, num_cores=num, force=force)
+	pp = RunNormalAnalysisParallel(runlist=runlist, num_cores=num, force=force, verb=verb)
 
 
 if __name__ == '__main__':
