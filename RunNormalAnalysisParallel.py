@@ -30,6 +30,7 @@ class RunNormalAnalysisParallel:
 		print 'Starting parallel analysis using runlist', self.runlist, 'and using', self.num_cores, 'cores simultaneously'
 		self.ReadRunList()
 		self.RunParallelAnalysis2()
+		print 'Runs completed. Exiting'
 
 	def ReadRunList(self):
 		with open(self.runlist, 'r') as rl:
@@ -84,11 +85,11 @@ class RunNormalAnalysisParallel:
 					self.queue_runs[pos_q] = jobi
 				if not first_time:
 					temp = deepcopy(self.queue_running)
-					for p, queue_p in temp.itervalues():
+					for p, queue_p in temp.iteritems():
 						if queue_p:
 							if self.queue[p]:
 								temp2 = self.queue[p]
-								if temp2.poll():
+								if temp2.poll() is not None:
 									self.CloseSubprocess(self.queue[p], stdin=True, stdout=False)
 									self.queue[p] = None
 									self.queue_running[p] = False
