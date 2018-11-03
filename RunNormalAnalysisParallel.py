@@ -8,11 +8,14 @@ from optparse import OptionParser
 from copy import deepcopy
 import numpy as np
 from collections import OrderedDict
+from ParallelManager import ParallelManager
+
 
 class RunNormalAnalysisParallel:
 	def __init__(self, runlist, num_cores=2, force=False, verb=True):
 		self.verb = verb
 		self.runlist = runlist
+		self.force = force
 		self.num_cores = num_cores if num_cores <= int(mp.cpu_count()/2.0) or force else int(mp.cpu_count()/2.0)
 		self.num_runs = 0
 		self.settings_list = []
@@ -30,120 +33,27 @@ class RunNormalAnalysisParallel:
 			exit(os.EX_CONFIG)
 		print 'Starting parallel analysis using runlist', self.runlist, 'and using', self.num_cores, 'cores simultaneously'
 		self.ReadRunList()
-		self.RunParallelAnalysis2()
+		self.parallelManager = ParallelManager()
+		self.RunParallelAnalysis()
 		print 'Runs completed. Exiting'
 
 	def ReadRunList(self):
 		with open(self.runlist, 'r') as rl:
 			lines = rl.readlines()
-			self.settings_list = [line.split('\n')[0] for line in lines if os.path.isfile(line.split('\n')[0])]
+			self.settings_list = [line.replace('\n', '') for line in lines if os.path.isfile(line.replace('\n', ''))]
 			self.num_runs = len(self.settings_list)
 			self.job_chunks = [self.settings_list[i:i + self.num_cores] for i in xrange(0, self.num_runs, self.num_cores)]
 			self.num_cores = min(self.num_cores, self.num_runs)
-			print 'Jobs are grouped as following:', self.job_chunks
+			# print 'Jobs are grouped as following:', self.job_chunks
 
 	def RunParallelAnalysis(self):
-		with open(os.devnull, 'w') as FNULL:
-			for jobs in self.job_chunks:
-				self.analysis_processes = []
-				for it, run in enumerate(jobs):
-					if it == len(jobs) - 1:
-						print 'Showing output for run', run
-						self.analysis_processes.append(subp.Popen(['{wd}/rd42Analysis.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(run), '--normal'], bufsize=-1, stdin=subp.PIPE, close_fds=True))
-					else:
-						self.analysis_processes.append(subp.Popen(['{wd}/rd42Analysis.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(run), '--normal', '-q'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True))
-				for job_i in xrange(len(self.analysis_processes)):
-					while self.analysis_processes[job_i].poll() is None:
-						time.sleep(5)
-					self.CloseSubprocess(self.analysis_processes[job_i], stdin=True, stdout=False)
-				print 'Done with', jobs
+		working_dir = os.getcwd()
+		options = [['-w', working_dir, '-s', os.path.abspath(jobi), '--normal'] for jobi in self.settings_list]
+		if not self.verb:
+			options = [option + ['-q'] for option in options]
 
-	def RunParallelAnalysis2(self):
-		self.runs_dic_completed = OrderedDict(zip(self.settings_list, [False for r in self.settings_list]))
-		self.runs_dic_running = OrderedDict(zip(self.settings_list, [False for r in self.settings_list]))
-		self.queue = {c: None for c in xrange(self.num_cores)}
-		self.queue_running = {c: False for c in xrange(self.num_cores)}
-		self.queue_showing = {c: False for c in xrange(self.num_cores)}
-		self.queue_runs = {c: None for c in xrange(self.num_cores)}
-		first_time = True
-		with open(os.devnull, 'w') as FNULL:
-			while not np.array(self.runs_dic_completed.values(), '?').all():
-				pos_run = np.bitwise_xor(self.runs_dic_completed.values(), self.runs_dic_running.values()).argmin()
-				jobi = self.settings_list[pos_run]
-				do_add_queue = not np.array(self.queue_running.values(), '?').all()
-				if do_add_queue:
-					pos_q, nfree = np.array(self.queue_running.values(), '?').argmin(), np.bitwise_not(self.queue_running.values()).sum()
-					if nfree == 1 and not np.array(self.queue_showing.values(), '?').any() and self.verb:
-						print 'Showing output for run', jobi
-						self.queue[pos_q] = subp.Popen(['{wd}/rd42Analysis.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal', '-q'], bufsize=-1, stdin=subp.PIPE, close_fds=True)
-						# self.queue[pos_q] = 'blaa'
-						self.queue_showing[pos_q] = True
-					else:
-						self.queue[pos_q] = subp.Popen(['{wd}/rd42Analysis.py'.format(wd=self.workind_dir), '-w', os.getcwd(), '-s', os.path.abspath(jobi), '--normal'], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, close_fds=True)
-						# self.queue[pos_q] = 'baaf'
-					self.queue_running[pos_q] = True
-					self.runs_dic_running[jobi] = True
-					self.queue_runs[pos_q] = jobi
-				if not first_time:
-					temp = deepcopy(self.queue_running)
-					for p, queue_p in temp.iteritems():
-						if queue_p:
-							if self.queue[p]:
-								temp2 = self.queue[p]
-								if temp2.poll() is not None:
-									self.CloseSubprocess(self.queue[p], stdin=True, stdout=False)
-									self.queue[p] = None
-									self.queue_running[p] = False
-									if self.queue_showing[p]:
-										self.queue_showing[p] = False
-									jobj = self.queue_runs[p]
-									self.runs_dic_running[jobj] = False
-									self.runs_dic_completed[jobj] = True
-									print 'Closed job for run', jobj, ':)'
-					time.sleep(3)
-				else:
-					first_time = not np.array(self.queue_running.values(), '?').all()
-
-	def GetAvailablePos(self):
-		pos = -1
-		num_free = 0
-		for p, elem in self.queue.iteritems():
-			if not elem:
-				if pos == -1:
-					pos = p
-				num_free += 1
-		return pos, num_free
-
-	def CloseSubprocess(self, p, stdin=False, stdout=False):
-		pid = p.pid
-		if stdin:
-			p.stdin.close()
-		if stdout:
-			p.stdout.close()
-		time.sleep(1)
-		if p.wait() is None:
-			print 'Could not terminate subprocess... forcing termination'
-			p.kill()
-			time.sleep(1)
-			if p.wait() is None:
-				print 'Could not kill subprocess... quitting'
-				exit(os.EX_SOFTWARE)
-		try:
-			os.kill(pid, 0)
-		except OSError:
-			pass
-		else:
-			print 'The subprocess is still running. Killing it with os.kill'
-			os.kill(pid, 15)
-			try:
-				os.kill(pid, 0)
-			except OSError:
-				pass
-			else:
-				print 'The process does not die... quitting'
-				exit(os.EX_SOFTWARE)
-		del pid
-		p = None
+		self.parallelManager.SetVariables(working_dir=working_dir, runlist=self.settings_list, exec_command='rd42Analysis.py', options=options, num_cores=self.num_cores, force=self.force, verb=self.verb)
+		self.parallelManager.RunParallelAnalysis()
 
 def main():
 	parser = OptionParser()
