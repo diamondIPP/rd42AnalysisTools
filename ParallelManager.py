@@ -55,7 +55,7 @@ class ParallelManager:
 
 	def RunParallelAnalysis(self):
 		os.chdir(self.workind_dir)
-		print 'Running', len(self.runlist), 'jobs in parallel for', self.num_cores, 'cores'
+		print '\nRunning', len(self.runlist), 'jobs in parallel for', self.num_cores, 'cores\n'
 		self.runs_dic_completed = OrderedDict(zip(self.runlist, [False for r in self.runlist]))
 		self.runs_dic_running = OrderedDict(zip(self.runlist, [False for r in self.runlist]))
 		self.queue = {c: None for c in xrange(self.num_cores)}
@@ -69,13 +69,13 @@ class ParallelManager:
 				pos_run = np.bitwise_xor(self.runs_dic_completed.values(), self.runs_dic_running.values()).argmin()
 				jobi = self.runlist[pos_run]
 				option = self.options[pos_run]
-				do_add_queue = not np.array(self.queue_running.values(), '?').all()
+				do_add_queue = not np.array(self.queue_running.values(), '?').all() and not self.runs_dic_completed[jobi]
 				if do_add_queue:
 					pos_q, nfree = np.array(self.queue_running.values(), '?').argmin(), np.bitwise_not(self.queue_running.values()).sum()
-					print 'Running job', jobi, '...'
+					print '\nRunning job', jobi, '...'
 					command = [self.workind_dir + '/' + self.exec_command] + option
 					if nfree == 1 and not np.array(self.queue_showing.values(), '?').any() and self.verb:
-						print 'Showing output for job', jobi
+						print '\nShowing output for job', jobi
 						self.queue[pos_q] = subp.Popen(command, bufsize=-1, stdin=subp.PIPE, close_fds=True)
 						# self.queue[pos_q] = 'blaa'
 						self.queue_showing[pos_q] = True
@@ -93,7 +93,7 @@ class ParallelManager:
 								temp2 = self.queue[p]
 								if temp2.poll() is not None:
 									jobj = self.queue_runs[p]
-									print 'Job', jobj, 'completed :). Closing ...', ; sys.stdout.flush()
+									print '\nJob', jobj, 'completed :). Closing ...\r',
 									self.CloseSubprocess(self.queue[p], stdin=True, stdout=False)
 									self.queue[p] = None
 									self.queue_running[p] = False
@@ -101,7 +101,7 @@ class ParallelManager:
 										self.queue_showing[p] = False
 									self.runs_dic_running[jobj] = False
 									self.runs_dic_completed[jobj] = True
-									print 'Done :D'
+									print 'Job', jobj, 'completed :). Closing ... Done\n'
 					time.sleep(3)
 				else:
 					first_time = not np.array(self.queue_running.values(), '?').all()
