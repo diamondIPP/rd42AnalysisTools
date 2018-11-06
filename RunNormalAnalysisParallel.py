@@ -13,6 +13,7 @@ from ParallelManager import ParallelManager
 
 class RunNormalAnalysisParallel:
 	def __init__(self, runlist, num_cores=2, force=False, verb=True):
+		self.time0 = time.time()
 		self.verb = verb
 		self.runlist = runlist
 		self.force = force
@@ -35,7 +36,8 @@ class RunNormalAnalysisParallel:
 		self.ReadRunList()
 		self.parallelManager = ParallelManager()
 		self.RunParallelAnalysis()
-		print 'Runs completed. Exiting'
+		self.time0 = time.time() - self.time0
+		print 'Runs completed in', self.time0, 'seconds;', self.time0/float(self.num_runs+0.000001), 'seconds per run. Exiting :D'
 
 	def ReadRunList(self):
 		with open(self.runlist, 'r') as rl:

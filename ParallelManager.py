@@ -66,10 +66,11 @@ class ParallelManager:
 		# ipdb.set_trace()
 		with open(os.devnull, 'w') as FNULL:
 			while not np.array(self.runs_dic_completed.values(), '?').all():
-				pos_run = np.bitwise_xor(self.runs_dic_completed.values(), self.runs_dic_running.values()).argmin()
+				pending = np.bitwise_not(np.bitwise_or(self.runs_dic_running.values(), self.runs_dic_completed.values()))
+				pos_run, num_runs_left = pending.argmax(), pending.sum()
 				jobi = self.runlist[pos_run]
 				option = self.options[pos_run]
-				do_add_queue = not np.array(self.queue_running.values(), '?').all() and not self.runs_dic_completed[jobi]
+				do_add_queue = not np.array(self.queue_running.values(), '?').all() and num_runs_left > 0
 				if do_add_queue:
 					pos_q, nfree = np.array(self.queue_running.values(), '?').argmin(), np.bitwise_not(self.queue_running.values()).sum()
 					print '\nRunning job', jobi, '...'
