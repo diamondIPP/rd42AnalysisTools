@@ -15,7 +15,7 @@ def IsFloat(f):
 	except ValueError:
 		return False
 
-def CreateDefaultSettingsFile(diri, run_no, events, dut_name='default', dut_volt=0, ev_ini=0, num_evs_ana=0, dia_input=0, dia_sat=4095, max_trans_clust=10, num_highest_trans=5):
+def CreateDefaultSettingsFile(diri, run_no, events, dut_name='default', dut_volt=0, ev_ini=0, num_evs_ana=0, dia_input=0, dia_sat=4095, max_trans_clust=10, num_highest_trans=5, chi2=5):
 	if not os.path.isdir(diri):
 		os.makedirs(diri)
 	with open(diri + '/settings.{r}.ini'.format(r=run_no), 'w') as f:
@@ -61,7 +61,7 @@ def CreateDefaultSettingsFile(diri, run_no, events, dut_name='default', dut_volt
 		f.write('alignment_training_track_number = {e}\n'.format(e=int(round(num_evs_ana)/10.0)))
 		f.write('alignment_training_method = 1\n')
 		f.write('AlignmentIgnoreChannelDia = {0,127}\n')
-		f.write('alignment_chi2 = 4\n\n')
+		f.write('alignment_chi2 = {ch}\n\n'.format(ch=chi2))
 		f.write('Double_t detectorD0Z = 0.725\n')
 		f.write('Double_t detectorD1Z = 1.625\n')
 		f.write('Double_t detectorD2Z = 18.725\n')
