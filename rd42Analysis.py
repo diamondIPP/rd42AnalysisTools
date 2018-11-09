@@ -42,6 +42,7 @@ class RD42Analysis:
 		self.max_transparent_cluster_size = 10
 		self.num_highest_transparent_cluster = 5
 		self.chi2 = 5
+		self.trans_chi2 = None
 		self.data_dir = ''
 		self.out_dir = ''
 		self.settings_dir = ''
@@ -54,6 +55,8 @@ class RD42Analysis:
 		self.StripTelescopeAnalysis_path = '/afs/cern.ch/user/d/dsanzbec/StripTelescopeAnalysis'
 		self.scratch_path = '/eos/user/d/dsanzbec/scratch/output'  # at lxplus
 		self.symlinks = True
+		self.ph_dia_max = 4096
+		self.ph_dia_bins = 512
 		# self.scratch_path = '/scratch/strip_telescope_tests/runDiego/output'  # at snickers
 
 		self.delete_old = False
@@ -118,6 +121,12 @@ class RD42Analysis:
 						self.num_highest_transparent_cluster = pars.getint('RUN', 'num_highest_transparent_cluster')
 					if pars.has_option('RUN', 'chi2'):
 						self.chi2 = pars.getfloat('RUN', 'chi2')
+					if pars.has_option('RUN', 'transparentChi2'):
+						self.trans_chi2 = pars.getfloat('RUN', 'transparentChi2')
+					if pars.has_option('RUN', 'ph_dia_max'):
+						self.ph_dia_max = pars.getint('RUN', 'ph_dia_max')
+					if pars.has_option('RUN', 'ph_num_bins'):
+						self.ph_dia_bins = pars.getint('RUN', 'ph_num_bins')
 					if pars.has_option('RUN', 'datadir'):
 						self.data_dir = pars.get('RUN', 'datadir')
 					else:
@@ -311,6 +320,18 @@ class RD42Analysis:
 						ftemp.write('alignment_chi2 = {ch}\n'.format(ch=self.chi2))
 					if 'alignment_training_track_number' not in lines_params:
 						ftemp.write('alignment_training_track_number = {e}\n'.format(e=int(round(self.num_events) / 10.0)))
+					if '3dShortAnalysis' not in lines_params:
+						ftemp.write('3dShortAnalysis = {v};\n'.format(v=int(self.do_3d)))
+					if '3dLongAnalysis' not in lines_params:
+						ftemp.write('3dLongAnalysis = {v};\n'.format(v=int(self.do_3d)))
+					if '3dTransparentAnalysis' not in lines_params:
+						ftemp.write('3dTransparentAnalysis = {v};\n'.format(v=int(self.do_3d)))
+					if 'transparentChi2' not in lines_params and self.trans_chi2:
+						ftemp.write('transparentChi2 = {tc};\n'.format(tc=self.trans_chi2))
+					if 'pulse_height_di_max' not in lines_params:
+						ftemp.write('pulse_height_di_max = {ph};\n'.format(ph=self.ph_dia_max))
+					if 'pulse_height_num_bins' not in lines_params:
+						ftemp.write('pulse_height_num_bins = {n}\n'.format(n=self.ph_dia_bins))
 					for line in lines:
 						if line.startswith('runNo'):
 							ftemp.write('runNo = {r}\n'.format(r=self.run))
@@ -336,6 +357,21 @@ class RD42Analysis:
 							ftemp.write('alignment_chi2 = {ch}\n'.format(ch=self.chi2))
 						elif line.startswith('alignment_training_track_numb'):
 							ftemp.write('alignment_training_track_number = {e}\n'.format(e=int(round(self.num_events)/10.0)))
+						elif line.startswith('3dShortAna'):
+							ftemp.write('3dShortAnalysis = {v};\n'.format(v=int(self.do_3d)))
+						elif line.startswith('3dLongAna'):
+							ftemp.write('3dLongAnalysis = {v};\n'.format(v=int(self.do_3d)))
+						elif line.startswith('3dTransparentAna'):
+							ftemp.write('3dTransparentAnalysis = {v};\n'.format(v=int(self.do_3d)))
+						elif line.startswith('transparentChi2'):
+							if self.trans_chi2:
+								ftemp.write('transparentChi2 = {tc}\n'.format(tc=self.trans_chi2))
+							else:
+								ftemp.write(line)
+						elif line.startswith('pulse_height_di_'):
+							ftemp.write('pulse_height_di_max = {ph}\n'.format(ph=self.ph_dia_max))
+						elif line.startswith('pulse_height_num_b'):
+							ftemp.write('pulse_height_num_bins = {nb}\n'.format(nb=self.ph_dia_bins))
 						else:
 							ftemp.write(line)
 			shutil.move(self.settings_dir + '/' + self.subdir + '/settings.{r}.ini.temp'.format(r=self.run), self.settings_dir + '/' + self.subdir + '/settings.{r}.ini'.format(r=self.run))
