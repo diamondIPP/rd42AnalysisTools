@@ -42,7 +42,7 @@ class RunNormalAnalysisParallel:
 	def ReadRunList(self):
 		with open(self.runlist, 'r') as rl:
 			lines = rl.readlines()
-			self.settings_list = [line.replace('\n', '') for line in lines if os.path.isfile(line.replace('\n', '')) and ('#' not in line) and (len(line) > 2)]
+			self.settings_list = [line.replace('\n', '') for line in lines if os.path.isfile(line.replace('\n', '')) and ('#' not in line) and (';' not in line) and (len(line) > 2)]
 			self.num_runs = len(self.settings_list)
 			self.job_chunks = [self.settings_list[i:i + self.num_cores] for i in xrange(0, self.num_runs, self.num_cores)]
 			self.num_cores = min(self.num_cores, self.num_runs)

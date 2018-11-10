@@ -43,6 +43,7 @@ class RD42Analysis:
 		self.num_highest_transparent_cluster = 5
 		self.chi2 = 5
 		self.trans_chi2 = None
+		self.trans_align = False
 		self.data_dir = ''
 		self.out_dir = ''
 		self.settings_dir = ''
@@ -123,6 +124,8 @@ class RD42Analysis:
 						self.chi2 = pars.getfloat('RUN', 'chi2')
 					if pars.has_option('RUN', 'transparentChi2'):
 						self.trans_chi2 = pars.getfloat('RUN', 'transparentChi2')
+					if pars.has_option('RUN', 'transparentAlignment'):
+						self.trans_align = pars.getboolean('RUN', 'transparentAlignment')
 					if pars.has_option('RUN', 'ph_dia_max'):
 						self.ph_dia_max = pars.getint('RUN', 'ph_dia_max')
 					if pars.has_option('RUN', 'ph_num_bins'):
@@ -332,6 +335,8 @@ class RD42Analysis:
 						ftemp.write('pulse_height_di_max = {ph};\n'.format(ph=self.ph_dia_max))
 					if 'pulse_height_num_bins' not in lines_params:
 						ftemp.write('pulse_height_num_bins = {n}\n'.format(n=self.ph_dia_bins))
+					if 'TransparentAlignment' not in lines_params:
+						ftemp.write('TransparentAlignment = {v}\n'.format(v=int(self.trans_align)))
 					for line in lines:
 						if line.startswith('runNo'):
 							ftemp.write('runNo = {r}\n'.format(r=self.run))
@@ -363,6 +368,8 @@ class RD42Analysis:
 							ftemp.write('3dLongAnalysis = {v};\n'.format(v=int(self.do_3d)))
 						elif line.startswith('3dTransparentAna'):
 							ftemp.write('3dTransparentAnalysis = {v};\n'.format(v=int(self.do_3d)))
+						elif line.startswith('TransparentAlignm'):
+							ftemp.write('TransparentAlignment = {v}\n'.format(v=int(self.trans_align)))
 						elif line.startswith('transparentChi2'):
 							if self.trans_chi2:
 								ftemp.write('transparentChi2 = {tc}\n'.format(tc=self.trans_chi2))

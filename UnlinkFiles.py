@@ -8,10 +8,10 @@ __author__ = 'DA'
 
 option_list = ['raw', 'pedestal', 'cluster', 'selection', 'alignment', 'transparent']
 
-link_list = {'raw': ['rawData.{r}.root'], 'pedestal': ['pedestalData.{r}.root', 'pedestalAnalysis'], 'cluster': ['clusterData.{r}.root', 'clustering', 'etaCorrection.{r}.root'], 'selection': ['selectionData.{r}.root', 'selections', 'selectionAnalysis'], 'alignment': ['alignment.{r}.root', 'alignment'], 'transparent': ['transparentAnalysis']}
-copy_list = {'cluster': ['crossTalkCorrectionFactors.{r}.txt']}
+list1 = {'raw': ['rawData.{r}.root'], 'pedestal': ['pedestalData.{r}.root', 'pedestalAnalysis'], 'cluster': ['clusterData.{r}.root', 'clustering', 'etaCorrection.{r}.root'], 'selection': ['selectionData.{r}.root', 'selections', 'selectionAnalysis'], 'alignment': ['alignment.{r}.root', 'alignment'], 'transparent': ['transparentAnalysis', 'transparent.{r}.root','transparent2.{r}.root']}
+list2 = {'cluster': ['crossTalkCorrectionFactors.{r}.txt']}
 
-class LinkFiles:
+class UnlinkFiles:
 	def __init__(self, source_subdir='', run=0, element_list=[], force=False):
 		print 'Uninking/deleting files and folders of the categories', element_list, 'for run:', run
 		self.run = run
@@ -25,7 +25,7 @@ class LinkFiles:
 			self.bar.start()
 		count = 0
 		for keyc in self.element_list:
-			for elem in link_list[keyc]:
+			for elem in list1[keyc]:
 				path_elem = self.s_subdir + '/' + str(self.run) + '/' + elem.format(r=self.run)
 				if os.path.islink(path_elem):
 					os.unlink(path_elem)
@@ -33,8 +33,8 @@ class LinkFiles:
 					shutil.rmtree(path_elem)
 				elif os.path.isfile(path_elem):
 					os.remove(path_elem)
-			if keyc in copy_list.keys():
-				for elem in copy_list[keyc]:
+			if keyc in list2.keys():
+				for elem in list2[keyc]:
 					path_elem = self.s_subdir + '/' + str(self.run) + '/' + elem.format(r=self.run)
 					if os.path.islink(path_elem):
 						os.unlink(path_elem)
@@ -88,4 +88,4 @@ if __name__ == '__main__':
 
 	sdir = os.path.abspath(sdir)
 
-	lf = LinkFiles(source_subdir=sdir, run=run, element_list=elem)
+	lf = UnlinkFiles(source_subdir=sdir, run=run, element_list=elem)
