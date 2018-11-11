@@ -286,7 +286,7 @@ void UpdateSilicon(){
             UChar_t measured_adc = Det_ADCin[det][ch];
             Double_t real_adc = Double_t(measured_adc) - Double_t(adc) * alpha / (1.0 - alpha);
             UChar_t newADC = real_adc >= adcmax? adcmax : UChar_t(std::floor(real_adc + 0.5));
-            Det_ADC[det][ch] = newADC;
+            Det_ADC[det][ch] = newADC <= 0? 0 : newADC;
             finished = (ch==endCh);
             if(det==2 || det==6)
                 ch--;
@@ -306,6 +306,6 @@ void UpdateDiamond(){
         UShort_t measured_adc = DiaADCin[ch];
         Double_t real_adc = Double_t(measured_adc) - Double_t(adc) * alpha / (1.0 - alpha);
         UShort_t newADC = real_adc >= adcmax? adcmax : UShort_t(std::floor(real_adc + 0.5));
-        DiaADC[ch] = newADC;
+        DiaADC[ch] = newADC <= 0? 0 : newADC;
     }
 }
