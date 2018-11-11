@@ -30,7 +30,7 @@ bool sil_each_pos[8];
 Float_t dia = 0;
 UChar_t Det_ADC[8][256];
 UChar_t Det_ADCin[8][256];
-UCHar_t (*pDet_ADCin)[8][256] = &Det_ADCin;
+UChar_t (*pDet_ADCin)[8][256] = &Det_ADCin;
 UShort_t DiaADC[128];
 UShort_t DiaADCin[128];
 UShort_t (*pDiaADCin)[128] = &DiaADCin;
@@ -207,52 +207,52 @@ void SetBranchAddresses(TTree *in_tree){
     if(in_tree->FindBranch("EventNumber")) {
         bEventNumberin = in_tree->GetBranch("EventNumber");
         bEventNumberin->SetAddress(&pEventNumberin);
-        bEventNumberin->SetAutoDelete(kTrue);
+        bEventNumberin->SetAutoDelete(true);
     }
     if(in_tree->FindBranch("D0X_ADC")) {
         bDet_ADCin[0] = in_tree->GetBranch("D0X_ADC");
         bDet_ADCin[0]->SetAddress(&pDet_ADCin[0]);
-        bDet_ADCin[0]->SetAutoDelete(kTrue);
+        bDet_ADCin[0]->SetAutoDelete(true);
     }
     if(in_tree->FindBranch("D0Y_ADC")) {
         bDet_ADCin[1] = in_tree->GetBranch("D0Y_ADC");
         bDet_ADCin[1]->SetAddress(&pDet_ADCin[1]);
-        bDet_ADCin[1]->SetAutoDelete(kTrue);
+        bDet_ADCin[1]->SetAutoDelete(true);
     }
     if(in_tree->FindBranch("D1X_ADC")) {
         bDet_ADCin[2] = in_tree->GetBranch("D1X_ADC");
         bDet_ADCin[2]->SetAddress(&pDet_ADCin[2]);
-        bDet_ADCin[2]->SetAutoDelete(kTrue);
+        bDet_ADCin[2]->SetAutoDelete(true);
     }
     if(in_tree->FindBranch("D1Y_ADC")) {
         bDet_ADCin[3] = in_tree->GetBranch("D1Y_ADC");
         bDet_ADCin[3]->SetAddress(&pDet_ADCin[3]);
-        bDet_ADCin[3]->SetAutoDelete(kTrue);
+        bDet_ADCin[3]->SetAutoDelete(true);
     }
     if(in_tree->FindBranch("D2X_ADC")) {
         bDet_ADCin[4] = in_tree->GetBranch("D2X_ADC");
         bDet_ADCin[4]->SetAddress(&pDet_ADCin[4]);
-        bDet_ADCin[4]->SetAutoDelete(kTrue);
+        bDet_ADCin[4]->SetAutoDelete(true);
     }
     if(in_tree->FindBranch("D2Y_ADC")) {
         bDet_ADCin[5] = in_tree->GetBranch("D2Y_ADC");
         bDet_ADCin[5]->SetAddress(&pDet_ADCin[5]);
-        bDet_ADCin[5]->SetAutoDelete(kTrue);
+        bDet_ADCin[5]->SetAutoDelete(true);
     }
     if(in_tree->FindBranch("D3X_ADC")) {
         bDet_ADCin[6] = in_tree->GetBranch("D3X_ADC");
         bDet_ADCin[6]->SetAddress(&pDet_ADCin[6]);
-        bDet_ADCin[6]->SetAutoDelete(kTrue);
+        bDet_ADCin[6]->SetAutoDelete(true);
     }
     if(in_tree->FindBranch("D3Y_ADC")) {
         bDet_ADCin[7] = in_tree->GetBranch("D3Y_ADC");
         bDet_ADCin[7]->SetAddress(&pDet_ADCin[7]);
-        bDet_ADCin[7]->SetAutoDelete(kTrue);
+        bDet_ADCin[7]->SetAutoDelete(true);
     }
     if(in_tree->FindBranch("DiaADC")) {
         bDiaADCin = in_tree->GetBranch("DiaADC");
         bDiaADCin->SetAddress(&pDiaADCin);
-        bDiaADCin->SetAutoDelete(kTrue);
+        bDiaADCin->SetAutoDelete(true);
     }
 }
 
