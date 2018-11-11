@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/diegoalejandro/Desktop/mntSnickers/CrossTalkCorrections/FeedThroughCorrection.cpp
+iostream
+-
+fstream
+-
+TROOT.h
+/Users/diegoalejandro/Desktop/mntSnickers/CrossTalkCorrections/TROOT.h
+TTree.h
+/Users/diegoalejandro/Desktop/mntSnickers/CrossTalkCorrections/TTree.h
+TFile.h
+/Users/diegoalejandro/Desktop/mntSnickers/CrossTalkCorrections/TFile.h
+TString.h
+/Users/diegoalejandro/Desktop/mntSnickers/CrossTalkCorrections/TString.h
+string
+-
+stdlib.h
+-
+iomanip
+-
+TUnixSystem.h
+-
+
