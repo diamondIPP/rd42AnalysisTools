@@ -55,6 +55,7 @@ class RD42Analysis:
 		self.batch = not verb
 		self.StripTelescopeAnalysis_path = '/afs/cern.ch/user/d/dsanzbec/StripTelescopeAnalysis'
 		self.scratch_path = '/eos/user/d/dsanzbec/scratch/output'  # at lxplus
+		self.cross_talk_correction_path = None
 		self.symlinks = True
 		self.ph_dia_max = 4096
 		self.ph_dia_bins = 512
@@ -73,10 +74,10 @@ class RD42Analysis:
 		self.current_dir = os.getcwd()
 		self.working_dir = os.getcwd()
 
-		self.sub_pro, self.sub_pro1, self.sub_pro2 = None, None, None
-		self.process_f = None
-		self.process_e = None
-		self.process_o = None
+		self.sub_pro, self.sub_pro1, self.sub_pro2, self.sub_pro_crosstalk = None, None, None, None
+		# self.process_f = None
+		# self.process_e = None
+		# self.process_o = None
 		ro.gStyle.SetPalette(55)
 		ro.gStyle.SetNumberContours(999)
 
@@ -90,6 +91,8 @@ class RD42Analysis:
 				if pars.has_section('RUN'):
 					if pars.has_option('RUN', 'StripTelescopeAnalysis_path'):
 						self.StripTelescopeAnalysis_path = pars.get('RUN', 'StripTelescopeAnalysis_path')
+					if pars.has_option('RUN', 'cross_talk_correction_path'):
+						self.cross_talk_correction_path = pars.get('RUN', 'cross_talk_correction_path')
 					if pars.has_option('RUN', 'run'):
 						self.run = pars.getint('RUN', 'run')
 					else:
@@ -171,7 +174,10 @@ class RD42Analysis:
 					if pars.has_option('ANALYSIS', 'do_cluster'):
 						self.do_cluster = pars.getboolean('ANALYSIS', 'do_cluster')
 					if pars.has_option('ANALYSIS', 'do_cross_talk_calc'):
-						self.do_cross_talk = pars.getboolean('ANALYSIS', 'do_cross_talk_calc')
+						if self.cross_talk_correction_path is None:
+							print 'Will do feed through (cross_talk) correction because the path to the executable has not been specified in cross_talk_correction_path.'
+						else:
+							self.do_cross_talk = pars.getboolean('ANALYSIS', 'do_cross_talk_calc')
 					if pars.has_option('ANALYSIS', 'do_selection'):
 						self.do_selection = pars.getboolean('ANALYSIS', 'do_selection')
 					if pars.has_option('ANALYSIS', 'do_alignment'):
@@ -514,31 +520,51 @@ class RD42Analysis:
 				self.LinkRootFiles(self.out_dir + '/no_mask', self.out_dir + '/' + self.subdir, 'raw', True, True)
 		self.RunAnalysis()
 		if self.do_cross_talk:
-			self.current_dir = self.out_dir + '/' + self.subdir + '/' + str(self.run)
-			os.chdir(self.current_dir)
-			lines = []
-			sil_list = []
-			sil_value = 0
-			dia = 0
-			with open('crossTalkCorrectionFactors.{r}.txt'.format(r=self.run), 'r') as f0:
-				lines = f0.readlines()
-			for line in lines:
-				if int(line[0])<8:
-					sil_list.append(float(line.split(': ')[1].split('%')[0]))
-				elif int(line[0]) == 8:
-					dia = float(line.split(': ')[1].split('%')[0])
-			sil_value = np.array(sil_list, 'f8').mean(dtype='f8')
-			ro.gROOT.ProcessLine('.x {p}/createAsymmetricEtaSample.C({r},{s},{d},-1)'.format(p=self.StripTelescopeAnalysis_path, r=self.run, s=sil_value, d=dia))
-			if not os.path.isdir('../../cross_{d}/{r}'.format(d=self.subdir, r=self.run)):
-				os.makedirs('../../cross_{d}/{r}'.format(d=self.subdir, r=self.run))
-			self.current_dir = self.out_dir + '/cross_' + self.subdir + '/' + str(self.run)
-			os.chdir(self.current_dir)
-			if self.symlinks:
-				os.symlink('../../{d}/{r}/rawData.{r}0.root'.format(d=self.subdir, r=self.run), 'rawData.{r}.root'.format(r=self.run))
+			if os.path.isfile(self.cross_talk_correction_path):
+				self.current_dir = self.out_dir + '/' + self.subdir + '/' + str(self.run)
+				os.chdir(self.current_dir)
+				lines = []
+				sil_list = []
+				sil_value = 0
+				dia = 0
+				if os.path.isfile('crossTalkCorrectionFactors.{r}.txt'.format(r=self.run)):
+					with open('crossTalkCorrectionFactors.{r}.txt'.format(r=self.run), 'r') as f0:
+						lines = f0.readlines()
+					for line in lines:
+						if int(line[0])<8:
+							sil_list.append(float(line.split(': ')[1].split('%')[0]))
+						elif int(line[0]) == 8:
+							dia = float(line.split(': ')[1].split('%')[0])
+					sil_values = np.array(sil_list, 'f8')
+					sil_mean = sil_values.mean(dtype='f8')
+
+					with open(os.devnull, 'w') as FNULL:
+						if self.batch:
+							self.sub_pro_crosstalk = subp.Popen([self.cross_talk_correction_path, '-o', '.', '-r', str(self.run), '-s', str(sil_mean), '-s0', str(sil_values[0]), '-s1', str(sil_values[1]), '-s2', str(sil_values[2]), '-s3', str(sil_values[3]), '-s4', str(sil_values[4]), '-s5', str(sil_values[5]), '-s6', str(sil_values[6]), '-s7', str(sil_values[7]), '-d', str(dia)], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, stderr=subp.STDOUT, close_fds=True)
+						else:
+							self.sub_pro_crosstalk = subp.Popen([self.cross_talk_correction_path, '-o', '.', '-r', str(self.run), '-s', str(sil_mean), '-s0', str(sil_values[0]), '-s1', str(sil_values[1]), '-s2', str(sil_values[2]), '-s3', str(sil_values[3]), '-s4', str(sil_values[4]), '-s5', str(sil_values[5]), '-s6', str(sil_values[6]), '-s7', str(sil_values[7]), '-d', str(dia)], bufsize=-1, stdin=subp.PIPE, close_fds=True)
+						while self.sub_pro_crosstalk.poll() is None:
+							time.sleep(3)
+						if self.sub_pro_crosstalk.poll() == 0:
+							print 'Finished correcting the raw faile successfully :)'
+						else:
+							print 'The correction could have failed. Obtained return code:', self.sub_pro_crosstalk.poll()
+						CloseSubprocess(self.sub_pro_crosstalk, True, False)
+					# ro.gROOT.ProcessLine('.x {p}/createAsymmetricEtaSample.C({r},{s},{d},-1)'.format(p=self.StripTelescopeAnalysis_path, r=self.run, s=sil_mean, d=dia))
+					if not os.path.isdir('../../cross_{d}/{r}'.format(d=self.subdir, r=self.run)):
+						os.makedirs('../../cross_{d}/{r}'.format(d=self.subdir, r=self.run))
+					self.current_dir = self.out_dir + '/cross_' + self.subdir + '/' + str(self.run)
+					os.chdir(self.current_dir)
+					if self.symlinks:
+						os.symlink('../../{d}/{r}/rawData.{r}0.root'.format(d=self.subdir, r=self.run), 'rawData.{r}.root'.format(r=self.run))
+					else:
+						shutil.copy('../../{d}/{r}/{n}'.format(d=self.subdir, r=self.run, n=os.readlink('../../{d}/{r}/rawData.{r}0.root'.format(d=self.subdir, r=self.run))), 'rawData.{r}.root'.format(r=self.run))
+					self.current_dir = self.working_dir
+					os.chdir(self.working_dir)
+				else:
+					print "The crossTalkCorrectionFactors text file does not exist. Can't run the correction"
 			else:
-				shutil.copy('../../{d}/{r}/{n}'.format(d=self.subdir, r=self.run, n=os.readlink('../../{d}/{r}/rawData.{r}0.root'.format(d=self.subdir, r=self.run))), 'rawData.{r}.root'.format(r=self.run))
-			self.current_dir = self.working_dir
-			os.chdir(self.working_dir)
+				print "the path", self.cross_talk_correction_path, "does not exist. Can't run the correction"
 		print 'Finished :)'
 
 	def Delete_old(self, upto='3d'):

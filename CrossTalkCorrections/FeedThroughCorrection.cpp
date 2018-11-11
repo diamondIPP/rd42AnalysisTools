@@ -32,11 +32,16 @@ UShort_t DiaADC[128];
 UShort_t DiaADCin[128];
 UInt_t EventNumber;
 UInt_t EventNumberin;
-TBranch *bDet_ADCin;
+TBranch *bDet_ADCin[8];
 TBranch *bDiaADCin;
 TBranch *bEventNumberin;
 
 int main(int argc, char **argv) {
+
+    for(int det = 0; det < 8; det++){
+        sil_each[det] = 0;
+        sil_each_pos[det] = false;
+    }
     std::cout << "Starting CrossTalk corrections" << std::endl;
     ReadInputs(argc, argv);
     TString file_path = TString::Format("%s/rawData.%d.root", run_dir.c_str(), run);
@@ -82,6 +87,46 @@ void ReadInputs(int argc, char **argv){
             i++;
             sil = Float_t(stof(string(argv[i])));
         }
+        if((string_arg == "-s0") && i+1 < argc){
+            i++;
+            sil_each[0] = Float_t(stof(string(argv[i])));
+            sil_each_pos[0] = true;
+        }
+        if((string_arg == "-s1") && i+1 < argc){
+            i++;
+            sil_each[1] = Float_t(stof(string(argv[i])));
+            sil_each_pos[1] = true;
+        }
+        if((string_arg == "-s2") && i+1 < argc){
+            i++;
+            sil_each[2] = Float_t(stof(string(argv[i])));
+            sil_each_pos[2] = true;
+        }
+        if((string_arg == "-s3") && i+1 < argc){
+            i++;
+            sil_each[3] = Float_t(stof(string(argv[i])));
+            sil_each_pos[3] = true;
+        }
+        if((string_arg == "-s4") && i+1 < argc){
+            i++;
+            sil_each[4] = Float_t(stof(string(argv[i])));
+            sil_each_pos[4] = true;
+        }
+        if((string_arg == "-s5") && i+1 < argc){
+            i++;
+            sil_each[5] = Float_t(stof(string(argv[i])));
+            sil_each_pos[5] = true;
+        }
+        if((string_arg == "-s6") && i+1 < argc){
+            i++;
+            sil_each[6] = Float_t(stof(string(argv[i])));
+            sil_each_pos[6] = true;
+        }
+        if((string_arg == "-s7") && i+1 < argc){
+            i++;
+            sil_each[7] = Float_t(stof(string(argv[i])));
+            sil_each_pos[7] = true;
+        }
         if((string_arg == "-d") && i+1 < argc){
             i++;
             dia = Float_t(stof(string(argv[i])));
@@ -93,15 +138,28 @@ void ReadInputs(int argc, char **argv){
     }
     if(run==0){
         cout << "run number was not given. exit" << endl;
+        PrintHelp();
+    }
+    for(int det = 0; det < 8; det ++){
+        if(!sil_each_pos[det])
+            sil_each[det] = sil;
+    }
+    if(!sil_each[0]&!sil_each[1]&!sil_each[2]&!sil_each[3]&!sil_each[4]&!sil_each[5]&!sil_each[6]&!sil_each[7]&!dia){
+        cout << "no parameter was given for silicon or diamond detectors. Won't do anything. Exiting";
         exit(0);
     }
+    cout << "will use a factor of " << dia << "% for diamond and " << sil_each[0] << ", "<< sil_each[1] << ", "<< sil_each[2] << ", ";
+    cout << sil_each[3] << ", "<< sil_each[4] << ", "<< sil_each[5] << ", " << sil_each[6] << ", " << sil_each[7] << " for silicon planes: ";
+    cout << "0, 1, 2, 3, 4, 5, 6 and 7 respectively.";
 }
 
 void PrintHelp(){
+    cout << "Showing help (this message is shown when -h flag is used)" << endl;
     cout << "Usage:" << endl;
-    cout<<"crossTalkCorrection -o RUNDIRECTORY -r RUNNUMBER -s SILALPHA -d DIAALPHA"  << endl;
-    cout<<"The values for SILALPHA and DIAALPHA are percentages of charge sharing estimated in the crossTalkCorrectionFactors text file"  << endl;
-    cout<<"If one of them is not given, the program will use the text file." << endl;
+    cout << "crossTalkCorrection -o RUNDIRECTORY -r RUNNUMBER -s SILALPHA -d DIAALPHA"  << endl;
+    cout << "The values for SILALPHA and DIAALPHA are percentages of charge sharing estimated in the crossTalkCorrectionFactors text file"  << endl;
+    cout << "Separate values can be given to silicon in addition to SILALPHA by setting -s0, -s1, -s2, ..., -s7" << endl;
+    cout << "If one of them is not given, the program will use the text file." << endl;
     cout << "If desired, can specify the name for the new file with -f OUTNAME"<<endl;
     cout << "If not specified, the output will be of the type 'rawData.<RUNNUMBER>0.root'" << endl;
     exit(0);
@@ -109,6 +167,8 @@ void PrintHelp(){
 
 void GetValuesFromTextFile(){
     //TODO
+    cout << "Haven't implemented yet auto get values in this C script... sorry. But rd42Analysis.py does it automatically :D. Exiting" << endl;
+    exit(0);
 }
 
 void SetBranches(TTree *out_tree){
@@ -145,26 +205,50 @@ void SetBranchAddresses(TTree *in_tree){
         bEventNumberin->SetAutoDelete(true);
     }
     if(in_tree->FindBranch("D0X_ADC")) {
-        bEventNumberin = in_tree->GetBranch("D0X_ADC");
-        bEventNumberin->SetAddress(&EventNumberin);
-        bEventNumberin->SetAutoDelete(true);
+        bDet_ADCin[0] = in_tree->GetBranch("D0X_ADC");
+        bDet_ADCin[0]->SetAddress(&Det_ADCin[0]);
+        bDet_ADCin[0]->SetAutoDelete(true);
     }
-    if(in_tree->FindBranch("D0Y_ADC"))
-        in_tree->SetBranchAddress("D0Y_ADC", &Det_ADCin[1]);
-    if(in_tree->FindBranch("D1X_ADC"))
-        in_tree->SetBranchAddress("D1X_ADC", &Det_ADCin[2]);
-    if(in_tree->FindBranch("D1Y_ADC"))
-        in_tree->SetBranchAddress("D1Y_ADC", &Det_ADCin[3]);
-    if(in_tree->FindBranch("D2X_ADC"))
-        in_tree->SetBranchAddress("D2X_ADC", &Det_ADCin[4]);
-    if(in_tree->FindBranch("D2Y_ADC"))
-        in_tree->SetBranchAddress("D2Y_ADC", &Det_ADCin[5]);
-    if(in_tree->FindBranch("D3X_ADC"))
-        in_tree->SetBranchAddress("D3X_ADC", &Det_ADCin[6]);
-    if(in_tree->FindBranch("D3Y_ADC"))
-        in_tree->SetBranchAddress("D3Y_ADC", &Det_ADCin[7]);
-    if(in_tree->FindBranch("DiaADC"))
-        in_tree->SetBranchAddress("DiaADC", &DiaADCin);
+    if(in_tree->FindBranch("D0Y_ADC")) {
+        bDet_ADCin[1] = in_tree->GetBranch("D0Y_ADC");
+        bDet_ADCin[1]->SetAddress(&Det_ADCin[1]);
+        bDet_ADCin[1]->SetAutoDelete(true);
+    }
+    if(in_tree->FindBranch("D1X_ADC")) {
+        bDet_ADCin[2] = in_tree->GetBranch("D1X_ADC");
+        bDet_ADCin[2]->SetAddress(&Det_ADCin[2]);
+        bDet_ADCin[2]->SetAutoDelete(true);
+    }
+    if(in_tree->FindBranch("D1Y_ADC")) {
+        bDet_ADCin[3] = in_tree->GetBranch("D1Y_ADC");
+        bDet_ADCin[3]->SetAddress(&Det_ADCin[3]);
+        bDet_ADCin[3]->SetAutoDelete(true);
+    }
+    if(in_tree->FindBranch("D2X_ADC")) {
+        bDet_ADCin[4] = in_tree->GetBranch("D2X_ADC");
+        bDet_ADCin[4]->SetAddress(&Det_ADCin[4]);
+        bDet_ADCin[4]->SetAutoDelete(true);
+    }
+    if(in_tree->FindBranch("D2Y_ADC")) {
+        bDet_ADCin[5] = in_tree->GetBranch("D2Y_ADC");
+        bDet_ADCin[5]->SetAddress(&Det_ADCin[5]);
+        bDet_ADCin[5]->SetAutoDelete(true);
+    }
+    if(in_tree->FindBranch("D3X_ADC")) {
+        bDet_ADCin[6] = in_tree->GetBranch("D3X_ADC");
+        bDet_ADCin[6]->SetAddress(&Det_ADCin[6]);
+        bDet_ADCin[6]->SetAutoDelete(true);
+    }
+    if(in_tree->FindBranch("D3Y_ADC")) {
+        bDet_ADCin[7] = in_tree->GetBranch("D3Y_ADC");
+        bDet_ADCin[7]->SetAddress(&Det_ADCin[7]);
+        bDet_ADCin[7]->SetAutoDelete(true);
+    }
+    if(in_tree->FindBranch("DiaADC")) {
+        bDiaADCin = in_tree->GetBranch("DiaADC");
+        bDiaADCin->SetAddress(&DiaADCin);
+        bDiaADCin->SetAutoDelete(true);
+    }
 }
 
 void ProgressBar(int i, UInt_t nEntries, int refresh, bool show, bool newLine){
@@ -194,7 +278,7 @@ void UpdateSilicon(){
             endCh = 0;
         }
         bool finished = false;
-        Double_t alpha = sil / 100.0;
+        Double_t alpha = sil_each[det] / 100.0;
         UChar_t adc = 0;
         for (UShort_t ch = startCh; !finished;){
             UChar_t measured_adc = Det_ADCin[det][ch];
@@ -213,7 +297,6 @@ void UpdateSilicon(){
 void UpdateDiamond(){
     UShort_t  adcmax = 4095;
     UShort_t adc = 0;
-    UChar_t startCh = 0;
     TString out = TString::Format("%d_%5.3f: ", EventNumber, dia);
 //    bool bPrint = false;
     Double_t alpha = dia / 100.0;
