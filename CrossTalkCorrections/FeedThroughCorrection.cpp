@@ -25,6 +25,8 @@ string run_dir = ".";
 UShort_t run=0;
 string outfile = "default";
 Float_t sil = 0;
+Float_t sil_each[8];
+bool sil_each_pos[8];
 Float_t dia = 0;
 UChar_t Det_ADC[8][256];
 UChar_t Det_ADCin[8][256];
