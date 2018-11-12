@@ -538,6 +538,8 @@ class RD42Analysis:
 					sil_values = np.array(sil_list, 'f8')
 					sil_mean = sil_values.mean(dtype='f8')
 
+					print 'Running from run outpu directory:', self.cross_talk_correction_path, '-o', '.', '-r', str(self.run), '-s', str(sil_mean), '-s0', str(sil_values[0]), '-s1', str(sil_values[1]), '-s2', str(sil_values[2]), '-s3', str(sil_values[3]), '-s4', str(sil_values[4]), '-s5', str(sil_values[5]), '-s6', str(sil_values[6]), '-s7', str(sil_values[7]), '-d', str(dia)
+
 					with open(os.devnull, 'w') as FNULL:
 						if self.batch:
 							self.sub_pro_crosstalk = subp.Popen([self.cross_talk_correction_path, '-o', '.', '-r', str(self.run), '-s', str(sil_mean), '-s0', str(sil_values[0]), '-s1', str(sil_values[1]), '-s2', str(sil_values[2]), '-s3', str(sil_values[3]), '-s4', str(sil_values[4]), '-s5', str(sil_values[5]), '-s6', str(sil_values[6]), '-s7', str(sil_values[7]), '-d', str(dia)], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, stderr=subp.STDOUT, close_fds=True)

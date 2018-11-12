@@ -16,10 +16,13 @@ void PrintHelp();
 void GetValuesFromTextFile();
 void SetBranches(TTree *out_tree);
 void LoopSourceTree(TTree *tree0, TTree *out_tree);
+//void LoopSourceTree(TTree *tree0, TTree *out_tree, UChar_t (*pDet_ADCin)[8][256], UShort_t (*pDiaADCin)[128], UInt_t *pEventNumberin);
 void SetBranchAddresses(TTree *in_tree);
+//void SetBranchAddresses(TTree *in_tree, UChar_t (*pDet_ADCin)[8][256], UShort_t (*pDiaADCin)[128], UInt_t *pEventNumberin);
 void ProgressBar(int i, UInt_t nEntries, int refresh, bool show, bool newLine);
 void UpdateSilicon();
 void UpdateDiamond();
+void ResetArrays();
 
 string run_dir = ".";
 UShort_t run=0;
@@ -30,23 +33,26 @@ bool sil_each_pos[8];
 Float_t dia = 0;
 UChar_t Det_ADC[8][256];
 UChar_t Det_ADCin[8][256];
-UChar_t (*pDet_ADCin)[8][256] = &Det_ADCin;
 UShort_t DiaADC[128];
 UShort_t DiaADCin[128];
-UShort_t (*pDiaADCin)[128] = &DiaADCin;
-UInt_t EventNumber;
-UInt_t EventNumberin;
-UInt_t *pEventNumberin = &EventNumberin;
+UInt_t EventNumber = 0;
+UInt_t EventNumberin = 0;
 TBranch *bDet_ADCin[8];
 TBranch *bDiaADCin;
 TBranch *bEventNumberin;
 
 int main(int argc, char **argv) {
 
+    ResetArrays();
+
     for(int det = 0; det < 8; det++){
         sil_each[det] = 0;
         sil_each_pos[det] = false;
     }
+//    UChar_t (*pDet_ADCin)[8][256] = &Det_ADCin;
+//    UShort_t (*pDiaADCin)[128] = &DiaADCin;
+//    UInt_t *pEventNumberin = &EventNumberin;
+
     std::cout << "Starting CrossTalk corrections" << std::endl;
     ReadInputs(argc, argv);
     TString file_path = TString::Format("%s/rawData.%d.root", run_dir.c_str(), run);
@@ -62,6 +68,7 @@ int main(int argc, char **argv) {
     TFile *file1 = new TFile(out_file_path, "RECREATE");
     TTree *out_tree = new TTree("rawTree2", "rawTree2");
     SetBranches(out_tree);
+//    LoopSourceTree(tree0, out_tree, pDet_ADCin, pDiaADCin, pEventNumberin);
     LoopSourceTree(tree0, out_tree);
     file0->Close();
     out_tree->SetNameTitle("rawTree", "rawTree");
@@ -153,8 +160,8 @@ void ReadInputs(int argc, char **argv){
         cout << "no parameter was given for silicon or diamond detectors. Won't do anything. Exiting";
         exit(0);
     }
-    cout << "will use a factor of " << dia << "% for diamond and " << sil_each[0] << ", "<< sil_each[1] << ", "<< sil_each[2] << ", ";
-    cout << sil_each[3] << ", "<< sil_each[4] << ", "<< sil_each[5] << ", " << sil_each[6] << ", " << sil_each[7] << " for silicon planes: ";
+    cout << "will use a factor of " << dia << "% for diamond and " << sil_each[0] << "%, "<< sil_each[1] << "%, "<< sil_each[2] << "%, ";
+    cout << sil_each[3] << "%, "<< sil_each[4] << "%, "<< sil_each[5] << "%, " << sil_each[6] << "%, " << sil_each[7] << "% for silicon planes: ";
     cout << "0, 1, 2, 3, 4, 5, 6 and 7 respectively.";
 }
 
@@ -185,11 +192,13 @@ void SetBranches(TTree *out_tree){
     out_tree->Branch("D2Y_ADC", &Det_ADC[5], "D2Y_ADC[256]/b");
     out_tree->Branch("D3X_ADC", &Det_ADC[6], "D3X_ADC[256]/b");
     out_tree->Branch("D3Y_ADC", &Det_ADC[7], "D3Y_ADC[256]/b");
-    out_tree->Branch("DiaADC", &DiaADC, "DiaADC[128]/s");
+    out_tree->Branch("DiaADC", DiaADC, "DiaADC[128]/s");
     out_tree->Branch("EventNumber", &EventNumber, "EventNumber/i");
 }
 
+//void LoopSourceTree(TTree *tree0, TTree *out_tree, UChar_t (*pDet_ADCin)[8][256], UShort_t (*pDiaADCin)[128], UInt_t *pEventNumberin){
 void LoopSourceTree(TTree *tree0, TTree *out_tree){
+//    SetBranchAddresses(tree0, pDet_ADCin, pDiaADCin, pEventNumberin);
     SetBranchAddresses(tree0);
     tree0->SetBranchStatus("*", 1);
     UInt_t nEntries = UInt_t(tree0->GetEntries());
@@ -200,60 +209,32 @@ void LoopSourceTree(TTree *tree0, TTree *out_tree){
         UpdateSilicon();
         UpdateDiamond();
         out_tree->Fill();
+        ResetArrays();
     }
 }
 
+//void SetBranchAddresses(TTree *in_tree, UChar_t (*pDet_ADCin)[8][256], UShort_t (*pDiaADCin)[128], UInt_t *pEventNumberin){
 void SetBranchAddresses(TTree *in_tree){
-    if(in_tree->FindBranch("EventNumber")) {
-        bEventNumberin = in_tree->GetBranch("EventNumber");
-        bEventNumberin->SetAddress(&pEventNumberin);
-        bEventNumberin->SetAutoDelete(true);
-    }
-    if(in_tree->FindBranch("D0X_ADC")) {
-        bDet_ADCin[0] = in_tree->GetBranch("D0X_ADC");
-        bDet_ADCin[0]->SetAddress(&pDet_ADCin[0]);
-        bDet_ADCin[0]->SetAutoDelete(true);
-    }
-    if(in_tree->FindBranch("D0Y_ADC")) {
-        bDet_ADCin[1] = in_tree->GetBranch("D0Y_ADC");
-        bDet_ADCin[1]->SetAddress(&pDet_ADCin[1]);
-        bDet_ADCin[1]->SetAutoDelete(true);
-    }
-    if(in_tree->FindBranch("D1X_ADC")) {
-        bDet_ADCin[2] = in_tree->GetBranch("D1X_ADC");
-        bDet_ADCin[2]->SetAddress(&pDet_ADCin[2]);
-        bDet_ADCin[2]->SetAutoDelete(true);
-    }
-    if(in_tree->FindBranch("D1Y_ADC")) {
-        bDet_ADCin[3] = in_tree->GetBranch("D1Y_ADC");
-        bDet_ADCin[3]->SetAddress(&pDet_ADCin[3]);
-        bDet_ADCin[3]->SetAutoDelete(true);
-    }
-    if(in_tree->FindBranch("D2X_ADC")) {
-        bDet_ADCin[4] = in_tree->GetBranch("D2X_ADC");
-        bDet_ADCin[4]->SetAddress(&pDet_ADCin[4]);
-        bDet_ADCin[4]->SetAutoDelete(true);
-    }
-    if(in_tree->FindBranch("D2Y_ADC")) {
-        bDet_ADCin[5] = in_tree->GetBranch("D2Y_ADC");
-        bDet_ADCin[5]->SetAddress(&pDet_ADCin[5]);
-        bDet_ADCin[5]->SetAutoDelete(true);
-    }
-    if(in_tree->FindBranch("D3X_ADC")) {
-        bDet_ADCin[6] = in_tree->GetBranch("D3X_ADC");
-        bDet_ADCin[6]->SetAddress(&pDet_ADCin[6]);
-        bDet_ADCin[6]->SetAutoDelete(true);
-    }
-    if(in_tree->FindBranch("D3Y_ADC")) {
-        bDet_ADCin[7] = in_tree->GetBranch("D3Y_ADC");
-        bDet_ADCin[7]->SetAddress(&pDet_ADCin[7]);
-        bDet_ADCin[7]->SetAutoDelete(true);
-    }
-    if(in_tree->FindBranch("DiaADC")) {
-        bDiaADCin = in_tree->GetBranch("DiaADC");
-        bDiaADCin->SetAddress(&pDiaADCin);
-        bDiaADCin->SetAutoDelete(true);
-    }
+    if(in_tree->FindBranch("EventNumber"))
+        in_tree->SetBranchAddress("EventNumber", &EventNumberin);
+    if(in_tree->FindBranch("D0X_ADC"))
+        in_tree->SetBranchAddress("D0X_ADC", &Det_ADCin[0]);
+    if(in_tree->FindBranch("D0Y_ADC"))
+        in_tree->SetBranchAddress("D0Y_ADC", &Det_ADCin[1]);
+    if(in_tree->FindBranch("D1X_ADC"))
+        in_tree->SetBranchAddress("D1X_ADC", &Det_ADCin[2]);
+    if(in_tree->FindBranch("D1Y_ADC"))
+        in_tree->SetBranchAddress("D1Y_ADC", &Det_ADCin[3]);
+    if(in_tree->FindBranch("D2X_ADC"))
+        in_tree->SetBranchAddress("D2X_ADC", &Det_ADCin[4]);
+    if(in_tree->FindBranch("D2Y_ADC"))
+        in_tree->SetBranchAddress("D2Y_ADC", &Det_ADCin[5]);
+    if(in_tree->FindBranch("D3X_ADC"))
+        in_tree->SetBranchAddress("D3X_ADC", &Det_ADCin[6]);
+    if(in_tree->FindBranch("D3Y_ADC"))
+        in_tree->SetBranchAddress("D3Y_ADC", &Det_ADCin[7]);
+    if(in_tree->FindBranch("DiaADC"))
+        in_tree->SetBranchAddress("DiaADC", DiaADCin);
 }
 
 void ProgressBar(int i, UInt_t nEntries, int refresh, bool show, bool newLine){
@@ -277,9 +258,11 @@ void UpdateSilicon(){
     UShort_t det_max = 8;
     for (UShort_t det = 0; det < det_max; det++){
         UShort_t startCh = 0;
-        UShort_t endCh = 127;
+//        UShort_t endCh = 127;
+        UShort_t endCh = 255;
         if(det == 2 || det == 6){
-            startCh = 127;
+//            startCh = 127;
+            startCh = 255;
             endCh = 0;
         }
         bool finished = false;
@@ -287,11 +270,17 @@ void UpdateSilicon(){
         UChar_t adc = 0;
         for (UShort_t ch = startCh; !finished;){
             UChar_t measured_adc = Det_ADCin[det][ch];
-            Double_t real_adc = Double_t(measured_adc) - Double_t(adc) * alpha / (1.0 - alpha);
-            UChar_t newADC = real_adc >= adcmax? adcmax : UChar_t(std::floor(real_adc + 0.5));
-            Det_ADC[det][ch] = newADC <= 0? 0 : newADC;
-            adc = Det_ADC[det][ch];
-            finished = (ch==endCh);
+//            if((measured_adc < adcmax) && (adc < adcmax)){
+                Double_t real_adc = Double_t(measured_adc) - Double_t(adc) * alpha / (1.0 - alpha);
+                UChar_t newADC = real_adc >= adcmax? adcmax : UChar_t(std::floor(real_adc + 0.5));
+                Det_ADC[det][ch] = newADC <= 0? 0 : newADC;
+                adc = Det_ADC[det][ch];
+                finished = (ch==endCh);
+//            }
+//            else{
+//                Det_ADC[det][ch] = measured_adc;
+//                adc = Det_ADC[det][ch];
+//            }
             if(det==2 || det==6)
                 ch--;
             else
@@ -308,9 +297,32 @@ void UpdateDiamond(){
     Double_t alpha = dia / 100.0;
     for (UChar_t ch=0; ch<128; ch++){
         UShort_t measured_adc = DiaADCin[ch];
-        Double_t real_adc = Double_t(measured_adc) - Double_t(adc) * alpha / (1.0 - alpha);
-        UShort_t newADC = real_adc >= adcmax? adcmax : UShort_t(std::floor(real_adc + 0.5));
-        DiaADC[ch] = newADC <= 0? 0 : newADC;
-        adc = DiaADC[ch];
+        if((measured_adc < adcmax) && (adc < adcmax) ){
+            Double_t real_adc = Double_t(measured_adc) - Double_t(adc) * alpha / (1.0 - alpha);
+            UShort_t newADC = real_adc >= adcmax? adcmax : UShort_t(std::floor(real_adc + 0.5));
+            DiaADC[ch] = newADC <= 0? 0 : newADC;
+            adc = DiaADC[ch];
+        }
+        else{
+            DiaADC[ch] = measured_adc;
+            adc = DiaADC[ch];
+        }
+    }
+}
+
+void ResetArrays(){
+    EventNumberin = 0;
+    EventNumber = 0;
+    for(int det = 0; det < 8; det++){
+        sil_each[det] = 0;
+        sil_each_pos[det] = false;
+        for(int ch = 0; ch < 256; ch++){
+            Det_ADC[det][ch] = 0;
+            Det_ADCin[det][ch] = 0;
+            if(det == 0 && ch < 128){
+                DiaADC[ch] = 0;
+                DiaADCin[ch] = 0;
+            }
+        }
     }
 }
