@@ -39,6 +39,7 @@ class RD42Analysis:
 		self.dut_name = 'default'
 		self.dut_volt = 0
 		self.dia_saturation = 4095
+		self.eta_corr_limit = 0.0005
 		self.max_transparent_cluster_size = 10
 		self.num_highest_transparent_cluster = 5
 		self.chi2 = 5
@@ -119,6 +120,8 @@ class RD42Analysis:
 						self.dia_input = pars.getint('RUN', 'dia_input')
 					if pars.has_option('RUN', 'dia_saturation'):
 						self.dia_saturation = pars.getint('RUN', 'dia_saturation')
+					if pars.has_option('RUN', 'eta_corr_limit'):
+						self.eta_corr_limit = pars.getfloat('RUN', 'eta_corr_limit')
 					if pars.has_option('RUN', 'max_transparent_cluster_size'):
 						self.max_transparent_cluster_size = pars.getint('RUN', 'max_transparent_cluster_size')
 					if pars.has_option('RUN', 'num_highest_transparent_cluster'):
@@ -317,6 +320,8 @@ class RD42Analysis:
 						ftemp.write('max_transparent_cluster_size = {d}\n'.format(d=self.max_transparent_cluster_size))
 					if 'dia_saturation' not in lines_params:
 						ftemp.write('dia_saturation = {d}\n'.format(d=self.dia_saturation))
+					if 'eta_corr_limit' not in lines_params:
+						ftemp.write('eta_corr_limit = {v}\n'.format(v=self.eta_corr_limit))
 					if 'dia_input' not in lines_params:
 						ftemp.write('dia_input = {d}\n'.format(d=self.dia_input))
 					if 'diamondName' not in lines_params:
@@ -385,6 +390,8 @@ class RD42Analysis:
 							ftemp.write('pulse_height_di_max = {ph}\n'.format(ph=self.ph_dia_max))
 						elif line.startswith('pulse_height_num_b'):
 							ftemp.write('pulse_height_num_bins = {nb}\n'.format(nb=self.ph_dia_bins))
+						elif line.startswith('eta_corr_lim'):
+							ftemp.write('eta_corr_limit = {v}\n'.format(v=self.eta_corr_limit))
 						else:
 							ftemp.write(line)
 			shutil.move(self.settings_dir + '/' + self.subdir + '/settings.{r}.ini.temp'.format(r=self.run), self.settings_dir + '/' + self.subdir + '/settings.{r}.ini'.format(r=self.run))
