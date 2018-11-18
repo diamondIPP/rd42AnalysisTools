@@ -6,7 +6,7 @@ from Utils import *
 
 __author__ = 'DA'
 
-option_list = ['raw', 'pedestal', 'cluster', 'selection', 'alignment', 'transparent']
+option_list = ['raw', 'pedestal', 'cluster', 'selection', 'alignment', 'transparent', 'all']
 
 list1 = {'raw': ['rawData.{r}.root'], 'pedestal': ['pedestalData.{r}.root', 'pedestalAnalysis'], 'cluster': ['clusterData.{r}.root', 'clustering', 'etaCorrection.{r}.root'], 'selection': ['selectionData.{r}.root', 'selections', 'selectionAnalysis'], 'alignment': ['alignment.{r}.root', 'alignment'], 'transparent': ['transparentAnalysis', 'transparent.{r}.root','transparent2.{r}.root']}
 list2 = {'cluster': ['crossTalkCorrectionFactors.{r}.txt']}
@@ -15,7 +15,7 @@ class UnlinkFiles:
 	def __init__(self, source_subdir='', run=0, element_list=[], force=False):
 		print 'Uninking/deleting files and folders of the categories', element_list, 'for run:', run
 		self.run = run
-		self.element_list = element_list
+		self.element_list = option_list[:-1] if 'all' in element_list else element_list
 		self.s_subdir = source_subdir
 		self.force = force
 		self.bar = None
@@ -67,7 +67,7 @@ if __name__ == '__main__':
 	parser = OptionParser()
 	parser.add_option('-r', '--run', dest='run', default=22022, type='int', help='Run to be analysed (e.g. 22022)')
 	parser.add_option('-s', '--sourcesubdir', dest='sdir', default='.', type='string', help='Source subdir containing the run folder')
-	parser.add_option('-e', '--elements', dest='elem', default='[]', type='string', help='List of elements contained in square brackets of the files and directories that will be unlinked/deleted. The options are: "raw", "pedestal", "cluster", "selection", "alignment", "transparent". e.g. [cluster,transparent,raw]')
+	parser.add_option('-e', '--elements', dest='elem', default='[]', type='string', help='List of elements contained in square brackets of the files and directories that will be unlinked/deleted. The options are: "raw", "pedestal", "cluster", "selection", "alignment", "transparent" or "all". e.g. [cluster,transparent,raw]')
 
 	(options, args) = parser.parse_args()
 	run = int(options.run)
@@ -75,7 +75,7 @@ if __name__ == '__main__':
 	elemtemp = str(options.elem)
 	elem = elemtemp.split('[')[1].split(']')[0].split(',')
 	if not set(elem).issubset(option_list):
-		print '-u (--upto) option must be one of these: "raw", "pedestal", "cluster", "selection", "alignment", "transparent". Exiting'
+		print '-e (--elements) list must have any of these: "raw", "pedestal", "cluster", "selection", "alignment", "transparent" or "all". Exiting'
 		exit(os.EX_CONFIG)
 
 	if not os.path.isdir(sdir):
@@ -86,6 +86,6 @@ if __name__ == '__main__':
 		print 'Source subdirectory does not have run folder', run, 'exiting.'
 		exit(os.EX_CONFIG)
 
-	sdir = os.path.abspath(sdir)
+	sdir = os.path.abspath(os.path.expanduser(sdir))
 
-	lf = UnlinkFiles(source_subdir=sdir, run=run, element_list=elem)
+	ulf = UnlinkFiles(source_subdir=sdir, run=run, element_list=elem)

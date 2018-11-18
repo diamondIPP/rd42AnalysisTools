@@ -293,18 +293,18 @@ class RD42Analysis:
 		tran = 1 if self.do_transparent else 0
 		CreateDirectoryIfNecessary(self.run_lists_dir+'/{f}'.format(f=self.subdir))
 		with open(self.run_lists_dir + '/{f}/RunList_'.format(f=self.subdir)+str(self.run)+'.ini', 'w') as rlf:
-			rlf.write('{r}\t0\t0\t{n}\t0\t{p}\t{c}\t{s}\t{al}\t0\t{t}\n#\n'.format(r=self.run, n=self.num_events, p=ped, c=clu, s=sele, al=alig, t=tran))
+			rlf.write('{r}\t0\t0\t{n}\t0\t{p}\t{c}\t{s}\t{al}\t0\t{t}\n#\n'.format(r=self.run, n=self.total_events, p=ped, c=clu, s=sele, al=alig, t=tran))
 		if self.do_even or self.do_odd:
 			CreateDirectoryIfNecessary(self.run_lists_dir+'/'+self.subdir+'/odd')
 			with open(self.run_lists_dir+'/'+self.subdir+'/odd' + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
-				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.num_events, p=ped, c=clu, s=sele))
+				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.total_events, p=ped, c=clu, s=sele))
 			CreateDirectoryIfNecessary(self.run_lists_dir+'/'+self.subdir+'/even')
 			with open(self.run_lists_dir+'/'+self.subdir+'/even' + '/RunList_'+str(self.run)+'.ini', 'w') as rlf:
-				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.num_events, p=ped, c=clu, s=sele))
+				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.total_events, p=ped, c=clu, s=sele))
 		if do_single_ch:
 			CreateDirectoryIfNecessary(self.run_lists_dir+'/'+self.subdir+'/channels')
 			with open(self.run_lists_dir + '/' + self.subdir + '/channels/RunList_' + str(self.run) + '.ini', 'w') as rlf:
-				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.num_events, p=ped, c=clu, s=sele))
+				rlf.write('{r}\t0\t0\t{n}\t0\t0\t0\t0\t0\t0\t0\n#\n'.format(r=self.run, n=self.total_events, p=ped, c=clu, s=sele))
 
 	def Check_settings_file(self):
 		if not os.path.isdir(self.settings_dir + '/' + self.subdir):
@@ -316,6 +316,8 @@ class RD42Analysis:
 				with open(self.settings_dir + '/' + self.subdir + '/settings.{r}.ini.temp'.format(r=self.run), 'w') as ftemp:
 					lines = f0.readlines()
 					lines_params = [line.split('=')[0].replace(' ', '') for line in lines]
+					if 'event_start' not in lines_params:
+						ftemp.write('event_start = {v}\n'.format(v=self.first_event))
 					if 'max_transparent_cluster_size' not in lines_params:
 						ftemp.write('max_transparent_cluster_size = {d}\n'.format(d=self.max_transparent_cluster_size))
 					if 'dia_saturation' not in lines_params:
@@ -357,8 +359,8 @@ class RD42Analysis:
 							ftemp.write('voltage = {v}\n'.format(v=self.dut_volt))
 						elif line.startswith('Event'):
 							ftemp.write('Events = {e}\n'.format(e=self.total_events))
-						elif line.startswith('Ev_i'):
-							ftemp.write('Ev_ini = {ei}\n'.format(ei=self.first_event))
+						elif line.startswith('event_start'):
+							ftemp.write('event_start = {ei}\n'.format(ei=self.first_event))
 						elif line.startswith('Events_an'):
 							ftemp.write('Events_ana = {ea}\n'.format(ea=self.num_events))
 						elif line.startswith('max_transpa'):
@@ -516,15 +518,15 @@ class RD42Analysis:
 			elif self.Get_num_events(self.out_dir + '/' + self.subdir + '/' + str(self.run) + '/rawData.{r}.root'.format(r=self.run), 'rawTree') > self.num_events:
 				print 'Need to recreate the rawTree'
 				self.ExtractFromOriginalRawTree(self.subdir)
-		elif os.path.isfile(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)):
-			if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree') > self.num_events:
-				print 'Extracting', self.num_events, 'events from no_mask run'
-				self.ExtractFromOriginalRawTree('no_mask')
-			else:
-				if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree') < self.num_events:
-					print 'The no_mask raw file has', self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree'), 'events which is less than the requested. Will analyse all events'
-					self.num_events = self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree')
-				self.LinkRootFiles(self.out_dir + '/no_mask', self.out_dir + '/' + self.subdir, 'raw', True, True)
+		# elif os.path.isfile(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run)):
+		# 	if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree') <= self.num_events:
+		# 		# print 'Extracting', self.num_events, 'events from no_mask run'
+		# 		# self.ExtractFromOriginalRawTree('no_mask')
+		# 	# else:
+		# 		if self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree') < self.num_events:
+		# 			print 'The no_mask raw file has', self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree'), 'events which is less than the requested. Will analyse all events'
+		# 			self.num_events = self.Get_num_events(self.out_dir + '/no_mask/{r}/rawData.{r}.root'.format(r=self.run), 'rawTree')
+		# 		self.LinkRootFiles(self.out_dir + '/no_mask', self.out_dir + '/' + self.subdir, 'raw', True, True)
 		self.RunAnalysis()
 		if self.do_cross_talk:
 			if os.path.isfile(self.cross_talk_correction_path):
