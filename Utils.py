@@ -69,7 +69,7 @@ def CreateDefaultSettingsFile(diri, run_no, events, dut_name='default', dut_volt
 		f.write('Double_t detectorD3Z = 19.625\n')
 		f.write('Double_t detectorDiaZ = 10.2\n\n')
 		f.write('TransparentAlignment = 0\n\n')
-		f.srite('transparentChi2 = 0\n')
+		f.write('transparentChi2 = 0\n')
 		f.write('max_transparent_cluster_size = {d}\n'.format(d=max_trans_clust))
 		f.write('num_highest_transparent_cluster = {d}\n\n'.format(d=num_highest_trans))
 		f.write('pulse_height_di_max = 4000\n')
@@ -400,6 +400,9 @@ def CreateProgressBarUtils(maxVal=1):
 	bar = progressbar.ProgressBar(widgets=widgets, maxval=maxVal)
 	return bar
 
-def ExitMessage(txt):
-	print txt
-	sys.exit(os.EX_SOFTWARE)
+def ExitMessage(txt, code=os.EX_SOFTWARE):
+    print '##########'
+    print txt
+    print '##########'
+    sys.exit(code)
+
