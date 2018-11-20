@@ -14,6 +14,7 @@ class TransparentGrid:
     def __init__(self, dir='', run=25209):
         ro.gStyle.SetPalette(55)
         ro.gStyle.SetNumberContours(999)
+        ro.TFormula.SetMaxima(100000)
         self.run = run
         self.dir = os.path.abspath(os.path.expanduser(os.path.expandvars(dir)))
         self.trans_file = None
@@ -21,12 +22,15 @@ class TransparentGrid:
         self.align_file = None
         self.align_obj = None
         self.align_info = {'xoff': float(0), 'phi': float(0)}
-        self.num_cols = 0
+        self.num_cols = 19
         self.ch_ini = 0
-        self.ch_end = 0
+        self.ch_end = 84
+        self.phbins = 200
+        self.phmin = 0
+        self.phmax = 4000
         self.pkl = None
         self.loaded_pickle = False
-        self.row_info = {'0': float(61.84669791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 0.999999901}
+        self.row_info = {'0': float(61.84669791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.008}
         self.vertical_lines = []
         self.vertical_lines_tline = []
         self.horizontal_lines = []
@@ -35,10 +39,13 @@ class TransparentGrid:
         self.bins_per_ch_y = 3
         self.canvas = {}
         self.profile = {}
+        self.histo = {}
         self.names = []
         self.tcutgs = {}
         self.goodAreas = []
         self.badAreas = []
+        self.goodAreasCutNames = ''
+        self.badAreasCutNames = ''
 
     def CheckFoldersAndFiles(self):
         if not os.path.isdir(self.dir):
@@ -158,6 +165,12 @@ class TransparentGrid:
         for linev in self.vertical_lines_tline:
             linev.Draw('same')
 
+    def ResetLines(self):
+        self.horizontal_lines = []
+        self.horizontal_lines_tline = []
+        self.vertical_lines = []
+        self.vertical_lines_tline = []
+
     def CreateTCutGs(self):
         def GetNumpyArraysX(coli):
             x0 = self.ch_ini - 0.5 + coli
@@ -181,13 +194,54 @@ class TransparentGrid:
                 self.tcutgs[col][row].SetLineColor(ro.kRed)
 
     def AddGoodAreas(self, col, row):
+        self.tcutgs[col][row].SetLineColor(ro.kRed)
         self.goodAreas.append(self.tcutgs[col][row])
+
+    def AddBadAreas(self, col, row):
+        self.tcutgs[col][row].SetLineColor(ro.kBlue)
+        self.badAreas.append(self.tcutgs[col][row])
 
     def DrawGoodAreas(self, name):
         self.canvas[name].cd()
         for area in self.goodAreas:
             area.Draw('same')
 
+    def DrawBadAreas(self, name):
+        self.canvas[name].cd()
+        for area in self.badAreas:
+            area.Draw('same')
+
+    def SelectGoodAndBadByThreshold(self, val=500):
+        for col in xrange(self.num_cols):
+            for row in xrange(self.row_info['num']):
+                temph = ro.TH1F('temphrc', 'temphrc', 200, 0, 4000)
+                self.trans_tree.Draw('clusterChargeN>>temphrc', 'transparentEvent&&({n})'.format(n=self.tcutgs[col][row].GetName()), 'goff')
+                if temph.GetMean() > val:
+                    self.AddGoodAreas(col, row)
+                else:
+                    self.AddBadAreas(col, row)
+                del temph
+
+        tempgood = [cut.GetName() for cut in self.goodAreas]
+        self.goodAreasCutNames = '((' + ')||('.join(tempgood) + '))'
+        tempbad = [cut.GetName() for cut in self.badAreas]
+        self.badAreasCutNames = '((' + ')||('.join(tempbad) + '))'
+
+    def ResetAreas(self):
+        self.goodAreas = []
+        self.badAreas = []
+
+    def DrawPHGoodAreas(self, name, var='clusterChargeN'):
+        self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, self.phbins, self.phmin, self.phmax)
+        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
+        self.canvas[name].cd()
+        self.trans_tree.Draw('{z}>>h_{n}'.format(z=var, n=name), 'transparentEvent&&{n}'.format(n=self.goodAreasCutNames))
+
+    def DrawPHBadAreas(self, name, var='clusterChargeN'):
+        self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, self.phbins, self.phmin, self.phmax)
+        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
+        self.canvas[name].cd()
+        self.trans_tree.Draw('{z}>>h_{n}'.format(z=var, n=name), 'transparentEvent&&{n}'.format(n=self.badAreasCutNames))
 
 if __name__ == '__main__':
     parser = OptionParser()

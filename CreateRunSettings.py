@@ -9,7 +9,7 @@ __author__ = 'DA'
 
 
 class CreateRunSettings:
-	def __init__(self, dir='RunSettings', run=0, softwaredir='/sdvlp', inputdir='~/data'):
+	def __init__(self, dir='RunSettings', run=0, softwaredir='/sdvlp', inputdir='~/data', action=action):
 		print 'Creating run settings file for run', run
 		self.run = run
 		self.dir = os.path.abspath(os.path.expanduser(os.path.expandvars(dir)))
@@ -20,6 +20,15 @@ class CreateRunSettings:
 		self.events = 0
 		self.diainput = 1
 		self.dutname = 'diamond'
+		self.action = action
+		self.do_ana_dic = {}
+		for step in ['pedestal', 'cluster', 'selection', 'alignment', 'transparent']:
+			if self.action == 'transparent':
+				self.do_ana_dic[step] = 1
+			elif action == 'selection':
+				self.do_ana_dic[step] = 1 if step in ['pedestal', 'cluster', 'selection'] else 0
+			else:
+				self.do_ana_dic[step] = 0
 		self.voltage = 0
 		self.saturation = 4095
 		self.eta_corr_limit = 0.0005
@@ -171,11 +180,11 @@ class CreateRunSettings:
 			f0.write('[ANALYSIS]\n')
 			f0.write('first_event = {v}\n'.format(v=0))
 			f0.write('num_events = {v}\n'.format(v=0))
-			f0.write('do_pedestal = {v}\n'.format(v=0))
-			f0.write('do_cluster = {v}\n'.format(v=0))
-			f0.write('do_selection = {v}\n'.format(v=0))
-			f0.write('do_alignment = {v}\n'.format(v=0))
-			f0.write('do_transparent = {v}\n'.format(v=0))
+			f0.write('do_pedestal = {v}\n'.format(v=self.do_ana_dic['pedestal']))
+			f0.write('do_cluster = {v}\n'.format(v=self.do_ana_dic['cluster']))
+			f0.write('do_selection = {v}\n'.format(v=self.do_ana_dic['selection']))
+			f0.write('do_alignment = {v}\n'.format(v=self.do_ana_dic['alignment']))
+			f0.write('do_transparent = {v}\n'.format(v=self.do_ana_dic['transparent']))
 			f0.write('do_3d = {v}\n'.format(v=0))
 			f0.write('do_cross_talk_calc = {v}\n'.format(v=0))
 		print 'Finished creating the run settings file {f}.ini under {d} path :)'.format(f=self.filename, d=self.dir)
@@ -187,12 +196,14 @@ if __name__ == '__main__':
 	parser.add_option('-d', '--dir', dest='dir', default='RunSettings', type='string', help='Directory where the run settings file will be saved (e.g. RunSettings)')
 	parser.add_option('-s', '--softwaredir', dest='softwaredir', default='/sdvlp', type='string', help='Path to directory where the different analysis softwares are located (e.g. /sdvlp)')
 	parser.add_option('-i', '--inputdir', dest='inputdir', default='~/data', type='string', help='Path to directory where the years of the testbeam campaings containing the raw files are located (e.g. ~/data)')
+	parser.add_option('-a', '--action', dest='action', default='None', type='string', choices=['None', 'selection', 'transparent'], help='Selects upto which part of the analysis to enable. Default is "None"')
 
 	(options, args) = parser.parse_args()
 	run = int(options.run)
 	dir = str(options.dir)
 	softwaredir = str(options.softwaredir)
 	inputdir = str(options.inputdir)
+	action = str(options.action)
 
-	crs = CreateRunSettings(dir=dir, run=run, softwaredir=softwaredir, inputdir=inputdir)
+	crs = CreateRunSettings(dir=dir, run=run, softwaredir=softwaredir, inputdir=inputdir, action=action)
 	crs.CreateRunSettingsFile()
