@@ -60,6 +60,7 @@ class RD42Analysis:
 		self.symlinks = True
 		self.ph_dia_max = 4096
 		self.ph_dia_bins = 512
+		self.yOffset = 0
 		# self.scratch_path = '/scratch/strip_telescope_tests/runDiego/output'  # at snickers
 
 		self.delete_old = False
@@ -136,6 +137,8 @@ class RD42Analysis:
 						self.ph_dia_max = pars.getint('RUN', 'ph_dia_max')
 					if pars.has_option('RUN', 'ph_num_bins'):
 						self.ph_dia_bins = pars.getint('RUN', 'ph_num_bins')
+					if pars.has_option('RUN', 'yOffset'):
+						self.yOffset = pars.getfloat('RUN', 'yOffset')
 					if pars.has_option('RUN', 'datadir'):
 						self.data_dir = pars.get('RUN', 'datadir')
 					else:
@@ -348,6 +351,8 @@ class RD42Analysis:
 						ftemp.write('pulse_height_di_max = {ph};\n'.format(ph=self.ph_dia_max))
 					if 'pulse_height_num_bins' not in lines_params:
 						ftemp.write('pulse_height_num_bins = {n}\n'.format(n=self.ph_dia_bins))
+					if 'yOffset3D' not in lines_params:
+						ftemp.write('yOffset3D = {v}\n'.format(v=self.yOffset))
 					if 'TransparentAlignment' not in lines_params:
 						ftemp.write('TransparentAlignment = {v}\n'.format(v=int(self.trans_align)))
 					for line in lines:
@@ -392,6 +397,8 @@ class RD42Analysis:
 							ftemp.write('pulse_height_di_max = {ph}\n'.format(ph=self.ph_dia_max))
 						elif line.startswith('pulse_height_num_b'):
 							ftemp.write('pulse_height_num_bins = {nb}\n'.format(nb=self.ph_dia_bins))
+						elif line.startswith('yOffset3'):
+							ftemp.write('yOffset3D = {v}\n'.format(v=self.yOffset))
 						elif line.startswith('eta_corr_lim'):
 							ftemp.write('eta_corr_limit = {v}\n'.format(v=self.eta_corr_limit))
 						else:
