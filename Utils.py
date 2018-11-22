@@ -1,4 +1,5 @@
 import os, shutil, sys, progressbar
+import numpy as np
 # import ipdb
 
 def IsInt(i):
@@ -13,6 +14,15 @@ def IsFloat(f):
 		float(f)
 		return True
 	except ValueError:
+		return False
+
+def RoundInt(n):
+	return np.floor(np.add(n, 0.5, dtype='f8'), dtype='f8').astype('int32')
+
+def IsOnlyInt(f):
+	if IsFloat(f):
+		return RoundInt(f) == f
+	else:
 		return False
 
 def CreateDefaultSettingsFile(diri, run_no, events, dut_name='default', dut_volt=0, ev_ini=0, num_evs_ana=0, dia_input=0, dia_sat=4095, max_trans_clust=10, num_highest_trans=5, chi2=5):
