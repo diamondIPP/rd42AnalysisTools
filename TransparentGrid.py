@@ -9,11 +9,12 @@ from collections import OrderedDict
 import os, sys, shutil
 from Utils import *
 import cPickle as pickle
+from Langaus import LanGaus
 
 class TransparentGrid:
     def __init__(self, dir='', run=25209):
         ro.gStyle.SetPalette(55)
-        ro.gStyle.SetNumberContours(999)
+        ro.gStyle.SetNumberContours(99)
         # ro.TFormula.SetMaxima(100000)
         self.run = run
         self.dir = os.path.abspath(os.path.expanduser(os.path.expandvars(dir)))
@@ -30,6 +31,7 @@ class TransparentGrid:
         self.phmax = 4000
         self.col_pitch = 50
         self.cell_resolution = 1
+        self.saturated_ADC = 4095
         self.pkl = None
         self.loaded_pickle = False
         self.row_info_telescope = {'0': float(61.84669791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.008}
@@ -67,6 +69,7 @@ class TransparentGrid:
         self.badAreasCutNames_diamond = ''
         self.badAreasCutNames_diamond_centers = ''
         self.temph = None
+        self.langaus = {}
 
     def CheckFoldersAndFiles(self):
         if not os.path.isdir(self.dir):
@@ -88,7 +91,7 @@ class TransparentGrid:
         self.num_cols = self.ch_end - self.ch_ini + 1
 
     def TryLoadPickle(self):
-        picklepath = '{d}/{r}/y_low_params.{r}.pkl'.format(d=self.dir, r=self.run)
+        picklepath = '{d}/{r}/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run)
         if os.path.isfile(picklepath):
             with open(picklepath, 'rb') as pkl:
                 self.pkl = pickle.load(pkl)
@@ -99,10 +102,14 @@ class TransparentGrid:
         if self.loaded_pickle:
             self.row_info_telescope = self.pkl['row_info_telescope']
             self.row_info_predicted = self.pkl['row_info_telescope']
+            self.row_info_diamond = self.pkl['row_info_diamond']
             self.vertical_lines_telescope = self.pkl['vertical_lines_telescope']
+            self.vertical_lines_diamond = self.pkl['vertical_lines_diamond']
+            self.horizontal_lines_diamond = self.pkl['horizontal_lines_diamond']
+            self.num_cols = self.pkl['num_cols']
+            self.col_pitch = self.pkl['col_pitch']
             self.horizontal_lines_telescope = self.pkl['horizontal_lines_telescope']
             self.align_info = self.pkl['align_info']
-            self.row_info_diamond = self.pkl['row_info_diamond']
         elif try_align:
             self.FindHorizontalParametersThroughAlignment()
             # self.CreateLines()
@@ -214,38 +221,55 @@ class TransparentGrid:
             self.vertical_lines_diamond_tline.append(ro.TLine(linev[0]['x'], linev[0]['y'], linev[1]['x'], linev[1]['y']))
             self.vertical_lines_diamond_tline[-1].SetLineColor(ro.kRed)
 
-    def DrawProfile2DFiducial(self, name, varz='clusterChargeN', cuts=''):
+    def DrawProfile2D(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts=''):
+        ro.gStyle.SetOptStat('en')
         ro.TFormula.SetMaxima(100000)
-        self.profile[name] = ro.TProfile2D('h_'+name, 'h_'+name, int(128 * self.bins_per_ch_x), -0.5, 127.5, int(256 * self.bins_per_ch_y), -0.5, 255.5)
-        self.profile[name].GetXaxis().SetTitle('dia X ch')
-        self.profile[name].GetYaxis().SetTitle('sil Y ch')
-        self.profile[name].GetZaxis().SetTitle('PH[ADC]')
-        self.canvas[name] = ro.TCanvas('c_'+name, 'c_'+name, 1)
+        self.profile[name] = ro.TProfile2D('h_' + name, 'h_' + name, int(np.floor((xmax - xmin)/deltax + 0.5) + 2), xmin - deltax, xmax + deltax, int(np.floor((ymax - ymin)/deltay + 0.5) + 2), ymin - deltay, ymax + deltay)
+        self.profile[name].GetXaxis().SetTitle(xname)
+        self.profile[name].GetYaxis().SetTitle(yname)
+        self.profile[name].GetZaxis().SetTitle(zname)
+        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
         self.canvas[name].cd()
-        self.trans_tree.Draw('{z}:fidY:diaChXPred>>h_{n}'.format(z=varz, n=name), 'transparentEvent&&({c})'.format(c=cuts if cuts != '' else 1), 'colz prof')
+        temp_cut = 'transparentEvent'
+        temp_cut += '&&({c})'.format(c=cuts if cuts != '' else 1)
+        self.trans_tree.Draw('{z}:{y}:{x}>>h_{n}'.format(z=varz, y=vary, x=varx, n=name), temp_cut, 'colz prof')
         ro.TFormula.SetMaxima(1000)
+
+    def Draw2DHisto(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, cuts=''):
+        ro.TFormula.SetMaxima(100000)
+        ro.gStyle.SetOptStat('en')
+        self.histo[name] = ro.TH2F('h_' + name, 'h_' + name, int(np.floor((xmax - xmin) / deltax + 0.5) + 2), xmin - deltax, xmax + deltax, int(np.floor((ymax - ymin) / deltay + 0.5) + 2), ymin - deltay, ymax + deltay)
+        self.histo[name].GetXaxis().SetTitle(xname)
+        self.histo[name].GetYaxis().SetTitle(yname)
+        self.histo[name].GetZaxis().SetTitle('entries')
+        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
+        self.canvas[name].cd()
+        temp_cut = 'transparentEvent'
+        temp_cut += '&&({c})'.format(c=cuts if cuts != '' else 1)
+        self.trans_tree.Draw('{y}:{x}>>h_{n}'.format(y=vary, x=varx, n=name), temp_cut, 'colz')
+        ro.TFormula.SetMaxima(1000)
+
+    def DrawPH(self, name, xmin, xmax, deltax, var='clusterChargeN', varname='PH[ADC]', cuts=''):
+        ro.TFormula.SetMaxima(100000)
+        ro.gStyle.SetOptStat('neMmRruo')
+        self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, int(np.floor((xmax - xmin) / deltax + 0.5)), xmin, xmax)
+        self.histo[name].GetXaxis().SetTitle(varname)
+        self.histo[name].GetYaxis().SetTitle('entries')
+        temp_cuts = 'transparentEvent'
+        temp_cuts += '&&({c})'.format(c=1 if cuts == '' else cuts)
+        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
+        self.canvas[name].cd()
+        self.trans_tree.Draw('{v}>>h_{n}'.format(v=var, n=name), temp_cuts)
+        ro.TFormula.SetMaxima(1000)
+
+    def DrawProfile2DFiducial(self, name, varz='clusterChargeN', cuts=''):
+        self.DrawProfile2D(name, -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch', -0.5, 255.5, self.row_info_telescope['pitch']/self.bins_per_ch_y, 'sil Y ch', 'diaChXPred', 'fidY', varz, 'PH[ADC]', cuts)
 
     def DrawProfile2DPredicted(self, name, varz='clusterChargeN', cuts=''):
-        ro.TFormula.SetMaxima(100000)
-        self.profile[name] = ro.TProfile2D('h_'+name, 'h_'+name, int(128 * self.bins_per_ch_x), -0.5, 127.5, int(256 * self.bins_per_ch_y), 0, 12800)
-        self.profile[name].GetXaxis().SetTitle('dia X ch')
-        self.profile[name].GetYaxis().SetTitle('sil pred Y [#mum]')
-        self.profile[name].GetZaxis().SetTitle('PH[ADC]')
-        self.canvas[name] = ro.TCanvas('c_'+name, 'c_'+name, 1)
-        self.canvas[name].cd()
-        self.trans_tree.Draw('{z}:yPredicted:diaChXPred>>h_{n}'.format(z=varz, n=name), 'transparentEvent&&({c})'.format(c=cuts if cuts != '' else 1), 'colz prof')
-        ro.TFormula.SetMaxima(1000)
+        self.DrawProfile2D(name, -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch', 0, 12800, 50.0 * self.row_info_predicted['pitch']/self.bins_per_ch_y, 'sil pred Y [#mum]', 'diaChXPred', 'yPredicted', varz, 'PH[ADC]', cuts)
 
     def DrawProfile2DDiamond(self, name, varz='clusterChargeN', cuts=''):
-        ro.TFormula.SetMaxima(100000)
-        self.profile[name] = ro.TProfile2D('h_'+name, 'h_'+name, int(128 * self.bins_per_ch_x), -0.5, 127.5, int(256 * self.bins_per_ch_y), 0, 12800)
-        self.profile[name].GetXaxis().SetTitle('dia X ch')
-        self.profile[name].GetYaxis().SetTitle('dia Y [#mum]')
-        self.profile[name].GetZaxis().SetTitle('PH[ADC]')
-        self.canvas[name] = ro.TCanvas('c_'+name, 'c_'+name, 1)
-        self.canvas[name].cd()
-        self.trans_tree.Draw('{z}:diaChYPred:diaChXPred>>h_{n}'.format(z=varz, n=name), 'transparentEvent&&({c})'.format(c=cuts if cuts != '' else 1), 'colz prof')
-        ro.TFormula.SetMaxima(1000)
+        self.DrawProfile2D(name, -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'], self.row_info_diamond['pitch']/self.bins_per_ch_y, 'sil pred Y [#mum]', 'diaChXPred', 'yPredicted', varz, 'PH[ADC]', cuts)
 
     def DrawLinesFiducial(self, name):
         self.DrawLines(name, type='fidY')
@@ -364,7 +388,7 @@ class TransparentGrid:
         self.goodAreas_telescope.append(self.tcutgs_telescope[col][row])
         self.goodAreas_diamond.append(self.tcutgs_diamond[col][row])
         self.goodAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
-        
+
         tempgood = [cut.GetName() for cut in self.goodAreas_telescope]
         self.goodAreasCutNames_telescope = '((' + ')||('.join(tempgood) + '))'
         tempgood = [cut.GetName() for cut in self.goodAreas_diamond]
@@ -379,7 +403,7 @@ class TransparentGrid:
         self.badAreas_telescope.append(self.tcutgs_telescope[col][row])
         self.badAreas_diamond.append(self.tcutgs_diamond[col][row])
         self.badAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
-        
+
         tempbad = [cut.GetName() for cut in self.badAreas_telescope]
         self.badAreasCutNames_telescope = '((' + ')||('.join(tempbad) + '))'
         tempbad = [cut.GetName() for cut in self.badAreas_diamond]
@@ -456,130 +480,75 @@ class TransparentGrid:
         self.badAreasCutNames_diamond = ''
         self.badAreasCutNames_diamond_centers = ''
 
-    def DrawPHGoodAreas(self, name, var='clusterChargeN', type='diamond', cuts=''):
-        ro.TFormula.SetMaxima(100000)
-        self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, self.phbins, self.phmin, self.phmax)
-        self.histo[name].GetXaxis().SetTitle('PH[ADC]')
-        self.histo[name].GetYaxis().SetTitle('entries')
-        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-        self.canvas[name].cd()
-        self.trans_tree.Draw('{z}>>h_{n}'.format(z=var, n=name), 'transparentEvent&&{n}&&({c})'.format(n=self.goodAreasCutNames_diamond if type=='diamond' else self.goodAreasCutNames_telescope, c=cuts if cuts != '' else 1))
-        ro.TFormula.SetMaxima(1000)
+    def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond'):
+        temp_cut = '{n}'.format(n=self.goodAreasCutNames_diamond if type == 'diamond' else self.goodAreasCutNames_telescope)
+        temp_cut += '&&({c})'.format(c=1 if cuts == '' else cuts)
+        self.DrawPH(name, self.phmin, self.phmax, (self.phmax - self.phmin) / self.phbins, var, 'PH[ADC]', temp_cut)
 
-    def DrawPHBadAreas(self, name, var='clusterChargeN', type='diamond', cuts=''):
-        ro.TFormula.SetMaxima(100000)
-        self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, self.phbins, self.phmin, self.phmax)
-        self.histo[name].GetXaxis().SetTitle('PH[ADC]')
-        self.histo[name].GetYaxis().SetTitle('entries')
-        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-        self.canvas[name].cd()
-        self.trans_tree.Draw('{z}>>h_{n}'.format(z=var, n=name), 'transparentEvent&&{n}&&({c})'.format(n=self.badAreasCutNames_diamond if type=='diamond' else self.badAreasCutNames_telescope, c=cuts if cuts != '' else 1))
-        ro.TFormula.SetMaxima(1000)
+    def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond'):
+        temp_cut = '{n}'.format(n=self.badAreasCutNames_diamond if type == 'diamond' else self.badAreasCutNames_telescope)
+        temp_cut += '&&googl({c})'.format(c=1 if cuts == '' else cuts)
+        self.DrawPH(name, self.phmin, self.phmax, (self.phmax - self.phmin) / self.phbins, var, 'PH[ADC]', temp_cut)
 
     def DrawPHCentralRegion(self, name, var='clusterChargeN', cells='good', cuts=''):
-        ro.TFormula.SetMaxima(100000)
-        self.histo[name] = ro.TH1F('h_'+name, 'h_'+name, self.phbins, self.phmin, self.phmax)
-        self.histo[name].GetXaxis().SetTitle('PH[ADC]')
-        self.histo[name].GetYaxis().SetTitle('entries')
-        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-        self.canvas[name].cd()
         temp_cuts = '{n}'.format(n=self.goodAreasCutNames_diamond_centers) if cells == 'good' else '{n}'.format(n=self.badAreasCutNames_diamond_centers) if cells == 'bad' else '({n}||{m})'.format(n=self.goodAreasCutNames_diamond_centers, m=self.badAreasCutNames_diamond_centers)
         temp_cuts = temp_cuts if cuts == '' else temp_cuts + '&&({c})'.format(c=cuts)
-        self.trans_tree.Draw('{z}>>h_{n}'.format(z=var, n=name), 'transparentEvent&&{c}'.format(c=temp_cuts))
-        ro.TFormula.SetMaxima(1000)
+        self.DrawPH(name, self.phmin, self.phmax, (self.phmax - self.phmin) / self.phbins, var, 'PH[ADC]', temp_cuts)
 
     def Draw2DProfileDiamondChannelOverlay(self, name, var='clusterChargeN', cells='all', cut=''):
-        ro.TFormula.SetMaxima(100000)
-        self.profile[name] = ro.TProfile2D('h_'+name, 'h_'+name, int(RoundInt(self.col_pitch/self.cell_resolution)+2), -self.cell_resolution, self.col_pitch + self.cell_resolution, int(256 * self.bins_per_ch_y), 0, 12800)
-        self.profile[name].GetXaxis().SetTitle('dia X [#mum]')
-        self.profile[name].GetYaxis().SetTitle('dia Y [#mum]')
-        self.profile[name].GetZaxis().SetTitle('PH[ADC]')
-        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-        self.canvas[name].cd()
         temp_cuts = '{n}'.format(n=self.goodAreasCutNames_diamond) if cells == 'good' else '{n}'.format(n=self.badAreasCutNames_diamond) if cells == 'bad' else '(1)'
         temp_cuts = temp_cuts if cut == '' else temp_cuts + '&&({c})'.format(c=cut)
-        self.trans_tree.Draw('{z}:diaChYPred:((diaChXPred-{o})*{p})%{p}>>h_{n}'.format(z=var, o=self.row_info_diamond['x_off'], n=name, p=self.col_pitch), 'transparentEvent&&{c}'.format(c=temp_cuts), 'colz prof')
-        ro.TFormula.SetMaxima(1000)
+        self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'],
+                           self.row_info_diamond['pitch']/self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=self.row_info_diamond['x_off'], p=self.col_pitch), 'diaChYPred', var, 'PH[ADC]', temp_cuts)
 
     def Draw2DProfileDiamondRowOverlay(self, name, var='clusterChargeN', cells='all', cut=''):
-        ro.TFormula.SetMaxima(100000)
-        self.profile[name] = ro.TProfile2D('h_'+name, 'h_'+name, int(128 * self.bins_per_ch_x), -0.5, 127.5, int(RoundInt(self.row_info_diamond['pitch']/self.cell_resolution)+2), -self.cell_resolution, int(self.row_info_diamond['pitch']) + self.cell_resolution)
-        self.profile[name].GetXaxis().SetTitle('dia X ch')
-        self.profile[name].GetYaxis().SetTitle('dia Y [#mum]')
-        self.profile[name].GetZaxis().SetTitle('PH[ADC]')
-        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-        self.canvas[name].cd()
         temp_cuts = '({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=self.row_info_diamond['0'], h=self.row_info_diamond['0'] + self.row_info_diamond['pitch'] * self.row_info_diamond['num'])
         temp_cuts += '&&{n}'.format(n=self.goodAreasCutNames_diamond) if cells == 'good' else '&&{n}'.format(n=self.badAreasCutNames_diamond) if cells == 'bad' else '&&(1)'
         temp_cuts = temp_cuts if cut == '' else temp_cuts + '&&({c})'.format(c=cut)
-        self.trans_tree.Draw('{z}:(((diaChYPred-{oy})*10000)%{srp})/10000:diaChXPred>>h_{n}'.format(z=var, oy=self.row_info_diamond['y_off'], n=name, srp=int(10000*self.row_info_diamond['pitch'])), 'transparentEvent&&{c}'.format(c=temp_cuts), 'colz prof')
-        ro.TFormula.SetMaxima(1000)
+        self.DrawProfile2D(name, -0.5, 127.5, self.cell_resolution, 'dia X ch', 0, self.row_info_diamond['pitch'], self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=self.row_info_diamond['y_off'], srp=int(10000*self.row_info_diamond['pitch'])), var, 'PH[ADC]', temp_cuts)
 
     def Draw2DProfileDiamondCellOverlay(self, name, var='clusterChargeN', cells='all', cut=''):
-        ro.TFormula.SetMaxima(100000)
-        self.profile[name] = ro.TProfile2D('h_'+name, 'h_'+name, int(RoundInt(self.col_pitch/self.cell_resolution) + 2), -self.cell_resolution, self.col_pitch + self.cell_resolution, int(RoundInt(self.row_info_diamond['pitch']/self.cell_resolution)+2), -self.cell_resolution, int(self.row_info_diamond['pitch']) + self.cell_resolution)
-        self.profile[name].GetXaxis().SetTitle('dia X [#mum]')
-        self.profile[name].GetYaxis().SetTitle('dia Y [#mum]')
-        self.profile[name].GetZaxis().SetTitle('PH[ADC]')
-        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-        self.canvas[name].cd()
         temp_cuts = '({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=self.row_info_diamond['0'], h=self.row_info_diamond['0'] + self.row_info_diamond['pitch'] * self.row_info_diamond['num'])
         temp_cuts += '&&{n}'.format(n=self.goodAreasCutNames_diamond) if cells == 'good' else '&&{n}'.format(n=self.badAreasCutNames_diamond) if cells == 'bad' else '&&(1)'
         temp_cuts = temp_cuts if cut == '' else temp_cuts + '&&({c})'.format(c=cut)
-        self.trans_tree.Draw('{z}:(((diaChYPred-{oy})*10000)%{srp})/10000:((diaChXPred-{ox})*{p})%{p}>>h_{n}'.format(z=var, ox=self.row_info_diamond['x_off'], n=name, oy=self.row_info_diamond['y_off'], srp=int(10000*self.row_info_diamond['pitch']), p=self.col_pitch), 'transparentEvent&&{c}'.format(c=temp_cuts), 'colz prof')
-        ro.TFormula.SetMaxima(1000)
+        self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, self.row_info_diamond['pitch'], self.cell_resolution, 'dia Y [#mum]', '((diaChXPred-{ox})*{p})%{p}'.format(ox=self.row_info_diamond['x_off'], p=self.col_pitch), '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=self.row_info_diamond['y_off'], srp=int(10000*self.row_info_diamond['pitch'])), var, 'PH[ADC]', temp_cuts)
 
     def Draw2DHistoDiamondChannelOverlay(self, name, cells='all', cut=''):
-        ro.TFormula.SetMaxima(100000)
-        self.profile[name] = ro.TH2F('h_'+name, 'h_'+name, int(RoundInt(self.col_pitch/self.cell_resolution) + 2), -self.cell_resolution, self.col_pitch + self.cell_resolution, int(256 * self.bins_per_ch_y), 0, 12800)
-        self.profile[name].GetXaxis().SetTitle('dia X [#mum]')
-        self.profile[name].GetYaxis().SetTitle('dia Y [#mum]')
-        self.profile[name].GetZaxis().SetTitle('entries')
-        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-        self.canvas[name].cd()
         temp_cuts = '{n}'.format(n=self.goodAreasCutNames_diamond) if cells == 'good' else '{n}'.format(n=self.badAreasCutNames_diamond) if cells == 'bad' else '(1)'
         temp_cuts = temp_cuts if cut == '' else temp_cuts + '&&({c})'.format(c=cut)
-        self.trans_tree.Draw('diaChYPred:((diaChXPred-{o})*{p})%{p}>>h_{n}'.format(o=self.row_info_diamond['x_off'], n=name, p=self.col_pitch), 'transparentEvent&&{c}'.format(c=temp_cuts), 'colz')
-        ro.TFormula.SetMaxima(1000)
+        self.Draw2DHisto(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'],
+                         self.row_info_diamond['pitch'] / self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=self.row_info_diamond['x_off'], p=self.col_pitch), 'diaChYPred', temp_cuts)
 
     def Draw2DHistoDiamondRowOverlay(self, name, cells='all', cut=''):
-        ro.TFormula.SetMaxima(100000)
-        self.profile[name] = ro.TH2F('h_'+name, 'h_'+name, int(128 * self.bins_per_ch_x), -0.5, 127.5, int(RoundInt(self.row_info_diamond['pitch']/self.cell_resolution) + 2), -self.cell_resolution, int(self.row_info_diamond['pitch']) + self.cell_resolution)
-        self.profile[name].GetXaxis().SetTitle('dia X ch')
-        self.profile[name].GetYaxis().SetTitle('dia Y [#mum]')
-        self.profile[name].GetZaxis().SetTitle('entries')
-        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-        self.canvas[name].cd()
         temp_cuts = '({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=self.row_info_diamond['0'], h=self.row_info_diamond['0'] + self.row_info_diamond['pitch'] * self.row_info_diamond['num'])
         temp_cuts += '&&{n}'.format(n=self.goodAreasCutNames_diamond) if cells == 'good' else '&&{n}'.format(n=self.badAreasCutNames_diamond) if cells == 'bad' else '&&(1)'
         temp_cuts = temp_cuts if cut == '' else temp_cuts + '&&({c})'.format(c=cut)
-        self.trans_tree.Draw('(((diaChYPred-{oy})*10000)%{srp})/10000:diaChXPred>>h_{n}'.format(oy=self.row_info_diamond['y_off'], n=name, srp=int(10000*self.row_info_diamond['pitch'])), 'transparentEvent&&{c}'.format(c=temp_cuts), 'colz')
-        ro.TFormula.SetMaxima(1000)
+        self.Draw2DHisto(name, -0.5, 127.5, self.cell_resolution, 'dia X ch', 0, self.row_info_diamond['pitch'], self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=self.row_info_diamond['y_off'], srp=int(10000*self.row_info_diamond['pitch'])), temp_cuts)
 
     def Draw2DHistoDiamondCellOverlay(self, name, cells='all', cut=''):
-        ro.TFormula.SetMaxima(100000)
-        self.profile[name] = ro.TH2F('h_'+name, 'h_'+name, int(RoundInt(self.col_pitch/self.cell_resolution)+2), -self.cell_resolution, self.col_pitch + self.cell_resolution, int(RoundInt(self.row_info_diamond['pitch']/self.cell_resolution)+2), -self.cell_resolution, int(self.row_info_diamond['pitch']) + self.cell_resolution)
-        self.profile[name].GetXaxis().SetTitle('dia X [#mum]')
-        self.profile[name].GetYaxis().SetTitle('dia Y [#mum]')
-        self.profile[name].GetZaxis().SetTitle('entries')
-        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-        self.canvas[name].cd()
         temp_cuts = '({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=self.row_info_diamond['0'], h=self.row_info_diamond['0'] + self.row_info_diamond['pitch'] * self.row_info_diamond['num'])
         temp_cuts += '&&{n}'.format(n=self.goodAreasCutNames_diamond) if cells == 'good' else '&&{n}'.format(n=self.badAreasCutNames_diamond) if cells == 'bad' else '&&(1)'
         temp_cuts = temp_cuts if cut == '' else temp_cuts + '&&({c})'.format(c=cut)
-        self.trans_tree.Draw('(((diaChYPred-{oy})*10000)%{srp})/10000:((diaChXPred-{ox})*{p})%{p}>>h_{n}'.format(ox=self.row_info_diamond['x_off'], n=name, oy=self.row_info_diamond['y_off'], srp=int(10000*self.row_info_diamond['pitch']), p=self.col_pitch), 'transparentEvent&&{c}'.format(c=temp_cuts), 'colz')
-        ro.TFormula.SetMaxima(1000)
+        self.Draw2DHisto(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, self.row_info_diamond['pitch'], self.cell_resolution, 'dia Y [#mum]', '((diaChXPred-{ox})*{p})%{p}'.format(ox=self.row_info_diamond['x_off'], p=self.col_pitch), '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=self.row_info_diamond['y_off'], srp=int(10000*self.row_info_diamond['pitch'])), temp_cuts)
 
     def DrawTCutCentersInCellOverlay(self, name):
         self.canvas[name].cd()
         self.tcutg_diamond_center.Draw('same')
+
+    def FitLanGaus(self, name, conv_steps=100):
+        ro.gStyle.SetOptFit(1)
+        self.canvas[name].cd()
+        self.langaus[name] = LanGaus(self.histo[name])
+        self.langaus[name].LanGausFit(conv_steps)
+        self.langaus[name].fit.Draw('same')
+        print '<PH> = {f}'.format(f=self.langaus[name].fit.Mean(0,4000))
 
 
 if __name__ == '__main__':
     parser = OptionParser()
     parser.add_option('-d', '--dir', dest='dir', type='string', help='Path to the subdirectory that contains the output of different runs')
     parser.add_option('-r', '--run', dest='run', type='int', help='run number to be analysed (e.g. 25209)')
-    parser.add_option('-a', '--al', dest='al', action='store_true', default=False, help='enable find grid through data and alignment')
+    parser.add_option('-a', '--al', dest='al', action='store_true', default=True, help='enable find grid through data and alignment')
 
     (options, args) = parser.parse_args()
     run = int(options.run)
