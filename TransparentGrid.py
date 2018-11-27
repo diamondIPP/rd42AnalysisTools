@@ -29,14 +29,17 @@ class TransparentGrid:
         self.phbins = 200
         self.phmin = 0
         self.phmax = 4000
-        self.col_pitch = 50
-        self.cell_resolution = 1
+        self.col_pitch = 50.0
+        self.cell_resolution = 2
         self.saturated_ADC = 4095
         self.pkl = None
         self.loaded_pickle = False
-        self.row_info_telescope = {'0': float(61.84669791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.008}
-        self.row_info_predicted = {'0': float(61.84669791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.008}
-        self.row_info_diamond = {'num': 27, 'pitch': 50.2963, 'x_off': 0.509, 'y_off': 47.14185, '0': 3113.7}
+        # self.row_info_telescope = {'0': float(61.84669791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.008}
+        self.row_info_telescope = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0}
+        # self.row_info_predicted = {'0': float(61.84669791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.008}
+        self.row_info_predicted = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0}
+        # self.row_info_diamond = {'num': 27, 'pitch': 50.2963, 'x_off': 0.509, 'y_off': 47.14185, '0': 3113.7}
+        self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.509, 'y_off': 47.14185, '0': 3117.70005}
         self.vertical_lines_telescope = []
         self.vertical_lines_telescope_tline = []
         self.horizontal_lines_telescope = []
@@ -263,13 +266,13 @@ class TransparentGrid:
         ro.TFormula.SetMaxima(1000)
 
     def DrawProfile2DFiducial(self, name, varz='clusterChargeN', cuts=''):
-        self.DrawProfile2D(name, -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch', -0.5, 255.5, self.row_info_telescope['pitch']/self.bins_per_ch_y, 'sil Y ch', 'diaChXPred', 'fidY', varz, 'PH[ADC]', cuts)
+        self.DrawProfile2D(name, -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch', -0.5, 255.5, float(self.row_info_telescope['pitch'])/self.bins_per_ch_y, 'sil Y ch', 'diaChXPred', 'fidY', varz, 'PH[ADC]', cuts)
 
     def DrawProfile2DPredicted(self, name, varz='clusterChargeN', cuts=''):
         self.DrawProfile2D(name, -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch', 0, 12800, 50.0 * self.row_info_predicted['pitch']/self.bins_per_ch_y, 'sil pred Y [#mum]', 'diaChXPred', 'yPredicted', varz, 'PH[ADC]', cuts)
 
     def DrawProfile2DDiamond(self, name, varz='clusterChargeN', cuts=''):
-        self.DrawProfile2D(name, -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'], self.row_info_diamond['pitch']/self.bins_per_ch_y, 'sil pred Y [#mum]', 'diaChXPred', 'yPredicted', varz, 'PH[ADC]', cuts)
+        self.DrawProfile2D(name, -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]', 'diaChXPred', 'yPredicted', varz, 'PH[ADC]', cuts)
 
     def DrawLinesFiducial(self, name):
         self.DrawLines(name, type='fidY')
@@ -462,6 +465,7 @@ class TransparentGrid:
                 temph = ro.gDirectory.Get('temphrc')
                 if temph.GetMean() > val:
                     self.AddGoodAreas(col, row)
+                    print 'good', col, row
                 else:
                     self.AddBadAreas(col, row)
                 temph.Reset('ICES')
@@ -499,7 +503,7 @@ class TransparentGrid:
         temp_cuts = '{n}'.format(n=self.goodAreasCutNames_diamond) if cells == 'good' else '{n}'.format(n=self.badAreasCutNames_diamond) if cells == 'bad' else '(1)'
         temp_cuts = temp_cuts if cut == '' else temp_cuts + '&&({c})'.format(c=cut)
         self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'],
-                           self.row_info_diamond['pitch']/self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=self.row_info_diamond['x_off'], p=self.col_pitch), 'diaChYPred', var, 'PH[ADC]', temp_cuts)
+                           float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=self.row_info_diamond['x_off'], p=self.col_pitch), 'diaChYPred', var, 'PH[ADC]', temp_cuts)
 
     def Draw2DProfileDiamondRowOverlay(self, name, var='clusterChargeN', cells='all', cut=''):
         temp_cuts = '({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=self.row_info_diamond['0'], h=self.row_info_diamond['0'] + self.row_info_diamond['pitch'] * self.row_info_diamond['num'])
@@ -517,7 +521,7 @@ class TransparentGrid:
         temp_cuts = '{n}'.format(n=self.goodAreasCutNames_diamond) if cells == 'good' else '{n}'.format(n=self.badAreasCutNames_diamond) if cells == 'bad' else '(1)'
         temp_cuts = temp_cuts if cut == '' else temp_cuts + '&&({c})'.format(c=cut)
         self.Draw2DHisto(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'],
-                         self.row_info_diamond['pitch'] / self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=self.row_info_diamond['x_off'], p=self.col_pitch), 'diaChYPred', temp_cuts)
+                         float(self.row_info_diamond['pitch']) / self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=self.row_info_diamond['x_off'], p=self.col_pitch), 'diaChYPred', temp_cuts)
 
     def Draw2DHistoDiamondRowOverlay(self, name, cells='all', cut=''):
         temp_cuts = '({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=self.row_info_diamond['0'], h=self.row_info_diamond['0'] + self.row_info_diamond['pitch'] * self.row_info_diamond['num'])
