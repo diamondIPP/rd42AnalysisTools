@@ -38,8 +38,8 @@ class TransparentGrid:
         self.row_info_telescope = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0}
         # self.row_info_predicted = {'0': float(61.84669791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.008}
         self.row_info_predicted = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0}
-        # self.row_info_diamond = {'num': 27, 'pitch': 50.2963, 'x_off': 0.509, 'y_off': 47.14185, '0': 3113.7}
-        self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.509, 'y_off': 47.14185, '0': 3117.70005}
+        # self.row_info_diamond = {'num': 27, 'pitch': 50.2963, 'x_off': 0.509, 'y_off': 47.14185, '0': 3113.7, 'up': 4471.7001}
+        self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5065, 'y_off': 18.95, '0': 3117.70005, 'up': 4467.70005}
         self.vertical_lines_telescope = []
         self.vertical_lines_telescope_tline = []
         self.horizontal_lines_telescope = []
@@ -73,6 +73,8 @@ class TransparentGrid:
         self.badAreasCutNames_diamond_centers = ''
         self.temph = None
         self.langaus = {}
+        self.gridTextDiamond = None
+        self.gridTextTelescope = None
 
     def CheckFoldersAndFiles(self):
         if not os.path.isdir(self.dir):
@@ -88,7 +90,7 @@ class TransparentGrid:
 
     def FindDiamondChannelLimits(self):
         temph = ro.TH1F('temph', 'temph', 128, -0.5,127.5)
-        self.trans_tree.Draw('diaChXPred>>temph', '', 'goff')
+        self.trans_tree.Draw('diaChXPred>>temph', 'transparentEvent', 'goff')
         self.ch_ini = int(temph.GetBinCenter(temph.FindFirstBinAbove(1, 1)))
         self.ch_end = int(temph.GetBinCenter(temph.FindLastBinAbove(1, 1)))
         self.num_cols = self.ch_end - self.ch_ini + 1
@@ -274,6 +276,18 @@ class TransparentGrid:
     def DrawProfile2DDiamond(self, name, varz='clusterChargeN', cuts=''):
         self.DrawProfile2D(name, -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]', 'diaChXPred', 'yPredicted', varz, 'PH[ADC]', cuts)
 
+    def GetOccupancyFromProfile(self, name):
+        ro.gStyle.SetOptStat('ne')
+        name_occupancy = 'hit_map_' + name
+        self.histo[name_occupancy] = self.profile[name].ProjectionXY('h_' + name_occupancy, 'B')
+        self.histo[name_occupancy].SetTitle('h_' + name_occupancy)
+        self.histo[name_occupancy].GetXaxis().SetTitle(self.profile[name].GetXaxis().GetTitle())
+        self.histo[name_occupancy].GetYaxis().SetTitle(self.profile[name].GetYaxis().GetTitle())
+        self.histo[name_occupancy].GetZaxis().SetTitle('entries')
+        self.canvas[name_occupancy] = ro.TCanvas('c_' + name_occupancy, 'c_' + name_occupancy, 1)
+        self.canvas[name_occupancy].cd()
+        self.histo[name_occupancy].Draw('colz')
+
     def DrawLinesFiducial(self, name):
         self.DrawLines(name, type='fidY')
 
@@ -281,6 +295,7 @@ class TransparentGrid:
         self.DrawLines(name, type='diamond')
 
     def DrawLines(self, name, type):
+        ro.gStyle.SetOptStat('en')
         self.canvas[name].cd()
         if type == "fidY":
             for lineh in self.horizontal_lines_telescope_tline:
@@ -307,6 +322,7 @@ class TransparentGrid:
         self.CreateTCutGsTelescope()
         self.CreateTCutGsDiamond()
         self.CreateTCutGsDiamondCenter()
+        self.CreateGridText()
 
     def CreateTCutGsTelescope(self):
         def GetNumpyArraysX(coli):
@@ -384,6 +400,30 @@ class TransparentGrid:
                 self.tcutgs_diamond_center[col][row].SetVarY('diaChYPred')
                 self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
 
+    def CreateGridText(self):
+        self.gridTextDiamond = ro.TH2F('gridText_diamond', 'gridText_diamond', int(np.floor(128.0 * self.bins_per_ch_x + 0.5) + 2), -0.5 - 1.0 / self.bins_per_ch_x, 127.5 + 1.0 / self.bins_per_ch_x, int(np.floor(256 * self.bins_per_ch_y + 0.5) + 2), self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'] - (float(self.row_info_diamond['pitch']) / self.bins_per_ch_y), self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'] + (float(self.row_info_diamond['pitch']) / self.bins_per_ch_y))
+        x0, x1, y0, y1 = np.zeros(1, 'f8'), np.zeros(1, 'f8'), np.zeros(1, 'f8'), np.zeros(1, 'f8')
+        for col in xrange(0, self.num_cols):
+            self.tcutgs_diamond[col][0].GetPoint(0, x0, y0)
+            self.tcutgs_diamond[col][0].GetPoint(3, x1, y0)
+            self.gridTextDiamond.Fill(np.mean((x0, x1)), y0[0]-0.1, (col + 0.01))
+        for row in xrange(0, self.row_info_diamond['num']):
+            self.tcutgs_diamond[0][row].GetPoint(0, x0, y0)
+            self.tcutgs_diamond[0][row].GetPoint(1, x0, y1)
+            self.gridTextDiamond.Fill(x0[0]-0.1, np.mean((y0, y1)), (row + 0.01))
+        self.gridTextDiamond.SetMarkerSize(0.8)
+        self.gridTextTelescope = ro.TH2F('gridText_telescope', 'gridText_telescope', int(np.floor(128.0 * self.bins_per_ch_x + 0.5) + 2), -0.5 - 1.0 / self.bins_per_ch_x, 127.5 + 1.0 / self.bins_per_ch_x, int(np.floor(256 * self.bins_per_ch_y + 0.5) + 2), self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'] - (float(self.row_info_diamond['pitch']) / self.bins_per_ch_y), self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'] + (float(self.row_info_diamond['pitch']) / self.bins_per_ch_y))
+        x0, x1, y0, y1 = np.zeros(1, 'f8'), np.zeros(1, 'f8'), np.zeros(1, 'f8'), np.zeros(1, 'f8')
+        for col in xrange(0, self.num_cols):
+            self.tcutgs_telescope[col][0].GetPoint(0, x0, y0)
+            self.tcutgs_telescope[col][0].GetPoint(3, x1, y0)
+            self.gridTextTelescope.Fill(np.mean((x0, x1)), y0[0]-0.1, (col + 0.01))
+        for row in xrange(0, self.row_info_telescope['num']):
+            self.tcutgs_telescope[0][row].GetPoint(0, x0, y0)
+            self.tcutgs_telescope[0][row].GetPoint(1, x0, y1)
+            self.gridTextTelescope.Fill(x0[0]-0.1, np.mean((y0, y1)), (row + 0.01))
+        self.gridTextTelescope.SetMarkerSize(0.8)
+
     def AddGoodAreas(self, col, row):
         self.tcutgs_telescope[col][row].SetLineColor(ro.kRed)
         self.tcutgs_diamond[col][row].SetLineColor(ro.kRed)
@@ -391,6 +431,40 @@ class TransparentGrid:
         self.goodAreas_telescope.append(self.tcutgs_telescope[col][row])
         self.goodAreas_diamond.append(self.tcutgs_diamond[col][row])
         self.goodAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
+
+        tempgood = [cut.GetName() for cut in self.goodAreas_telescope]
+        self.goodAreasCutNames_telescope = '((' + ')||('.join(tempgood) + '))'
+        tempgood = [cut.GetName() for cut in self.goodAreas_diamond]
+        self.goodAreasCutNames_diamond = '((' + ')||('.join(tempgood) + '))'
+        tempgood = [cut.GetName() for cut in self.goodAreas_diamond_centers]
+        self.goodAreasCutNames_diamond_centers = '((' + ')||('.join(tempgood) + '))'
+
+    def AddGoodAreasRow(self, row, coli=0, colf=0):
+        (colii, colff) = (0, self.num_cols) if coli == 0 and colf == 0 else (coli, colf)
+        for col in xrange(colii, colff + 1):
+            self.tcutgs_telescope[col][row].SetLineColor(ro.kRed)
+            self.tcutgs_diamond[col][row].SetLineColor(ro.kRed)
+            self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
+            self.goodAreas_telescope.append(self.tcutgs_telescope[col][row])
+            self.goodAreas_diamond.append(self.tcutgs_diamond[col][row])
+            self.goodAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
+
+        tempgood = [cut.GetName() for cut in self.goodAreas_telescope]
+        self.goodAreasCutNames_telescope = '((' + ')||('.join(tempgood) + '))'
+        tempgood = [cut.GetName() for cut in self.goodAreas_diamond]
+        self.goodAreasCutNames_diamond = '((' + ')||('.join(tempgood) + '))'
+        tempgood = [cut.GetName() for cut in self.goodAreas_diamond_centers]
+        self.goodAreasCutNames_diamond_centers = '((' + ')||('.join(tempgood) + '))'
+
+    def AddGoodAreasCol(self, col, rowi=0, rowf=0):
+        (rowii, rowff) = (0, self.row_info_diamond['num']) if rowi == 0 and rowf == 0 else (rowi, rowf)
+        for row in xrange(rowii, rowff + 1):
+            self.tcutgs_telescope[col][row].SetLineColor(ro.kRed)
+            self.tcutgs_diamond[col][row].SetLineColor(ro.kRed)
+            self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
+            self.goodAreas_telescope.append(self.tcutgs_telescope[col][row])
+            self.goodAreas_diamond.append(self.tcutgs_diamond[col][row])
+            self.goodAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
 
         tempgood = [cut.GetName() for cut in self.goodAreas_telescope]
         self.goodAreasCutNames_telescope = '((' + ')||('.join(tempgood) + '))'
@@ -423,8 +497,29 @@ class TransparentGrid:
     def DrawGoodAreasDiamondCenters(self, name):
         self.DrawGoodAreas(name, type='centers')
 
+    def DrawTCutGs(self, name, type):
+        self.canvas[name].cd()
+        ro.gStyle.SetOptStat('en')
+        ro.gStyle.SetPaintTextFormat(".0f")
+        if type == 'fidY':
+            self.gridTextTelescope.Draw('same TEXT0')
+        elif type == 'diamond':
+            self.gridTextDiamond.Draw('same TEXT0')
+        if name in self.profile.keys():
+            self.profile[name].Draw('same colz')
+        elif name in self.histo.keys():
+            self.histo[name].Draw('same colz')
+        for col in xrange(0, self.num_cols):
+            for row in xrange(0, self.row_info_diamond['num']):
+                if type == 'fidY':
+                    self.tcutgs_telescope[col][row].Draw('same')
+                elif type == 'diamond':
+                    self.tcutgs_diamond[col][row].Draw('same')
+                elif type == 'centers':
+                    self.tcutgs_diamond_center[col][row].Draw('same')
 
     def DrawGoodAreas(self, name, type):
+        ro.gStyle.SetOptStat('en')
         self.canvas[name].cd()
         if type == 'fidY':
             for area in self.goodAreas_telescope:
@@ -446,6 +541,7 @@ class TransparentGrid:
         self.DrawBadAreas(name, type='centers')
 
     def DrawBadAreas(self, name, type):
+        ro.gStyle.SetOptStat('en')
         self.canvas[name].cd()
         if type == 'fidY':
             for area in self.badAreas_telescope:
@@ -465,7 +561,6 @@ class TransparentGrid:
                 temph = ro.gDirectory.Get('temphrc')
                 if temph.GetMean() > val:
                     self.AddGoodAreas(col, row)
-                    print 'good', col, row
                 else:
                     self.AddBadAreas(col, row)
                 temph.Reset('ICES')
