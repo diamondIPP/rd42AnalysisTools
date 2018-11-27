@@ -53,7 +53,7 @@ class LanGaus:
 		self.paramsLimitsHigh[2] = self.histo.Integral() * 5000
 		self.paramsLimitsHigh[3] = self.histo.GetRMS()
 
-	def LanGausFit(self, nconv=1000):
+	def LanGausFit(self, nconv=1000, doLikelihood=False):
 		fit_name = 'fit_{n}'.format(n=self.histo.GetName())
 		self.conv_steps = nconv
 
@@ -65,10 +65,11 @@ class LanGaus:
 		self.fit.SetNpx(1000)
 		self.fit.SetParameters(self.params)
 		self.fit.SetParNames('Width', 'MP', 'Area', 'GSigma')
-
+		options = 'QRB0ML' if doLikelihood else 'QRB0M'
+		ro.Math.MinimizerOptions.SetDefaultMinimizer('Minuit2', 'Migrad')
 		for i in xrange(len(self.params)):
 			self.fit.SetParLimits(i, self.paramsLimitsLow[i], self.paramsLimitsHigh[i])
-		self.histo.Fit(fit_name, 'QRB0L', '', self.fit_range[0], self.fit_range[1])
+		self.histo.Fit(fit_name, options, '', self.fit_range[0], self.fit_range[1])
 		self.fit.GetParameters(self.params)
 		for i in xrange(len(self.params)):
 			self.paramsFitErrors[i] = self.fit.GetParError(i)
