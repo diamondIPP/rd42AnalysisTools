@@ -37,12 +37,16 @@ class TransparentGrid:
         self.saturated_ADC = 4095
         self.pkl = None
         self.loaded_pickle = False
-        # self.row_info_telescope = {'0': float(61.84669791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.008}
-        self.row_info_telescope = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0} if self.col_pitch == 50 else {'0': float(61.95469791829917), 'm': float(0.05102496), 'num': 24, 'pitch': 1.0}
-        # self.row_info_predicted = {'0': float(61.84669791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.008}
-        self.row_info_predicted = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0} if self.col_pitch == 50 else {'0': float(61.95469791829917), 'm': float(0.05102496), 'num': 24, 'pitch': 1.0}
-        # self.row_info_diamond = {'num': 27, 'pitch': 50.2963, 'x_off': 0.509, 'y_off': 47.14185, '0': 3113.7, 'up': 4471.7001}
-        self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5065, 'y_off': 18.95, '0': 3117.70005, 'up': 4467.70005} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.4976, 'y_off': 52.6, '0': 3049.6, 'up': 5449.6}
+        if self.run in [25207, 25208, 25209, 25210]:
+            if self.run in [25207, 25208, 25210]: print 'Using settings for run 25209. Results might not be correctly aligned'
+            self.row_info_telescope = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0} if self.col_pitch == 50 else {'0': float(61.95469791829917), 'm': float(0.05102496), 'num': 24, 'pitch': 1.0}
+            self.row_info_predicted = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0} if self.col_pitch == 50 else {'0': float(61.95469791829917), 'm': float(0.05102496), 'num': 24, 'pitch': 1.0}
+            self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5065, 'y_off': 18.95, '0': 3117.70005, 'up': 4467.70005} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.4976, 'y_off': 52.6, '0': 3049.6, 'up': 5449.6}
+        elif self.run in [25202, 25203, 25204, 25205, 25206]:
+            if self.run in [25202, 25203, 25206]: print 'Using settings for run 25205. Results might not be correctly aligned'
+            self.row_info_telescope = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0} if self.col_pitch == 50 else {'0': float(61.95469791829917), 'm': float(0.05102496), 'num': 24, 'pitch': 1.0}
+            self.row_info_predicted = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0} if self.col_pitch == 50 else {'0': float(61.95469791829917), 'm': float(0.05102496), 'num': 24, 'pitch': 1.0}
+            self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.4922, 'y_off': 47.978033, '0': 3148.785, 'up': 4498.785} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.4976, 'y_off': 79.803, '0': 3076.115, 'up': 5476.115}
         self.vertical_lines_telescope = []
         self.vertical_lines_telescope_tline = []
         self.horizontal_lines_telescope = []
@@ -80,6 +84,13 @@ class TransparentGrid:
         self.langaus = {}
         self.gridTextDiamond = None
         self.gridTextTelescope = None
+        self.doubleLangaus = {}
+        self.lg1, self.lg2 = ro.TF1(), ro.TF1()
+
+        self.conv_steps = 1000
+        self.sigma_conv = 5
+        self.mpshift = -0.22278298
+
 
     def CheckFoldersAndFiles(self):
         if not os.path.isdir(self.dir):
@@ -249,6 +260,9 @@ class TransparentGrid:
         self.profile[name].FindObject('stats').SetX2NDC(0.9)
         self.profile[name].FindObject('stats').SetY1NDC(0.9)
         self.profile[name].FindObject('stats').SetY2NDC(0.975)
+        self.profile[name].FindObject('palette').SetX1NDC(0.87)
+        self.profile[name].FindObject('palette').SetX2NDC(0.92)
+        ro.gPad.Update()
         ro.TFormula.SetMaxima(1000)
 
     def Draw2DHisto(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, cuts=''):
@@ -265,6 +279,13 @@ class TransparentGrid:
         self.trans_tree.Draw('{y}:{x}>>h_{n}'.format(y=vary, x=varx, n=name), temp_cut, 'colz')
         ro.gPad.Update()
         self.histo[name].FindObject('stats').SetOptStat(11)
+        self.histo[name].FindObject('stats').SetX1NDC(0.7)
+        self.histo[name].FindObject('stats').SetX2NDC(0.9)
+        self.histo[name].FindObject('stats').SetY1NDC(0.9)
+        self.histo[name].FindObject('stats').SetY2NDC(0.975)
+        self.histo[name].FindObject('palette').SetX1NDC(0.87)
+        self.histo[name].FindObject('palette').SetX2NDC(0.92)
+        ro.gPad.Update()
         ro.TFormula.SetMaxima(1000)
 
     def DrawPH(self, name, xmin, xmax, deltax, var='clusterChargeN', varname='PH[ADC]', cuts=''):
@@ -280,10 +301,11 @@ class TransparentGrid:
         self.trans_tree.Draw('{v}>>h_{n}'.format(v=var, n=name), temp_cuts, 'e')
         ro.gPad.Update()
         self.histo[name].FindObject('stats').SetOptStat(112211)
-        self.histo[name].FindObject('stats').SetX1NDC(0.7)
+        self.histo[name].FindObject('stats').SetX1NDC(0.6)
         self.histo[name].FindObject('stats').SetX2NDC(0.9)
-        self.histo[name].FindObject('stats').SetY1NDC(0.9)
-        self.histo[name].FindObject('stats').SetY2NDC(0.975)
+        self.histo[name].FindObject('stats').SetY1NDC(0.6)
+        self.histo[name].FindObject('stats').SetY2NDC(0.9)
+        ro.gPad.Update()
         ro.TFormula.SetMaxima(1000)
 
     def DrawProfile2DFiducial(self, name, varz='clusterChargeN', cuts=''):
@@ -294,7 +316,7 @@ class TransparentGrid:
 
     def DrawProfile2DDiamond(self, name, varz='clusterChargeN', cuts='', draw_top_borders=False):
         temp_cuts = '' if draw_top_borders else '({l}<=diaChYPred)&&(diaChYPred<={h})'.format(l=self.row_info_diamond['0'], h=self.row_info_diamond['up'])
-        temp_cuts += '&&({c})'.format(c=cuts if cuts != '' else 1)
+        temp_cuts += '&&({c})'.format(c=cuts) if cuts != '' else ''
         self.DrawProfile2D(name, -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]', 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', temp_cuts)
 
     def GetOccupancyFromProfile(self, name):
@@ -314,6 +336,7 @@ class TransparentGrid:
         self.histo[name_occupancy].FindObject('stats').SetX2NDC(0.9)
         self.histo[name_occupancy].FindObject('stats').SetY1NDC(0.9)
         self.histo[name_occupancy].FindObject('stats').SetY2NDC(0.975)
+        ro.gPad.Update()
 
     def DrawLinesFiducial(self, name):
         self.DrawLines(name, type='fidY')
@@ -454,72 +477,76 @@ class TransparentGrid:
         self.gridTextTelescope.SetMarkerSize(0.8)
 
     def AddGoodAreas(self, col, row):
-        self.goodAreas_index.append((col, row))
-        self.tcutgs_telescope[col][row].SetLineColor(ro.kRed)
-        self.tcutgs_diamond[col][row].SetLineColor(ro.kRed)
-        self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
-        self.goodAreas_telescope.append(self.tcutgs_telescope[col][row])
-        self.goodAreas_diamond.append(self.tcutgs_diamond[col][row])
-        self.goodAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
+        if 0 <= col < self.num_cols and 0 <= row < self.row_info_diamond['num']:
+            self.goodAreas_index.append((col, row))
+            self.tcutgs_telescope[col][row].SetLineColor(ro.kRed)
+            self.tcutgs_diamond[col][row].SetLineColor(ro.kRed)
+            self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
+            self.goodAreas_telescope.append(self.tcutgs_telescope[col][row])
+            self.goodAreas_diamond.append(self.tcutgs_diamond[col][row])
+            self.goodAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
 
-        tempgood = [cut.GetName() for cut in self.goodAreas_telescope]
-        self.goodAreasCutNames_telescope = '((' + ')||('.join(tempgood) + '))'
-        tempgood = [cut.GetName() for cut in self.goodAreas_diamond]
-        self.goodAreasCutNames_diamond = '((' + ')||('.join(tempgood) + '))'
-        tempgood = [cut.GetName() for cut in self.goodAreas_diamond_centers]
-        self.goodAreasCutNames_diamond_centers = '((' + ')||('.join(tempgood) + '))'
+            tempgood = [cut.GetName() for cut in self.goodAreas_telescope]
+            self.goodAreasCutNames_telescope = '((' + ')||('.join(tempgood) + '))'
+            tempgood = [cut.GetName() for cut in self.goodAreas_diamond]
+            self.goodAreasCutNames_diamond = '((' + ')||('.join(tempgood) + '))'
+            tempgood = [cut.GetName() for cut in self.goodAreas_diamond_centers]
+            self.goodAreasCutNames_diamond_centers = '((' + ')||('.join(tempgood) + '))'
 
     def AddGoodAreasRow(self, row, coli=0, colf=0):
         (colii, colff) = (0, self.num_cols) if coli == 0 and colf == 0 else (coli, colf)
-        for col in xrange(colii, colff + 1):
-            self.goodAreas_index.append((col, row))
-            self.tcutgs_telescope[col][row].SetLineColor(ro.kRed)
-            self.tcutgs_diamond[col][row].SetLineColor(ro.kRed)
-            self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
-            self.goodAreas_telescope.append(self.tcutgs_telescope[col][row])
-            self.goodAreas_diamond.append(self.tcutgs_diamond[col][row])
-            self.goodAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
+        if 0 <= colii <= colff < self.num_cols and 0 <= row < self.row_info_diamond['num']:
+            for col in xrange(colii, colff + 1):
+                self.goodAreas_index.append((col, row))
+                self.tcutgs_telescope[col][row].SetLineColor(ro.kRed)
+                self.tcutgs_diamond[col][row].SetLineColor(ro.kRed)
+                self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
+                self.goodAreas_telescope.append(self.tcutgs_telescope[col][row])
+                self.goodAreas_diamond.append(self.tcutgs_diamond[col][row])
+                self.goodAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
 
-        tempgood = [cut.GetName() for cut in self.goodAreas_telescope]
-        self.goodAreasCutNames_telescope = '((' + ')||('.join(tempgood) + '))'
-        tempgood = [cut.GetName() for cut in self.goodAreas_diamond]
-        self.goodAreasCutNames_diamond = '((' + ')||('.join(tempgood) + '))'
-        tempgood = [cut.GetName() for cut in self.goodAreas_diamond_centers]
-        self.goodAreasCutNames_diamond_centers = '((' + ')||('.join(tempgood) + '))'
+            tempgood = [cut.GetName() for cut in self.goodAreas_telescope]
+            self.goodAreasCutNames_telescope = '((' + ')||('.join(tempgood) + '))'
+            tempgood = [cut.GetName() for cut in self.goodAreas_diamond]
+            self.goodAreasCutNames_diamond = '((' + ')||('.join(tempgood) + '))'
+            tempgood = [cut.GetName() for cut in self.goodAreas_diamond_centers]
+            self.goodAreasCutNames_diamond_centers = '((' + ')||('.join(tempgood) + '))'
 
     def AddGoodAreasCol(self, col, rowi=0, rowf=0):
         (rowii, rowff) = (0, self.row_info_diamond['num']) if rowi == 0 and rowf == 0 else (rowi, rowf)
-        for row in xrange(rowii, rowff + 1):
-            self.goodAreas_index.append((col, row))
-            self.tcutgs_telescope[col][row].SetLineColor(ro.kRed)
-            self.tcutgs_diamond[col][row].SetLineColor(ro.kRed)
-            self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
-            self.goodAreas_telescope.append(self.tcutgs_telescope[col][row])
-            self.goodAreas_diamond.append(self.tcutgs_diamond[col][row])
-            self.goodAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
+        if 0 <= col < self.num_cols and 0 <= rowii <= rowff < self.row_info_diamond['num']:
+            for row in xrange(rowii, rowff + 1):
+                self.goodAreas_index.append((col, row))
+                self.tcutgs_telescope[col][row].SetLineColor(ro.kRed)
+                self.tcutgs_diamond[col][row].SetLineColor(ro.kRed)
+                self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
+                self.goodAreas_telescope.append(self.tcutgs_telescope[col][row])
+                self.goodAreas_diamond.append(self.tcutgs_diamond[col][row])
+                self.goodAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
 
-        tempgood = [cut.GetName() for cut in self.goodAreas_telescope]
-        self.goodAreasCutNames_telescope = '((' + ')||('.join(tempgood) + '))'
-        tempgood = [cut.GetName() for cut in self.goodAreas_diamond]
-        self.goodAreasCutNames_diamond = '((' + ')||('.join(tempgood) + '))'
-        tempgood = [cut.GetName() for cut in self.goodAreas_diamond_centers]
-        self.goodAreasCutNames_diamond_centers = '((' + ')||('.join(tempgood) + '))'
+            tempgood = [cut.GetName() for cut in self.goodAreas_telescope]
+            self.goodAreasCutNames_telescope = '((' + ')||('.join(tempgood) + '))'
+            tempgood = [cut.GetName() for cut in self.goodAreas_diamond]
+            self.goodAreasCutNames_diamond = '((' + ')||('.join(tempgood) + '))'
+            tempgood = [cut.GetName() for cut in self.goodAreas_diamond_centers]
+            self.goodAreasCutNames_diamond_centers = '((' + ')||('.join(tempgood) + '))'
 
     def AddBadAreas(self, col, row):
-        self.badAreas_index.append((col, row))
-        self.tcutgs_telescope[col][row].SetLineColor(ro.kBlue)
-        self.tcutgs_diamond[col][row].SetLineColor(ro.kBlue)
-        self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
-        self.badAreas_telescope.append(self.tcutgs_telescope[col][row])
-        self.badAreas_diamond.append(self.tcutgs_diamond[col][row])
-        self.badAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
+        if 0 <= col < self.num_cols and 0 <= row < self.row_info_diamond['num']:
+            self.badAreas_index.append((col, row))
+            self.tcutgs_telescope[col][row].SetLineColor(ro.kBlue)
+            self.tcutgs_diamond[col][row].SetLineColor(ro.kBlue)
+            self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
+            self.badAreas_telescope.append(self.tcutgs_telescope[col][row])
+            self.badAreas_diamond.append(self.tcutgs_diamond[col][row])
+            self.badAreas_diamond_centers.append(self.tcutgs_diamond_center[col][row])
 
-        tempbad = [cut.GetName() for cut in self.badAreas_telescope]
-        self.badAreasCutNames_telescope = '((' + ')||('.join(tempbad) + '))'
-        tempbad = [cut.GetName() for cut in self.badAreas_diamond]
-        self.badAreasCutNames_diamond = '((' + ')||('.join(tempbad) + '))'
-        tempbad = [cut.GetName() for cut in self.badAreas_diamond_centers]
-        self.badAreasCutNames_diamond_centers = '((' + ')||('.join(tempbad) + '))'
+            tempbad = [cut.GetName() for cut in self.badAreas_telescope]
+            self.badAreasCutNames_telescope = '((' + ')||('.join(tempbad) + '))'
+            tempbad = [cut.GetName() for cut in self.badAreas_diamond]
+            self.badAreasCutNames_diamond = '((' + ')||('.join(tempbad) + '))'
+            tempbad = [cut.GetName() for cut in self.badAreas_diamond_centers]
+            self.badAreasCutNames_diamond_centers = '((' + ')||('.join(tempbad) + '))'
 
     def AddRemainingToBadAreas(self):
         for col in xrange(0, self.num_cols):
@@ -607,11 +634,11 @@ class TransparentGrid:
             for area in self.badAreas_diamond_centers:
                 area.Draw('same')
 
-    def SelectGoodAndBadByThreshold(self, val=500):
+    def SelectGoodAndBadByThreshold(self, val=500, var='clusterChargeN'):
         for col in xrange(self.num_cols):
             for row in xrange(self.row_info_diamond['num']):
                 # self.temph = ro.TH1F('temphrc', 'temphrc', 200, 0, 4000)
-                self.trans_tree.Draw('clusterChargeN>>temphrc(200,0,4000)', 'transparentEvent&&({n})'.format(n=self.tcutgs_diamond[col][row].GetName()), 'goff')
+                self.trans_tree.Draw(var+'>>temphrc(200,0,4000)', 'transparentEvent&&({n})'.format(n=self.tcutgs_diamond[col][row].GetName()), 'goff')
                 temph = ro.gDirectory.Get('temphrc')
                 if temph.GetMean() > val:
                     self.AddGoodAreas(col, row)
@@ -688,139 +715,227 @@ class TransparentGrid:
         self.canvas[name].cd()
         self.tcutg_diamond_center.Draw('same')
 
-    def FitLanGaus(self, name, conv_steps=100):
+    def FitLanGaus(self, name, conv_steps=100, color=ro.kRed):
         self.canvas[name].cd()
         self.langaus[name] = LanGaus(self.histo[name])
         self.langaus[name].LanGausFit(conv_steps)
+        fitmean = self.langaus[name].fit.Mean(0, 4000)
         self.langaus[name].fit.Draw('same')
+        self.langaus[name].fit.SetLineColor(color)
         ro.gPad.Update()
         self.histo[name].FindObject('stats').SetOptFit(1)
         self.histo[name].FindObject('stats').SetX1NDC(0.6)
         self.histo[name].FindObject('stats').SetX2NDC(0.9)
         self.histo[name].FindObject('stats').SetY1NDC(0.6)
         self.histo[name].FindObject('stats').SetY2NDC(0.9)
-        print '<PH> = {f}'.format(f=self.langaus[name].fit.Mean(0,4000))
+        AddLineToStats(self.canvas[name], 'Mean_{Fit}', fitmean)
+        self.histo[name].SetStats(0)
+        self.canvas[name].Modified()
+        ro.gPad.Update()
+        print '{n}: <PH> = {f}'.format(n=name, f=fitmean)
 
-    def Test(self, num=0):
+    def Test(self, num=0, clust_size=2):
         self.cell_resolution = 50.0 / 13.0 if self.col_pitch == 50 else 100.0 / 51
         if num == 0:
+            self.cell_resolution = 50.0 / 25.0
             self.ResetAreas()
-            self.AddGoodAreasCol(2, 17, 20)
-            self.AddGoodAreasCol(3, 7, 9)
-            self.AddGoodAreasCol(3, 17, 19)
-            self.AddGoodAreasCol(4, 6, 13)
-            self.AddGoodAreasCol(4, 16, 20)
-            self.AddGoodAreasCol(5, 8, 19)
-            self.AddGoodAreasCol(6, 7, 9)
-            self.AddGoodAreasCol(6, 11, 18)
-            self.AddGoodAreasCol(7, 8, 8)
-            self.AddGoodAreasCol(7, 12, 12)
-            self.AddGoodAreasCol(7, 14, 19)
-            self.AddGoodAreasCol(7, 21, 21)
-            self.AddGoodAreasCol(8, 15, 21)
-            self.AddGoodAreasCol(8, 24, 24)
-            self.AddGoodAreasCol(9, 12, 12)
-            self.AddGoodAreasCol(9, 14, 17)
-            self.AddGoodAreasCol(9, 19, 25)
-            self.AddGoodAreasCol(10, 12, 17)
-            self.AddGoodAreasCol(10, 19, 19)
-            self.AddGoodAreasCol(11, 13, 17)
-            self.AddGoodAreasCol(11, 19, 20)
+            self.AddGoodAreasCol(2 + 1 - clust_size, 17, 20)
+            self.AddGoodAreasCol(3 + 1 - clust_size, 7, 9)
+            self.AddGoodAreasCol(3 + 1 - clust_size, 17, 19)
+            self.AddGoodAreasCol(4 + 1 - clust_size, 6, 13)
+            self.AddGoodAreasCol(4 + 1 - clust_size, 16, 20)
+            self.AddGoodAreasCol(5 + 1 - clust_size, 8, 19)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 7, 9)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 11, 18)
+            self.AddGoodAreasCol(7 + 1 - clust_size, 8, 8)
+            self.AddGoodAreasCol(7 + 1 - clust_size, 12, 12)
+            self.AddGoodAreasCol(7 + 1 - clust_size, 14, 19)
+            self.AddGoodAreasCol(7 + 1 - clust_size, 21, 21)
+            self.AddGoodAreasCol(8 + 1 - clust_size, 15, 21)
+            self.AddGoodAreasCol(8 + 1 - clust_size, 24, 24)
+            self.AddGoodAreasCol(9 + 1 - clust_size, 12, 12)
+            self.AddGoodAreasCol(9 + 1 - clust_size, 14, 17)
+            self.AddGoodAreasCol(9 + 1 - clust_size, 19, 25)
+            self.AddGoodAreasCol(10 + 1 - clust_size, 12, 17)
+            self.AddGoodAreasCol(10 + 1 - clust_size, 19, 19)
+            self.AddGoodAreasCol(11 + 1 - clust_size, 13, 17)
+            self.AddGoodAreasCol(11 + 1 - clust_size, 19, 20)
             self.AddRemainingToBadAreas()
         elif num == 1:
+            self.cell_resolution = 50.0 / 17.0
             self.ResetAreas()
-            self.AddGoodAreasCol(3, 7, 9)
-            self.AddGoodAreasCol(4, 6, 13)
-            self.AddGoodAreasCol(5, 8, 19)
-            self.AddGoodAreasCol(6, 11, 18)
-            self.AddGoodAreasCol(7, 14, 19)
-            self.AddGoodAreasCol(8, 15, 21)
-            self.AddGoodAreasCol(9, 14, 17)
-            self.AddGoodAreasCol(10, 12, 17)
-            self.AddGoodAreasCol(11, 13, 17)
+            self.AddGoodAreasCol(3 + 1 - clust_size, 7, 9)
+            self.AddGoodAreasCol(4 + 1 - clust_size, 6, 13)
+            self.AddGoodAreasCol(5 + 1 - clust_size, 8, 19)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 11, 18)
+            self.AddGoodAreasCol(7 + 1 - clust_size, 14, 19)
+            self.AddGoodAreasCol(8 + 1 - clust_size, 15, 21)
+            self.AddGoodAreasCol(9 + 1 - clust_size, 14, 17)
+            self.AddGoodAreasCol(10 + 1 - clust_size, 12, 17)
+            self.AddGoodAreasCol(11 + 1 - clust_size, 13, 17)
             self.AddRemainingToBadAreas()
         elif num == 2:
+            self.cell_resolution = 50.0 / 15.0
             self.ResetAreas()
-            self.AddGoodAreasCol(4, 6, 13)
-            self.AddGoodAreasCol(5, 8, 19)
-            self.AddGoodAreasCol(6, 11, 18)
-            self.AddGoodAreasCol(7, 14, 19)
-            self.AddGoodAreasCol(8, 15, 21)
-            self.AddGoodAreasCol(8, 15, 21)
+            self.AddGoodAreasCol(4 + 1 - clust_size, 6, 13)
+            self.AddGoodAreasCol(5 + 1 - clust_size, 8, 19)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 11, 18)
+            self.AddGoodAreasCol(7 + 1 - clust_size, 14, 19)
+            self.AddGoodAreasCol(8 + 1 - clust_size, 15, 21)
+            self.AddGoodAreasCol(8 + 1 - clust_size, 15, 21)
             self.AddRemainingToBadAreas()
         elif num == 3:
+            self.cell_resolution = 50.0 / 15.0
             self.ResetAreas()
-            self.AddGoodAreasCol(4, 8, 19)
-            self.AddGoodAreasCol(5, 8, 19)
-            self.AddGoodAreasCol(6, 8, 19)
+            self.AddGoodAreasCol(4 + 1 - clust_size, 8, 19)
+            self.AddGoodAreasCol(5 + 1 - clust_size, 8, 19)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 8, 19)
             self.AddRemainingToBadAreas()
         elif num == 4:
             self.ResetAreas()
-            self.AddGoodAreasCol(5, 8, 19)
-            self.AddGoodAreasCol(6, 8, 19)
+            self.AddGoodAreasCol(5 + 1 - clust_size, 8, 19)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 8, 19)
             self.AddRemainingToBadAreas()
         elif num == 5:
             self.ResetAreas()
-            self.AddGoodAreasCol(5, 14, 19)
-            self.AddGoodAreasCol(6, 14, 19)
-            self.AddGoodAreasCol(7, 14, 19)
-            self.AddGoodAreasCol(8, 14, 19)
-            self.AddGoodAreasCol(9, 14, 19)
+            self.AddGoodAreasCol(5 + 1 - clust_size, 14, 19)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 14, 19)
+            self.AddGoodAreasCol(7 + 1 - clust_size, 14, 19)
+            self.AddGoodAreasCol(8 + 1 - clust_size, 14, 19)
+            self.AddGoodAreasCol(9 + 1 - clust_size, 14, 19)
             self.AddRemainingToBadAreas()
         elif num == 6:
+            self.cell_resolution = 50.0 / 11.0
             self.ResetAreas()
-            self.AddGoodAreasCol(5, 14, 18)
-            self.AddGoodAreasCol(6, 14, 18)
-            self.AddGoodAreasCol(7, 14, 18)
+            self.AddGoodAreasCol(5 + 1 - clust_size, 14, 18)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 14, 18)
+            self.AddGoodAreasCol(7 + 1 - clust_size, 14, 18)
             self.AddRemainingToBadAreas()
         elif num == 7:
+            self.cell_resolution = 50.0 / 11.0
             self.ResetAreas()
-            self.AddGoodAreasCol(5, 15, 18)
-            self.AddGoodAreasCol(6, 15, 18)
-            self.AddGoodAreasCol(7, 15, 18)
-            self.AddGoodAreasCol(8, 15, 18)
+            self.AddGoodAreasCol(5 + 1 - clust_size, 15, 18)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 15, 18)
+            self.AddGoodAreasCol(7 + 1 - clust_size, 15, 18)
+            self.AddGoodAreasCol(8 + 1 - clust_size, 15, 18)
             self.AddRemainingToBadAreas()
         elif num == 8:
+            self.cell_resolution = 50.0 / 11.0
             self.ResetAreas()
-            self.AddGoodAreasRow(15, 5, 11)
-            self.AddGoodAreasRow(16, 5, 11)
-            self.AddGoodAreasRow(17, 5, 11)
+            self.AddGoodAreasRow(15, 5 + 1 - clust_size, 11 + 2 - 2 * clust_size)
+            self.AddGoodAreasRow(16, 5 + 1 - clust_size, 11 + 2 - 2 * clust_size)
+            self.AddGoodAreasRow(17, 5 + 1 - clust_size, 11 + 2 - 2 * clust_size)
             self.AddRemainingToBadAreas()
+        elif num == 9:
+            self.cell_resolution = 2
+            self.ResetAreas()
+            self.SelectGoodAndBadByThreshold(800)
         elif num == 100:
+            self.cell_resolution = 2
             self.ResetAreas()
             self.SelectGoodAndBadByThreshold(200)
-        self.PlotTests(num)
+        self.PlotTests(num, clust_size)
 
-    def PlotTests(self, num=0):
-        self.DrawProfile2DDiamond('ph_map_test{n}'.format(n=num), cuts='({l}<=diaChYPred)&&(diaChYPred<={h})'.format(l=tg.row_info_diamond['0'], h=tg.row_info_diamond['up']))
-        ro.gPad.Update()
-        self.canvas['ph_map_test{n}'.format(n=num)].SetWindowPosition(0,0)
-        self.gridTextDiamond.Draw('same TEXT0')
-        if num != 100:
-            self.profile['ph_map_test'+str(num)].GetXaxis().SetRangeUser(65, 78)
-            self.profile['ph_map_test'+str(num)].GetYaxis().SetRangeUser(3050, 4500)
-        else:
-            self.profile['ph_map_test'+str(num)].GetXaxis().SetRangeUser(37, 51)
-            self.profile['ph_map_test'+str(num)].GetYaxis().SetRangeUser(3000, 5500)
-        self.DrawGoodAreasDiamond('ph_map_test{n}'.format(n=num))
-        self.DrawGoodAreasDiamondCenters('ph_map_test{n}'.format(n=num))
-        self.Draw2DProfileDiamondCellOverlay('ph_cells_test{n}'.format(n=num), cells='good')
-        ro.gPad.Update()
-        self.canvas['ph_cells_test{n}'.format(n=num)].SetWindowPosition(700, 0)
-        self.DrawTCutCentersInCellOverlay('ph_cells_test{n}'.format(n=num))
-        self.DrawPHGoodAreas('ph_test{n}'.format(n=num))
-        ro.gPad.Update()
-        self.canvas['ph_test{n}'.format(n=num)].SetWindowPosition(0, 500)
-        if num != 100:
-            self.FitLanGaus('ph_test{n}'.format(n=num))
-        self.DrawPHCentralRegion('ph_test{n}_centers'.format(n=num), cells='good')
-        ro.gPad.Update()
-        self.canvas['ph_test{n}_centers'.format(n=num)].SetWindowPosition(700, 500)
-        self.FitLanGaus('ph_test{n}_centers'.format(n=num))
-        self.canvas['ph_test{n}'.format(n=num)].cd()
-        self.langaus['ph_test{n}_centers'.format(n=num)].fit.Draw('same')
-        # self.Draw2DProfileDiamondCellOverlay('ph_cells_not_test{n}'.format(n=num), cells='bad')
-        # self.DrawPHBadAreas('ph_not_test{n}'.format(n=num))
+    def PlotTests(self, num=0, cluster_size=2):
+        for ch in xrange(1, cluster_size + 1):
+            #  plot map
+            self.DrawProfile2DDiamond('ph{c}_map_test{n}'.format(c=ch, n=num), varz='clusterCharge'+str(ch), cuts='({l}<=diaChYPred)&&(diaChYPred<={h})'.format(l=tg.row_info_diamond['0'], h=tg.row_info_diamond['up']))
+            ro.gPad.Update()
+            self.canvas['ph{c}_map_test{n}'.format(c=ch, n=num)].SetWindowPosition(0,0)
+            self.gridTextDiamond.Draw('same TEXT0')
+            self.profile['ph{c}_map_test'.format(c=ch)+str(num)].GetXaxis().SetRangeUser(self.ch_ini - 1, self.ch_end + 1)
+            self.profile['ph{c}_map_test'.format(c=ch)+str(num)].GetYaxis().SetRangeUser(self.row_info_diamond['0'] - int(self.row_info_diamond['pitch'] / self.bins_per_ch_y), self.row_info_diamond['up'] + int(self.row_info_diamond['pitch'] / self.bins_per_ch_y))
+            #  draw selected areas
+            self.DrawGoodAreasDiamond('ph{c}_map_test{n}'.format(c=ch, n=num))
+            self.DrawGoodAreasDiamondCenters('ph{c}_map_test{n}'.format(c=ch, n=num))
+            #  plot cell overlay
+            self.Draw2DProfileDiamondCellOverlay('ph{c}_cells_test{n}'.format(c=ch, n=num), var='clusterCharge'+str(ch), cells='good')
+            self.canvas['ph{c}_cells_test{n}'.format(c=ch, n=num)].SetWindowPosition(700, 0)
+            #  show center region in cell
+            self.DrawTCutCentersInCellOverlay('ph{c}_cells_test{n}'.format(c=ch, n=num))
+            #  draw ph of selected areas
+            self.DrawPHGoodAreas('ph{c}_test{n}'.format(c=ch, n=num), var='clusterCharge'+str(ch))
+            self.canvas['ph{c}_test{n}'.format(c=ch, n=num)].SetWindowPosition(0, 500)
+            self.DrawPHCentralRegion('ph{c}_test{n}_centers'.format(c=ch, n=num), cells='good', var='clusterCharge'+str(ch))
+            self.canvas['ph{c}_test{n}_centers'.format(c=ch, n=num)].SetWindowPosition(700, 500)
+            #  fit distribution for central region
+            self.FitLanGaus('ph{c}_test{n}_centers'.format(c=ch, n=num), color=ro.kRed)
+            #  get difference between cell and center
+            self.DrawPHGoodAreas('ph{c}_test{n}_periphery'.format(c=ch, n=num))
+            self.histo['ph{c}_test{n}_periphery'.format(c=ch, n=num)].Reset('ICES')
+            self.histo['ph{c}_test{n}_periphery'.format(c=ch, n=num)].Add(self.histo['ph{c}_test{n}'.format(c=ch, n=num)], self.histo['ph{c}_test{n}_centers'.format(c=ch, n=num)], 1, -1)
+            self.canvas['ph{c}_test{n}_periphery'.format(c=ch, n=num)].SetWindowPosition(1400, 0)
+            self.FitLanGaus('ph{c}_test{n}_periphery'.format(c=ch, n=num), color=ro.kBlue)
+            self.canvas['ph{c}_test{n}'.format(c=ch, n=num)].cd()
+            self.langaus['ph{c}_test{n}_centers'.format(c=ch, n=num)].fit.Draw('same')
+            self.langaus['ph{c}_test{n}_periphery'.format(c=ch, n=num)].fit.Draw('same')
+            self.DrawDoubleLangaus('ph{c}_test{n}'.format(c=ch, n=num), 'ph{c}_test{n}_centers'.format(c=ch, n=num), 'ph{c}_test{n}_periphery'.format(c=ch, n=num), color=ro.kBlack)
+            ro.gPad.Update()
+        if cluster_size == 2:
+            self.Draw2DProfileDiamondCellOverlay('ph2_minus_ph1_map_test{n}'.format(n=num), 'clusterCharge2-clusterCharge1', cells='good')
+            self.canvas['ph2_minus_ph1_map_test{n}'.format(n=num)].SetWindowPosition(1400, 500)
+            self.DrawTCutCentersInCellOverlay('ph2_minus_ph1_map_test{n}'.format(n=num))
+            self.phmin, self.phmax = -1500, 1500
+            self.phbins = int(np.floor((self.phmax - self.phmin) / 20.0 + 0.5))
+            self.DrawPHGoodAreas('ph2_minus_ph1_test{n}'.format(n=num), 'clusterCharge2-clusterCharge1')
+            self.canvas['ph2_minus_ph1_test{n}'.format(n=num)].SetWindowPosition(0, 0)
+            ro.gPad.Update()
+            # self.Draw2DProfileDiamondCellOverlay('ph_cells_not_test{n}'.format(n=num), cells='bad')
+            # self.DrawPHBadAreas('ph_not_test{n}'.format(n=num))
+
+    def SaveCanvasInlist(self, list, subdir):
+        for canvas in list:
+            if self.canvas.has_key(canvas):
+                self.canvas[canvas].SaveAs('{d}/{r}/{sd}/{c}.png'.format(d=self.dir, r=self.run, sd=subdir, c=canvas))
+                self.canvas[canvas].SaveAs('{d}/{r}/{sd}/{c}.root'.format(d=self.dir, r=self.run, sd=subdir, c=canvas))
+
+    def DrawDoubleLangaus(self, name, name1, name2, color=ro.kBlack):
+        if self.langaus.has_key(name1) and self.langaus.has_key(name2):
+            langaus1 = tg.langaus[name1].fit
+            langaus2 = tg.langaus[name2].fit
+            self.doubleLangaus[name] = ro.TF1(name, self.TwoLanGaus, 0, 4000, 8)
+            params1 = np.zeros(4, 'f8')
+            params2 = np.zeros(4, 'f8')
+            langaus1.GetParameters(params1)
+            langaus2.GetParameters(params2)
+            params12 = np.concatenate((params1, params2))
+            self.doubleLangaus[name].SetNpx(1000)
+            self.doubleLangaus[name].SetParameters(params12)
+            self.doubleLangaus[name].SetParNames('Width1', 'MP1', 'Area1', 'GSigma1', 'Width2', 'MP2', 'Area2', 'GSigma2')
+            fitmean = self.doubleLangaus[name].Mean(0, 4000)
+            self.canvas[name].cd()
+            self.doubleLangaus[name].Draw('same')
+            self.doubleLangaus[name].SetLineColor(color)
+            AddLineToStats(self.canvas[name], 'Mean_{Fit}', fitmean)
+            self.histo[name].SetStats(0)
+            self.canvas[name].Modified()
+            ro.gPad.Update()
+            print '{n}: <PH> = {f}'.format(n=name, f=fitmean)
+
+    def TwoLanGaus(self, x, params):
+        mpc1 = params[1] - self.mpshift * params[0]
+        mpc2 = params[5] - self.mpshift * params[4]
+        xlow1, xhigh1 = [x[0] + self.sigma_conv * i * params[3] for i in [-1, 1]]
+        xlow2, xhigh2 = [x[0] + self.sigma_conv * i * params[7] for i in [-1, 1]]
+        step1 = (xhigh1 - xlow1) / self.conv_steps
+        step2 = (xhigh2 - xlow2) / self.conv_steps
+        sums1 = 0
+        sums2 = 0
+        for i in xrange(1, int(np.ceil(self.conv_steps / 2.0 + 1))):
+            xx1 = xlow1 + (i - 0.5) * step1
+            xx2 = xlow2 + (i - 0.5) * step2
+            fland1 = ro.TMath.Landau(xx1, mpc1, params[0]) / params[0]
+            fland2 = ro.TMath.Landau(xx2, mpc2, params[4]) / params[4]
+            sums1 += fland1 * ro.TMath.Gaus(x[0], xx1, params[3])
+            sums2 += fland2 * ro.TMath.Gaus(x[0], xx2, params[7])
+            xx1 = xhigh1 - (i - 0.5) * step1
+            xx2 = xhigh2 - (i - 0.5) * step2
+            fland1 = ro.TMath.Landau(xx1, mpc1, params[0]) / params[0]
+            fland2 = ro.TMath.Landau(xx2, mpc2, params[4]) / params[4]
+            sums1 += fland1 * ro.TMath.Gaus(x[0], xx1, params[3])
+            sums2 += fland2 * ro.TMath.Gaus(x[0], xx2, params[7])
+        return params[2] * step1 * sums1 / (np.sqrt(2 * np.pi, dtype='f8') * params[3]) + params[6] * step2 * sums2 / (np.sqrt(2 * np.pi, dtype='f8') * params[7])
+
 
 if __name__ == '__main__':
     parser = OptionParser()
@@ -828,15 +943,26 @@ if __name__ == '__main__':
     parser.add_option('-r', '--run', dest='run', type='int', help='run number to be analysed (e.g. 25209)')
     parser.add_option('-a', '--al', dest='al', action='store_true', default=True, help='enable find grid through data and alignment')
     parser.add_option('-c', '--cellsize', dest='cellsize', type='int', default=50, help='cell size of the square 3D device')
+    parser.add_option('-t', '--test', dest='testnumber', type='int', default=-1, help='Run a automatically one of the predefined tests')
 
     (options, args) = parser.parse_args()
     run = int(options.run)
     dir = str(options.dir)
     use_align = bool(options.al)
-    cellsize = int(options.cellsize)
+    testnum = int(options.testnumber)
+    cellsize = int(options.cellsize) if testnum != 100 else 100
 
     tg = TransparentGrid(dir=dir, run=run, cellsize=cellsize)
     tg.CheckFoldersAndFiles()
     tg.OpenFileAndGetTree()
     tg.FindDiamondChannelLimits()
     tg.SetLines(try_align=use_align)
+    if testnum in (range(0, 10) + [100]):
+        tg.CreateTCutGs()
+        tg.Test(testnum)
+        if not os.path.isdir('{d}/{r}/test{n}'.format(d=tg.dir, r=tg.run, n=testnum)):
+            os.makedirs('{d}/{r}/test{n}'.format(d=tg.dir, r=tg.run, n=testnum))
+        list_of_canvas = [['ph{c}_map_test{n}'.format(c=ch, n=testnum), 'ph{c}_cells_test{n}'.format(c=ch, n=testnum), 'ph{c}_test{n}'.format(c=ch, n=testnum), 'ph{c}_test{n}_centers'.format(c=ch, n=testnum),
+                          'ph{c}_test{n}_periphery'.format(c=ch, n=testnum), 'ph{c}_test{n}'.format(c=ch, n=testnum), 'ph2_minus_ph1_map_test{n}'.format(n=testnum), 'ph2_minus_ph1_test{n}'.format(n=testnum)] for ch in [1, 2]]
+        list_of_canvas = [elem for it in list_of_canvas for elem in it]
+        tg.SaveCanvasInlist(list_of_canvas, 'test{n}'.format(n=testnum))

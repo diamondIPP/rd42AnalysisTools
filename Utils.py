@@ -1,5 +1,6 @@
 import os, shutil, sys, progressbar
 import numpy as np
+import ROOT as ro
 # import ipdb
 
 def IsInt(i):
@@ -397,6 +398,21 @@ def DeleteDirectoryContents(dir):
 			except Exception as e:
 				print(e)
 		print 'Done'
+
+def AddLineToStats(canvas, key, value=0, samplelinekey='Mean'):
+	if canvas:
+		ps = canvas.GetPrimitive('stats')
+		ps.SetName('mystats')
+		lol = ps.GetListOfLines()
+		sampleline = ps.GetLineWith(samplelinekey)
+		line = ro.TLatex(0, 0, '{k} = {v:.2f}'.format(k=key, v=value))
+		line.SetTextAlign(sampleline.GetTextAlign())
+		line.SetTextAngle(sampleline.GetTextAngle())
+		line.SetTextColor(sampleline.GetTextColor())
+		line.SetTextFont(sampleline.GetTextFont())
+		line.SetTextSize(sampleline.GetTextSize())
+		lol.Add(line)
+		canvas.Modified()
 
 def CreateProgressBarUtils(maxVal=1):
 	widgets = [
