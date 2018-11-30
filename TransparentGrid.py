@@ -37,15 +37,13 @@ class TransparentGrid:
         self.saturated_ADC = 4095
         self.pkl = None
         self.loaded_pickle = False
+        self.row_info_telescope = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0} if self.col_pitch == 50 else {'0': float(61.95469791829917), 'm': float(0.05102496), 'num': 24, 'pitch': 1.0}
+        self.row_info_predicted = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0} if self.col_pitch == 50 else {'0': float(61.95469791829917), 'm': float(0.05102496), 'num': 24, 'pitch': 1.0}
         if self.run in [25207, 25208, 25209, 25210]:
             if self.run in [25207, 25208, 25210]: print 'Using settings for run 25209. Results might not be correctly aligned'
-            self.row_info_telescope = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0} if self.col_pitch == 50 else {'0': float(61.95469791829917), 'm': float(0.05102496), 'num': 24, 'pitch': 1.0}
-            self.row_info_predicted = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0} if self.col_pitch == 50 else {'0': float(61.95469791829917), 'm': float(0.05102496), 'num': 24, 'pitch': 1.0}
             self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5065, 'y_off': 18.95, '0': 3117.70005, 'up': 4467.70005} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.4976, 'y_off': 52.6, '0': 3049.6, 'up': 5449.6}
         elif self.run in [25202, 25203, 25204, 25205, 25206]:
             if self.run in [25202, 25203, 25206]: print 'Using settings for run 25205. Results might not be correctly aligned'
-            self.row_info_telescope = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0} if self.col_pitch == 50 else {'0': float(61.95469791829917), 'm': float(0.05102496), 'num': 24, 'pitch': 1.0}
-            self.row_info_predicted = {'0': float(61.95469791829917), 'm': float(0.02551248435536136), 'num': 27, 'pitch': 1.0} if self.col_pitch == 50 else {'0': float(61.95469791829917), 'm': float(0.05102496), 'num': 24, 'pitch': 1.0}
             self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.4922, 'y_off': 47.978033, '0': 3148.785, 'up': 4498.785} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.4976, 'y_off': 79.803, '0': 3076.115, 'up': 5476.115}
         self.vertical_lines_telescope = []
         self.vertical_lines_telescope_tline = []
@@ -744,11 +742,13 @@ class TransparentGrid:
             self.AddGoodAreasCol(3 + 1 - clust_size, 17, 19)
             self.AddGoodAreasCol(4 + 1 - clust_size, 6, 13)
             self.AddGoodAreasCol(4 + 1 - clust_size, 16, 20)
-            self.AddGoodAreasCol(5 + 1 - clust_size, 8, 19)
+            # self.AddGoodAreasCol(5 + 1 - clust_size, 8, 19)
+            self.AddGoodAreasCol(5 + 1 - clust_size, 8, 16)
             self.AddGoodAreasCol(6 + 1 - clust_size, 7, 9)
-            self.AddGoodAreasCol(6 + 1 - clust_size, 11, 18)
-            self.AddGoodAreasCol(7 + 1 - clust_size, 8, 8)
-            self.AddGoodAreasCol(7 + 1 - clust_size, 12, 12)
+            # self.AddGoodAreasCol(6 + 1 - clust_size, 11, 18)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 11, 17)
+            # self.AddGoodAreasCol(7 + 1 - clust_size, 8, 8)
+            # self.AddGoodAreasCol(7 + 1 - clust_size, 12, 12)
             self.AddGoodAreasCol(7 + 1 - clust_size, 14, 19)
             self.AddGoodAreasCol(7 + 1 - clust_size, 21, 21)
             self.AddGoodAreasCol(8 + 1 - clust_size, 15, 21)
@@ -760,6 +760,15 @@ class TransparentGrid:
             self.AddGoodAreasCol(10 + 1 - clust_size, 19, 19)
             self.AddGoodAreasCol(11 + 1 - clust_size, 13, 17)
             self.AddGoodAreasCol(11 + 1 - clust_size, 19, 20)
+            self.RemoveFromGoodArea(3 + 1 - clust_size, 17)
+            self.RemoveFromGoodArea(5 + 1 - clust_size, 17)
+            self.RemoveFromGoodArea(5 + 1 - clust_size, 18)
+            self.RemoveFromGoodArea(6 + 1 - clust_size, 7)
+            self.RemoveFromGoodArea(7 + 1 - clust_size, 14)
+            self.RemoveFromGoodArea(9 + 1 - clust_size, 16)
+            self.RemoveFromGoodArea(9 + 1 - clust_size, 17)
+            self.RemoveFromGoodArea(10 + 1 - clust_size, 17)
+            self.RemoveFromGoodArea(10 + 1 - clust_size, 19)
             self.AddRemainingToBadAreas()
         elif num == 1:
             self.cell_resolution = 50.0 / 17.0
@@ -773,14 +782,26 @@ class TransparentGrid:
             self.AddGoodAreasCol(9 + 1 - clust_size, 14, 17)
             self.AddGoodAreasCol(10 + 1 - clust_size, 12, 17)
             self.AddGoodAreasCol(11 + 1 - clust_size, 13, 17)
+            self.RemoveFromGoodArea(5 + 1 - clust_size, 17)
+            self.RemoveFromGoodArea(5 + 1 - clust_size, 18)
+            self.RemoveFromGoodArea(5 + 1 - clust_size, 19)
+            self.RemoveFromGoodArea(6 + 1 - clust_size, 18)
+            self.RemoveFromGoodArea(7 + 1 - clust_size, 14)
+            self.RemoveFromGoodArea(9 + 1 - clust_size, 16)
+            self.RemoveFromGoodArea(9 + 1 - clust_size, 17)
+            self.RemoveFromGoodArea(10 + 1 - clust_size, 16)
+            self.RemoveFromGoodArea(10 + 1 - clust_size, 17)
             self.AddRemainingToBadAreas()
         elif num == 2:
             self.cell_resolution = 50.0 / 15.0
             self.ResetAreas()
             self.AddGoodAreasCol(4 + 1 - clust_size, 6, 13)
-            self.AddGoodAreasCol(5 + 1 - clust_size, 8, 19)
-            self.AddGoodAreasCol(6 + 1 - clust_size, 11, 18)
-            self.AddGoodAreasCol(7 + 1 - clust_size, 14, 19)
+            # self.AddGoodAreasCol(5 + 1 - clust_size, 8, 19)
+            self.AddGoodAreasCol(5 + 1 - clust_size, 8, 16)
+            # self.AddGoodAreasCol(6 + 1 - clust_size, 11, 18)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 11, 17)
+            # self.AddGoodAreasCol(7 + 1 - clust_size, 14, 19)
+            self.AddGoodAreasCol(7 + 1 - clust_size, 15, 19)
             self.AddGoodAreasCol(8 + 1 - clust_size, 15, 21)
             self.AddGoodAreasCol(8 + 1 - clust_size, 15, 21)
             self.AddRemainingToBadAreas()
@@ -793,8 +814,10 @@ class TransparentGrid:
             self.AddRemainingToBadAreas()
         elif num == 4:
             self.ResetAreas()
-            self.AddGoodAreasCol(5 + 1 - clust_size, 8, 19)
-            self.AddGoodAreasCol(6 + 1 - clust_size, 8, 19)
+            # self.AddGoodAreasCol(5 + 1 - clust_size, 8, 19)
+            self.AddGoodAreasCol(5 + 1 - clust_size, 8, 16)
+            # self.AddGoodAreasCol(6 + 1 - clust_size, 8, 19)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 8, 16)
             self.AddRemainingToBadAreas()
         elif num == 5:
             self.ResetAreas()
@@ -803,6 +826,13 @@ class TransparentGrid:
             self.AddGoodAreasCol(7 + 1 - clust_size, 14, 19)
             self.AddGoodAreasCol(8 + 1 - clust_size, 14, 19)
             self.AddGoodAreasCol(9 + 1 - clust_size, 14, 19)
+            self.RemoveFromGoodArea(5 + 1 - clust_size, 17)
+            self.RemoveFromGoodArea(5 + 1 - clust_size, 18)
+            self.RemoveFromGoodArea(6 + 1 - clust_size, 18)
+            self.RemoveFromGoodArea(7 + 1 - clust_size, 14)
+            self.RemoveFromGoodArea(9 + 1 - clust_size, 16)
+            self.RemoveFromGoodArea(9 + 1 - clust_size, 17)
+            self.RemoveFromGoodArea(9 + 1 - clust_size, 18)
             self.AddRemainingToBadAreas()
         elif num == 6:
             self.cell_resolution = 50.0 / 11.0
@@ -810,12 +840,18 @@ class TransparentGrid:
             self.AddGoodAreasCol(5 + 1 - clust_size, 14, 18)
             self.AddGoodAreasCol(6 + 1 - clust_size, 14, 18)
             self.AddGoodAreasCol(7 + 1 - clust_size, 14, 18)
+            self.RemoveFromGoodArea(5 + 1 - clust_size, 17)
+            self.RemoveFromGoodArea(5 + 1 - clust_size, 18)
+            self.RemoveFromGoodArea(6 + 1 - clust_size, 18)
+            self.RemoveFromGoodArea(7 + 1 - clust_size, 14)
             self.AddRemainingToBadAreas()
         elif num == 7:
             self.cell_resolution = 50.0 / 11.0
             self.ResetAreas()
-            self.AddGoodAreasCol(5 + 1 - clust_size, 15, 18)
-            self.AddGoodAreasCol(6 + 1 - clust_size, 15, 18)
+            # self.AddGoodAreasCol(5 + 1 - clust_size, 15, 18)
+            self.AddGoodAreasCol(5 + 1 - clust_size, 15, 16)
+            # self.AddGoodAreasCol(6 + 1 - clust_size, 15, 18)
+            self.AddGoodAreasCol(6 + 1 - clust_size, 15, 17)
             self.AddGoodAreasCol(7 + 1 - clust_size, 15, 18)
             self.AddGoodAreasCol(8 + 1 - clust_size, 15, 18)
             self.AddRemainingToBadAreas()
