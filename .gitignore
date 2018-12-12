@@ -1,3 +1,5 @@
-RunSettings/*.ini
-RunLists/*.ini
+RunSettings/*
+RunSettings/*/*
+RunLists/*
+RunLists/*/*
 CrossTalkCorrections/FeedThroughCorrection
