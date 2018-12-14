@@ -427,6 +427,28 @@ def CreateProgressBarUtils(maxVal=1):
 	bar = progressbar.ProgressBar(widgets=widgets, maxval=maxVal)
 	return bar
 
+def SetDefault2DStats(histo):
+	if histo.FindObject('stats'):
+		histo.FindObject('stats').SetOptStat(11)
+		histo.FindObject('stats').SetX1NDC(0.7)
+		histo.FindObject('stats').SetX2NDC(0.9)
+		histo.FindObject('stats').SetY1NDC(0.9)
+		histo.FindObject('stats').SetY2NDC(0.975)
+		ro.gPad.Update()
+	if histo.FindObject('palette'):
+		histo.FindObject('palette').SetX1NDC(0.87)
+		histo.FindObject('palette').SetX2NDC(0.92)
+		ro.gPad.Update()
+		
+def SetDefault1DStats(histo):
+	if histo.FindObject('stats'):
+		histo.FindObject('stats').SetOptStat(112211)
+		histo.FindObject('stats').SetX1NDC(0.6)
+		histo.FindObject('stats').SetX2NDC(0.9)
+		histo.FindObject('stats').SetY1NDC(0.6)
+		histo.FindObject('stats').SetY2NDC(0.9)
+		ro.gPad.Update()
+
 def ExitMessage(txt, code=os.EX_SOFTWARE):
     print '##########'
     print txt
