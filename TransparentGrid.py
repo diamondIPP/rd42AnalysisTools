@@ -430,7 +430,7 @@ class TransparentGrid:
         SetDefault2DStats(self.histo[name])
         ro.TFormula.SetMaxima(1000)
 
-    def DrawPH(self, name, xmin, xmax, deltax, var='clusterChargeN', varname='PH[ADC]', cuts='', transp_ev=True):
+    def DrawPH(self, name, xmin, xmax, deltax, var='clusterChargeN', varname='PH[ADC]', cuts='', transp_ev=True, option='e'):
         ro.TFormula.SetMaxima(100000)
         # ro.gStyle.SetOptStat('neMmRruo')
         self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, int(np.floor((xmax - xmin) / deltax + 0.5)), xmin, xmax)
@@ -440,14 +440,16 @@ class TransparentGrid:
         if cuts != '':
             list_cuts.append(cuts)
         temp_cuts = '&&'.join(list_cuts)
-        self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-        self.canvas[name].cd()
-        self.trans_tree.Draw('{v}>>h_{n}'.format(v=var, n=name), temp_cuts, 'e')
-        self.canvas[name].SetGridx()
-        self.canvas[name].SetGridy()
-        self.canvas[name].SetTicky()
-        ro.gPad.Update()
-        SetDefault1DStats(self.histo[name])
+        if 'goff' not in option:
+            self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
+            self.canvas[name].cd()
+        self.trans_tree.Draw('{v}>>h_{n}'.format(v=var, n=name), temp_cuts, option)
+        if 'goff' not in option:
+            self.canvas[name].SetGridx()
+            self.canvas[name].SetGridy()
+            self.canvas[name].SetTicky()
+            ro.gPad.Update()
+            SetDefault1DStats(self.histo[name])
         ro.TFormula.SetMaxima(1000)
 
     def SelectGoodAndBadByThreshold(self, val=500, var='clusterChargeN'):

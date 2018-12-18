@@ -71,7 +71,9 @@ class LanGaus:
 		ro.Math.MinimizerOptions.SetDefaultMinimizer('Minuit2', 'Migrad')
 		for i in xrange(len(self.params)):
 			self.fit.SetParLimits(i, self.paramsLimitsLow[i], self.paramsLimitsHigh[i])
-		self.histo.Fit(fit_name, options, '', self.fit_range[0], self.fit_range[1])
+		minbinh, maxbinh = self.histo.FindFirstBinAbove(0), self.histo.FindLastBinAbove(0)
+		xfitmin, xfitmax = self.histo.GetBinLowEdge(minbinh), self.histo.GetBinLowEdge(maxbinh + 1)
+		self.histo.Fit(fit_name, options, '', xfitmin, xfitmax)
 		self.fit.GetParameters(self.params)
 		for i in xrange(len(self.params)):
 			self.paramsFitErrors[i] = self.fit.GetParError(i)
