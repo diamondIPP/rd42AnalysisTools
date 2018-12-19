@@ -360,13 +360,19 @@ class TransparentGrid:
 		self.gridTextDiamond.SetMarkerSize(0.8)
 
 	def DrawProfile2DDiamond(self, name, varz='clusterChargeN', cuts='', draw_top_borders=False, transp_ev=True):
-		list_cuts = []
-		if not draw_top_borders:
-			list_cuts.append('({l}<=diaChYPred)&&(diaChYPred<={h})'.format(l=self.row_info_diamond['0'], h=self.row_info_diamond['up']))
+		xmin, xmax, deltax, xname = -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch'
+		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
+		if draw_top_borders:
+			self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev)
+		else:
+			self.DrawProfile2DNoTopBottomBorders(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev)
+
+	def DrawProfile2DNoTopBottomBorders(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True):
+		list_cuts =['(({l}<=diaChYPred)&&(diaChYPred<={h}))'.format(l=self.row_info_diamond['0'], h=self.row_info_diamond['up'])]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawProfile2D(name, -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]', 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', temp_cuts, transp_ev)
+		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz, zname, temp_cuts, transp_ev)
 
 	def DrawProfile2D(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True):
 		# ro.gStyle.SetOptStat('en')
@@ -402,6 +408,7 @@ class TransparentGrid:
 					self.tcutgs_diamond[col][row].Draw('same')
 				elif type == 'centers':
 					self.tcutgs_diamond_center[col][row].Draw('same')
+		ro.gPad.Update()
 
 	def GetOccupancyFromProfile(self, name):
 		# ro.gStyle.SetOptStat('ne')
