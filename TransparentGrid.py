@@ -39,7 +39,7 @@ class TransparentGrid:
 		self.phbins_neg = 150
 		self.phmin_neg = -1500
 		self.phmax_neg = 1500
-		self.neg_cut = 3
+		self.neg_cut = 5
 		self.col_pitch = cellsize
 		self.cell_resolution = 50.0 / 25 if self.col_pitch == 50 else 100.0 / 51
 		self.saturated_ADC = 4095
@@ -746,8 +746,8 @@ if __name__ == '__main__':
 	(options, args) = parser.parse_args()
 	run = int(options.run)
 	dir = str(options.dir)
-	testnum = int(options.testnumber)
+	# testnum = int(options.testnumber)
 	numstrips = int(options.numstrips)
-	cellsize = int(options.cellsize) if testnum != 100 else 100
+	cellsize = int(options.cellsize)
 
 	tg = TransparentGrid(dir=dir, run=run, cellsize=cellsize)
