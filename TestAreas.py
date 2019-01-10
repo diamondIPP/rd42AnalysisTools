@@ -18,6 +18,7 @@ class TestAreas:
 		self.run = run
 		self.cellsize = cellsize
 		self.trans_grid = TransparentGrid(dir, run, cellsize)
+		self.trans_grid.pkl_sbdir = 'test' + str(num)
 		self.threshold = 800 if cellsize == 50 else 200
 		self.window_shift = 10
 		self.min_snr, self.max_snr, self.delta_snr = -64.25, 0.25, 0.5
@@ -482,9 +483,7 @@ class TestAreas:
 				self.w += self.window_shift
 
 	def SaveCanvas(self):
-		if not os.path.isdir('{d}/{r}/test{n}'.format(d=self.trans_grid.dir, r=self.trans_grid.run, n=self.num)):
-			os.makedirs('{d}/{r}/test{n}'.format(d=self.trans_grid.dir, r=self.trans_grid.run, n=self.num))
-		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys(), 'test{n}'.format(n=self.num))
+		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys())
 
 if __name__ == '__main__':
 	parser = OptionParser()

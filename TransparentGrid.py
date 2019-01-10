@@ -27,6 +27,7 @@ class TransparentGrid:
 		self.align_file = None
 		self.align_obj = None
 		self.pkl = None
+		self.pkl_sbdir = 'default'
 		self.loaded_pickle = False
 		self.align_info = {'xoff': float(0), 'phi': float(0)}
 		self.cluster_size, self.num_strips = 0, 0
@@ -42,7 +43,7 @@ class TransparentGrid:
 		self.neg_cut = 5
 		self.col_pitch = cellsize
 		self.cell_resolution = 50.0 / 25 if self.col_pitch == 50 else 100.0 / 51
-		self.saturated_ADC = 4095
+		# self.saturated_ADC = 4095
 		if self.run in [25207, 25208, 25209, 25210]:
 			if self.run in [25207, 25208, 25210]: print 'Using settings for run 25209. Results might not be correctly aligned'
 			self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5065, 'y_off': 18.95, '0': 3117.70005, 'up': 4467.70005} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.4976, 'y_off': 52.6, '0': 3049.6, 'up': 5449.6}
@@ -120,7 +121,7 @@ class TransparentGrid:
 		object_dic['neg_cut'] = self.neg_cut
 		object_dic['col_pitch'] = self.col_pitch
 		object_dic['cell_resolution'] = self.cell_resolution
-		object_dic['saturated_ADC'] = self.saturated_ADC
+		# object_dic['saturated_ADC'] = self.saturated_ADC
 		object_dic['bins_per_ch_x'] = self.bins_per_ch_x
 		object_dic['bins_per_ch_y'] = self.bins_per_ch_y
 		object_dic['length_central_region'] = self.length_central_region
@@ -128,14 +129,25 @@ class TransparentGrid:
 		object_dic['sigma_conv'] = self.sigma_conv
 		object_dic['mpshift'] = self.mpshift
 
-		picklepath = '{d}/{r}/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run)
+		if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
+			os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
+		picklepath = '{d}/{r}/{s}/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
 
 		pickle.dump(object_dic, open(picklepath, 'wb'))
+
+		if not os.path.isdir('{d}/{r}/default'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
+			os.makedirs('{d}/{r}/default'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
+			picklepath = '{d}/{r}/default/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
+			pickle.dump(object_dic, open(picklepath, 'wb'))
 
 		print 'Saved pickle :D'
 
 	def LoadPickle(self):
-		picklepath = '{d}/{r}/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run)
+		picklepath = '{d}/{r}/{s}/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
+		picklepath2 = '{d}/{r}/default/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
+		if not os.path.isfile(picklepath):
+			picklepath = picklepath2
+			print 'Trying to load pickle inside default...'
 		if os.path.isfile(picklepath):
 			with open(picklepath, 'rb') as pkl:
 				self.pkl = pickle.load(pkl)
@@ -172,8 +184,8 @@ class TransparentGrid:
 				self.col_pitch = self.pkl['col_pitch']
 			if 'cell_resolution' in self.pkl.keys():
 				self.cell_resolution = self.pkl['cell_resolution']
-			if 'saturated_ADC' in self.pkl.keys():
-				self.saturated_ADC = self.pkl['saturated_ADC']
+			# if 'saturated_ADC' in self.pkl.keys():
+			# 	self.saturated_ADC = self.pkl['saturated_ADC']
 			if 'bins_per_ch_x' in self.pkl.keys():
 				self.bins_per_ch_x = self.pkl['bins_per_ch_x']
 			if 'bins_per_ch_y' in self.pkl.keys():
@@ -729,11 +741,13 @@ class TransparentGrid:
 			sums2 += fland2 * ro.TMath.Gaus(x[0], xx2, params[7])
 		return params[2] * step1 * sums1 / (np.sqrt(2 * np.pi, dtype='f8') * params[3]) + params[6] * step2 * sums2 / (np.sqrt(2 * np.pi, dtype='f8') * params[7])
 
-	def SaveCanvasInlist(self, list, subdir):
+	def SaveCanvasInlist(self, list):
+		if not os.path.isdir('{d}/{r}/{sd}'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir)):
+			os.makedirs('{d}/{r}/{sd}'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir))
 		for canvas in list:
 			if self.canvas.has_key(canvas):
-				self.canvas[canvas].SaveAs('{d}/{r}/{sd}/{c}.png'.format(d=self.dir, r=self.run, sd=subdir, c=canvas))
-				self.canvas[canvas].SaveAs('{d}/{r}/{sd}/{c}.root'.format(d=self.dir, r=self.run, sd=subdir, c=canvas))
+				self.canvas[canvas].SaveAs('{d}/{r}/{sd}/{c}.png'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir, c=canvas))
+				self.canvas[canvas].SaveAs('{d}/{r}/{sd}/{c}.root'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir, c=canvas))
 
 
 if __name__ == '__main__':
