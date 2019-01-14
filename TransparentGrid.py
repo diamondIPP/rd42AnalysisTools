@@ -12,6 +12,8 @@ import cPickle as pickle
 from Langaus import LanGaus
 from GridAreas import GridAreas
 
+ph_bins_options = np.array((1, 2, 4, 5, 10, 16, 20, 25, 32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000), 'uint16')
+
 class TransparentGrid:
 	def __init__(self, dir='', run=25209, cellsize=50.0):
 		ro.gStyle.SetPalette(55)
@@ -37,12 +39,13 @@ class TransparentGrid:
 		self.phbins = 200
 		self.phmin = 0
 		self.phmax = 4000
-		self.phbins_neg = 150
-		self.phmin_neg = -1500
-		self.phmax_neg = 1500
+		self.phbins_neg = 200
+		self.phmin_neg = -2000
+		self.phmax_neg = 2000
 		self.neg_cut = 5
 		self.col_pitch = cellsize
 		self.cell_resolution = 50.0 / 25 if self.col_pitch == 50 else 100.0 / 51
+		self.delta_offset_threshold = 0.01  # in mum
 		# self.saturated_ADC = 4095
 		if self.run in [25207, 25208, 25209, 25210]:
 			if self.run in [25207, 25208, 25210]: print 'Using settings for run 25209. Results might not be correctly aligned'
@@ -151,56 +154,60 @@ class TransparentGrid:
 		if os.path.isfile(picklepath):
 			with open(picklepath, 'rb') as pkl:
 				self.pkl = pickle.load(pkl)
-				self.loaded_pickle = True
+				self.loaded_pickle = (picklepath != picklepath2)
+				if self.loaded_pickle:
+					print 'Loaded from pickle in {sd} :D'.format(sd=self.pkl_sbdir)
+				else:
+					print 'Loaded from pickle in default :D'
+
+	def UnfoldPickle(self):
+		if 'row_info_diamond' in self.pkl.keys():
+			self.row_info_diamond = self.pkl['row_info_diamond']
+		if 'align_info' in self.pkl.keys():
+			self.align_info = self.pkl['align_info']
+		if 'num_cols' in self.pkl.keys():
+			self.num_cols = self.pkl['num_cols']
+		if 'ch_ini' in self.pkl.keys():
+			self.ch_ini = self.pkl['ch_ini']
+		if 'ch_end' in self.pkl.keys():
+			self.ch_end = self.pkl['ch_end']
+		if 'phbins' in self.pkl.keys():
+			self.phbins = self.pkl['phbins']
+		if 'phmin' in self.pkl.keys():
+			self.phmin = self.pkl['phmin']
+		if 'phmax' in self.pkl.keys():
+			self.phmax = self.pkl['phmax']
+		if 'phbins_neg' in self.pkl.keys():
+			self.phbins_neg = self.pkl['phbins_neg']
+		if 'phmin_neg' in self.pkl.keys():
+			self.phmin_neg = self.pkl['phmin_neg']
+		if 'phmax_neg' in self.pkl.keys():
+			self.phmax_neg = self.pkl['phmax_neg']
+		if 'neg_cut' in self.pkl.keys():
+			self.neg_cut = self.pkl['neg_cut']
+		if 'col_pitch' in self.pkl.keys():
+			self.col_pitch = self.pkl['col_pitch']
+		if 'cell_resolution' in self.pkl.keys():
+			self.cell_resolution = self.pkl['cell_resolution']
+		# if 'saturated_ADC' in self.pkl.keys():
+		# 	self.saturated_ADC = self.pkl['saturated_ADC']
+		if 'bins_per_ch_x' in self.pkl.keys():
+			self.bins_per_ch_x = self.pkl['bins_per_ch_x']
+		if 'bins_per_ch_y' in self.pkl.keys():
+			self.bins_per_ch_y = self.pkl['bins_per_ch_y']
+		if 'length_central_region' in self.pkl.keys():
+			self.length_central_region = self.pkl['length_central_region']
+		if 'conv_steps' in self.pkl.keys():
+			self.conv_steps = self.pkl['conv_steps']
+		if 'sigma_conv' in self.pkl.keys():
+			self.sigma_conv = self.pkl['sigma_conv']
+		if 'mpshift' in self.pkl.keys():
+			self.mpshift = self.pkl['mpshift']
 
 	def SetLines(self, try_align=True):
 		self.LoadPickle()
 		if self.loaded_pickle:
-			if 'row_info_diamond' in self.pkl.keys():
-				self.row_info_diamond = self.pkl['row_info_diamond']
-			if 'align_info' in self.pkl.keys():
-				self.align_info = self.pkl['align_info']
-			if 'num_cols' in self.pkl.keys():
-				self.num_cols = self.pkl['num_cols']
-			if 'ch_ini' in self.pkl.keys():
-				self.ch_ini = self.pkl['ch_ini']
-			if 'ch_end' in self.pkl.keys():
-				self.ch_end = self.pkl['ch_end']
-			if 'phbins' in self.pkl.keys():
-				self.phbins = self.pkl['phbins']
-			if 'phmin' in self.pkl.keys():
-				self.phmin = self.pkl['phmin']
-			if 'phmax' in self.pkl.keys():
-				self.phmax = self.pkl['phmax']
-			if 'phbins_neg' in self.pkl.keys():
-				self.phbins_neg = self.pkl['phbins_neg']
-			if 'phmin_neg' in self.pkl.keys():
-				self.phmin_neg = self.pkl['phmin_neg']
-			if 'phmax_neg' in self.pkl.keys():
-				self.phmax_neg = self.pkl['phmax_neg']
-			if 'neg_cut' in self.pkl.keys():
-				self.neg_cut = self.pkl['neg_cut']
-			if 'col_pitch' in self.pkl.keys():
-				self.col_pitch = self.pkl['col_pitch']
-			if 'cell_resolution' in self.pkl.keys():
-				self.cell_resolution = self.pkl['cell_resolution']
-			# if 'saturated_ADC' in self.pkl.keys():
-			# 	self.saturated_ADC = self.pkl['saturated_ADC']
-			if 'bins_per_ch_x' in self.pkl.keys():
-				self.bins_per_ch_x = self.pkl['bins_per_ch_x']
-			if 'bins_per_ch_y' in self.pkl.keys():
-				self.bins_per_ch_y = self.pkl['bins_per_ch_y']
-			if 'length_central_region' in self.pkl.keys():
-				self.length_central_region = self.pkl['length_central_region']
-			if 'conv_steps' in self.pkl.keys():
-				self.conv_steps = self.pkl['conv_steps']
-			if 'sigma_conv' in self.pkl.keys():
-				self.sigma_conv = self.pkl['sigma_conv']
-			if 'mpshift' in self.pkl.keys():
-				self.mpshift = self.pkl['mpshift']
-
-			print 'Loaded from pickle :D'
-
+			self.UnfoldPickle()
 		elif try_align:
 			self.FindHorizontalParametersThroughAlignment()
 		else:
@@ -217,6 +224,73 @@ class TransparentGrid:
 			self.align_obj = self.align_file.Get('alignment')
 			self.align_info['xoff'] = self.align_obj.GetXOffset(4)
 			self.align_info['phi'] = self.align_obj.GetPhiXOffset(4)
+
+	def FindBinningAndResolution(self):
+		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
+		histo_entries = float(self.histo['binning_temp'].GetEntries())
+		temp = np.abs(np.subtract(ph_bins_options, histo_entries, dtype='float32'), dtype='float32')
+		self.phbins = ph_bins_options[temp.argmin()]
+		self.phbins_neg = ph_bins_options[temp.argmin()]
+		cell_bins = int(np.floor(np.sqrt(histo_entries * ((self.col_pitch / 2.0) ** 2) / 4500.0, dtype='float64') + 0.5))
+		self.cell_resolution = np.divide(self.col_pitch, cell_bins, dtype='float64') if cell_bins % 2 == 1 else np.divide(50.0, cell_bins + 1, dtype='float64')
+
+	def FindXandYOffests(self):
+		if not self.loaded_pickle:
+			self.FindBinningAndResolution()
+
+			self.row_info_diamond['y_off'] += 3.0 * self.col_pitch / 2.0
+			delta_y = self.col_pitch
+			proj_width = 10.0  # in mum
+			proj_bins = int(np.floor(proj_width / self.cell_resolution + 0.5, dtype='float64'))
+			proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
+			proj_low = int(np.floor(np.floor(self.col_pitch / self.cell_resolution + 0.5, dtype='float64') / 2.0 + 0.5, dtype='float64') - (np.floor(proj_bins / 2.0 + 0.5, dtype='float64') - 1) + 1)
+			proj_high = proj_low + proj_bins - 1
+			iteration = 0
+			min_delta = self.col_pitch
+			y_off_shifted = 0.0
+			while abs(delta_y) > self.delta_offset_threshold and iteration < 10:
+				self.row_info_diamond['y_off'] -= delta_y * (np.exp(-iteration) * 0.8 + 0.2)
+				self.DrawProfile2DDiamondCellOverlay('y_off_alignment', 'clusterCharge1', 'good')
+				h_proj_y = self.profile['y_off_alignment'].ProjectionY('y_off_alignment_py', proj_low, proj_high, 'e')
+				h_proj_y.GetXaxis().SetRangeUser(0, self.col_pitch)
+				miny = h_proj_y.GetBinCenter(h_proj_y.GetMinimumBin())
+				miny = miny if abs(miny - self.col_pitch / 2.0) > self.cell_resolution * 1.5 else self.col_pitch / 2.0
+				fit_py = h_proj_y.Fit('pol2', 'QEFSN', '', max(miny - 2.5 * self.cell_resolution - 1e-12, 0), min(miny + 2.5 * self.cell_resolution + 1e-12, self.col_pitch))
+				y_min = -fit_py.Parameter(1) / (2 * fit_py.Parameter(2))
+				delta_y = self.col_pitch / 2.0 - y_min
+				if delta_y < min_delta:
+					min_delta = delta_y
+					y_off_shifted = self.row_info_diamond['y_off']
+				iteration += 1
+				print 'Y min value:', y_min
+
+			self.row_info_diamond['y_off'] = y_off_shifted - self.col_pitch / 2.0
+
+			self.row_info_diamond['x_off'] += 3.0 / 2.0
+			delta_x = self.row_info_diamond['pitch']
+			iteration = 0
+			min_delta = self.row_info_diamond['pitch']
+			x_off_shifted = 0.0
+			while abs(delta_x) > self.delta_offset_threshold and iteration < 10:
+				# ipdb.set_trace()
+				self.row_info_diamond['x_off'] -= np.divide(delta_x, self.row_info_diamond['pitch'], dtype='float64') * (np.exp(-iteration) * 0.8 + 0.2)
+				self.DrawProfile2DDiamondCellOverlay('x_off_alignment', 'clusterCharge1', 'good')
+				h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high)
+				h_proj_x.GetXaxis().SetRangeUser(0, self.row_info_diamond['pitch'])
+				minx = h_proj_x.GetBinCenter(h_proj_x.GetMinimumBin())
+				minx = minx if abs(minx - self.row_info_diamond['pitch'] / 2.0) > self.cell_resolution * 1.5 else self.row_info_diamond['pitch'] / 2.0
+				fit_px = h_proj_x.Fit('pol2', 'QEFSN', '', max(minx - 2.5 * self.cell_resolution - 1e-12, 0), min(minx + 2.5 * self.cell_resolution + 1e-12, self.row_info_diamond['pitch']))
+				x_min = -fit_px.Parameter(1) / (2 * fit_px.Parameter(2))
+				delta_x = self.row_info_diamond['pitch'] / 2.0 - x_min
+				if delta_x < min_delta:
+					min_delta = delta_x
+					x_off_shifted = self.row_info_diamond['x_off']
+				iteration += 1
+				print 'X min value:', x_min
+			self.row_info_diamond['x_off'] = x_off_shifted - 0.5
+
+			ipdb.set_trace()
+			self.SavePickle()
 
 	def AskUserLowerYLines(self):
 		do_diamond = raw_input('Enter 1 if you want to enter the lower y line parameters of the plots in diamond space')

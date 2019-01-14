@@ -509,6 +509,11 @@ if __name__ == '__main__':
 	t.trans_grid.CreateTCutGs()
 	if testnum in tests:
 		t.SetTest()
+		if t.trans_grid.loaded_pickle:
+			t.trans_grid.LoadPickle()
+			t.trans_grid.UnfoldPickle()
+		else:
+			t.trans_grid.FindXandYOffests()
 		if autom:
 			t.PlotTestForNegative()
 			t.PlotTest()
