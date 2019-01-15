@@ -511,9 +511,12 @@ if __name__ == '__main__':
 		t.SetTest()
 		if t.trans_grid.loaded_pickle:
 			t.trans_grid.LoadPickle()
-			t.trans_grid.UnfoldPickle()
 		else:
-			t.trans_grid.FindXandYOffests()
+			t.trans_grid.FindPickleValues()
+			ExitMessage('Run it again to load the generated pickle :)', os.EX_OK)
+		if t.trans_grid.loaded_default_pickle:
+			t.trans_grid.FindBinningAndResolution()
+			t.trans_grid.SavePickle()
 		if autom:
 			t.PlotTestForNegative()
 			t.PlotTest()

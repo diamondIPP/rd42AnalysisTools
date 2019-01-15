@@ -12,7 +12,8 @@ import cPickle as pickle
 from Langaus import LanGaus
 from GridAreas import GridAreas
 
-ph_bins_options = np.array((1, 2, 4, 5, 10, 16, 20, 25, 32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000), 'uint16')
+# ph_bins_options = np.array((1, 2, 4, 5, 10, 16, 20, 25, 32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000), 'uint16')
+ph_bins_options = np.array((32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000, 4000), 'uint16')
 
 class TransparentGrid:
 	def __init__(self, dir='', run=25209, cellsize=50.0):
@@ -31,6 +32,7 @@ class TransparentGrid:
 		self.pkl = None
 		self.pkl_sbdir = 'default'
 		self.loaded_pickle = False
+		self.loaded_default_pickle = False
 		self.align_info = {'xoff': float(0), 'phi': float(0)}
 		self.cluster_size, self.num_strips = 0, 0
 		self.num_cols = 19 if cellsize == 50 else 13
@@ -47,12 +49,13 @@ class TransparentGrid:
 		self.cell_resolution = 50.0 / 25 if self.col_pitch == 50 else 100.0 / 51
 		self.delta_offset_threshold = 0.01  # in mum
 		# self.saturated_ADC = 4095
-		if self.run in [25207, 25208, 25209, 25210]:
-			if self.run in [25207, 25208, 25210]: print 'Using settings for run 25209. Results might not be correctly aligned'
-			self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5065, 'y_off': 18.95, '0': 3117.70005, 'up': 4467.70005} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.4976, 'y_off': 52.6, '0': 3049.6, 'up': 5449.6}
-		elif self.run in [25202, 25203, 25204, 25205, 25206]:
-			if self.run in [25202, 25203, 25206]: print 'Using settings for run 25205. Results might not be correctly aligned'
-			self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.4922, 'y_off': 47.978033, '0': 3148.785, 'up': 4498.785} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.4976, 'y_off': 79.803, '0': 3076.115, 'up': 5476.115}
+		self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5, 'y_off': 48.0, '0': 3136.0, 'up': 4486.0} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.5, 'y_off': 90.0, '0': 3076.0, 'up': 5476.0}
+		# if self.run in [25207, 25208, 25209, 25210]:
+		# 	if self.run in [25207, 25208, 25210]: print 'Using settings for run 25209. Results might not be correctly aligned'
+		# 	self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5065, 'y_off': 18.95, '0': 3117.70005, 'up': 4467.70005} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.4976, 'y_off': 52.6, '0': 3049.6, 'up': 5449.6}
+		# elif self.run in [25202, 25203, 25204, 25205, 25206]:
+		# 	if self.run in [25202, 25203, 25206]: print 'Using settings for run 25205. Results might not be correctly aligned'
+		# 	self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.4922, 'y_off': 47.978033, '0': 3148.785, 'up': 4498.785} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.4976, 'y_off': 79.803, '0': 3076.115, 'up': 5476.115}
 		self.bins_per_ch_x = 3 if self.col_pitch == 50 else 5
 		self.bins_per_ch_y = 3 if self.col_pitch == 50 else 5
 		self.length_central_region = 30 if self.col_pitch == 50 else 40
@@ -102,7 +105,7 @@ class TransparentGrid:
 			self.cluster_size = int(np.floor(tempch.GetMean() + 0.5))
 
 	def FindDiamondChannelLimits(self):
-		temph = ro.TH1F('temph', 'temph', 128, -0.5,127.5)
+		temph = ro.TH1F('temph', 'temph', 128, -0.5, 127.5)
 		self.trans_tree.Draw('diaChXPred>>temph', 'transparentEvent', 'goff')
 		self.ch_ini = int(temph.GetBinCenter(temph.FindFirstBinAbove(1, 1)))
 		self.ch_end = int(temph.GetBinCenter(temph.FindLastBinAbove(1, 1)))
@@ -154,11 +157,13 @@ class TransparentGrid:
 		if os.path.isfile(picklepath):
 			with open(picklepath, 'rb') as pkl:
 				self.pkl = pickle.load(pkl)
-				self.loaded_pickle = (picklepath != picklepath2)
-				if self.loaded_pickle:
+				self.UnfoldPickle()
+				self.loaded_pickle = True
+				if (picklepath != picklepath2):
 					print 'Loaded from pickle in {sd} :D'.format(sd=self.pkl_sbdir)
 				else:
 					print 'Loaded from pickle in default :D'
+					self.loaded_default_pickle = True
 
 	def UnfoldPickle(self):
 		if 'row_info_diamond' in self.pkl.keys():
@@ -225,68 +230,13 @@ class TransparentGrid:
 			self.align_info['xoff'] = self.align_obj.GetXOffset(4)
 			self.align_info['phi'] = self.align_obj.GetPhiXOffset(4)
 
-	def FindXandYOffests(self):
-		if not self.loaded_pickle:
-			self.FindUpperAndLowerLines()
-			self.FindBinningAndResolution()
-			self.row_info_diamond['y_off'] += 3.0 * self.row_info_diamond['pitch'] / 2.0
-			delta_y = self.row_info_diamond['pitch']
-			proj_width = self.col_pitch / 5.0  # in mum
-			proj_bins = int(np.floor(proj_width / self.cell_resolution + 0.5, dtype='float64'))
-			proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
-			proj_low = int(np.floor(np.floor(self.col_pitch / self.cell_resolution + 0.5, dtype='float64') / 2.0 + 0.5, dtype='float64') - (np.floor(proj_bins / 2.0 + 0.5, dtype='float64') - 1) + 1)
-			proj_high = proj_low + proj_bins - 1
-			iteration = 0
-			min_delta = self.row_info_diamond['pitch']
-			y_off_shifted, y_min = 0.0, 0.0
-			while abs(delta_y) > self.delta_offset_threshold and iteration < 50:
-				self.row_info_diamond['y_off'] -= delta_y * (np.exp(-iteration) * 0.9 + 0.1)
-				self.DrawProfile2DDiamondCellOverlay('y_off_alignment', 'clusterCharge1', 'good')
-				h_proj_y = self.profile['y_off_alignment'].ProjectionY('y_off_alignment_py', proj_low, proj_high, 'e')
-				h_proj_y.GetXaxis().SetRangeUser(0, self.row_info_diamond['pitch'])
-				miny = h_proj_y.GetBinCenter(h_proj_y.GetMinimumBin())
-				miny = miny if abs(miny - self.col_pitch / 2.0) > self.cell_resolution * 2.5 else self.col_pitch / 2.0
-				fit_py = h_proj_y.Fit('pol2', 'QEFSN', '', max(miny - 2.5 * self.cell_resolution - 1e-12, 0), min(miny + 2.5 * self.cell_resolution + 1e-12, self.row_info_diamond['pitch']))
-				y_min = -fit_py.Parameter(1) / (2 * fit_py.Parameter(2))
-				delta_y = self.row_info_diamond['pitch'] / 2.0 - y_min
-				if abs(delta_y) < min_delta:
-					min_delta = abs(delta_y)
-					y_off_shifted = self.row_info_diamond['y_off']
-				iteration += 1
-				print iteration, y_min, delta_y
-			print 'final', min_delta
-			self.row_info_diamond['y_off'] = y_off_shifted - self.row_info_diamond['pitch'] / 2.0
-
-			self.row_info_diamond['x_off'] += 3.0 / 2.0
-			delta_x = self.col_pitch
-			proj_width = self.row_info_diamond['pitch'] / 5.0  # in mum
-			proj_bins = int(np.floor(proj_width / self.cell_resolution + 0.5, dtype='float64'))
-			proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
-			proj_low = int(np.floor(np.floor(self.row_info_diamond['pitch'] / self.cell_resolution + 0.5, dtype='float64') / 2.0 + 0.5, dtype='float64') - (np.floor(proj_bins / 2.0 + 0.5, dtype='float64') - 1) + 1)
-			proj_high = proj_low + proj_bins - 1
-			iteration = 0
-			min_delta = self.col_pitch
-			x_off_shifted, x_min = 0.0, 0.0
-			while abs(delta_x) > self.delta_offset_threshold and iteration < 50:
-				self.row_info_diamond['x_off'] -= np.divide(delta_x, self.col_pitch, dtype='float64') * (np.exp(-iteration) * 0.9 + 0.1)
-				self.DrawProfile2DDiamondCellOverlay('x_off_alignment', 'clusterCharge1', 'good')
-				h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high)
-				h_proj_x.GetXaxis().SetRangeUser(0, self.col_pitch)
-				minx = h_proj_x.GetBinCenter(h_proj_x.GetMinimumBin())
-				minx = minx if abs(minx - self.row_info_diamond['pitch'] / 2.0) > self.cell_resolution * 2.5 else self.row_info_diamond['pitch'] / 2.0
-				fit_px = h_proj_x.Fit('pol2', 'QEFSN', '', max(minx - 2.5 * self.cell_resolution - 1e-12, 0), min(minx + 2.5 * self.cell_resolution + 1e-12, self.col_pitch))
-				x_min = -fit_px.Parameter(1) / (2 * fit_px.Parameter(2))
-				delta_x = self.col_pitch / 2.0 - x_min
-				if abs(delta_x) < min_delta:
-					min_delta = abs(delta_x)
-					x_off_shifted = self.row_info_diamond['x_off']
-				iteration += 1
-				print iteration, x_min, delta_x
-			print 'final', min_delta
-			self.row_info_diamond['x_off'] = x_off_shifted - 0.5
-			ipdb.set_trace()
-
-			self.SavePickle()
+	def FindPickleValues(self, do_offset_plots=True):
+		self.FindUpperAndLowerLines()
+		self.SavePickle()
+		self.FindBinningAndResolution()
+		self.SavePickle()
+		self.FindXandYOffests(do_plot=do_offset_plots)
+		self.SavePickle()
 
 	def FindUpperAndLowerLines(self):
 		self.DrawProfile2DDiamond('vertical_limits_profile', 'clusterChargeN', '', True)
@@ -297,6 +247,7 @@ class TransparentGrid:
 			if prof_proj_y.GetBinContent(biny) != 0:
 				maxbiny = biny
 		miny, maxy = prof_proj_y.GetXaxis().GetBinLowEdge(minbiny), prof_proj_y.GetXaxis().GetBinLowEdge(maxbiny + 1)
+		prof_proj_y.GetXaxis().SetRangeUser(miny, maxy)
 		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-[1])/[2])+1)/2-[3]*(TMath::Erf((x-[4])/[5])+1)/2+[6]', miny, maxy)
 		func.SetNpx(int(self.row_info_diamond['num'] * self.bins_per_ch_y * 10))
 		zmin, zmax = prof_proj_y.GetMinimum(), prof_proj_y.GetMaximum()
@@ -325,6 +276,10 @@ class TransparentGrid:
 	def FindBinningAndResolution(self):
 		if self.gridAreas:
 			if len(self.gridAreas.goodAreas_index) == 0:
+				self.ResetLines()
+				self.ResetAreas()
+				self.SetLines()
+				self.CreateTCutGs()
 				self.SelectGoodAndBadByThreshold()
 		else:
 			self.SetLines()
@@ -332,11 +287,73 @@ class TransparentGrid:
 			self.SelectGoodAndBadByThreshold()
 		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
 		histo_entries = float(self.histo['binning_temp'].GetEntries())
-		temp = np.abs(np.subtract(ph_bins_options, histo_entries, dtype='float32'), dtype='float32')
+		temp = np.abs(np.subtract(ph_bins_options, histo_entries * 200.0 / 4500.0, dtype='float32'), dtype='float32')
 		self.phbins = ph_bins_options[temp.argmin()]
 		self.phbins_neg = ph_bins_options[temp.argmin()]
-		cell_bins = int(np.floor(np.sqrt(histo_entries * ((self.col_pitch / 2.0) ** 2) / 4500.0, dtype='float64') + 0.5))
+		cell_bins = min(25, max(11, int(np.floor(np.sqrt(histo_entries * ((self.col_pitch / 2.0) ** 2) / 4500.0, dtype='float64') + 0.5))))
 		self.cell_resolution = np.divide(self.col_pitch, cell_bins, dtype='float64') if cell_bins % 2 == 1 else np.divide(50.0, cell_bins + 1, dtype='float64')
+		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
+
+	def FindXandYOffests(self, factor=0.1, do_plot=True):
+		plot_option = 'prof colz' if do_plot else 'prof goff'
+		self.row_info_diamond['x_off'] += 3.0 / 2.0
+		delta_x = self.col_pitch
+		# proj_width = self.row_info_diamond['pitch'] / 5.0  # in mum
+		proj_width = self.row_info_diamond['pitch']  # in mum
+		proj_bins = int(np.floor(proj_width / self.cell_resolution + 0.5, dtype='float64'))
+		proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
+		proj_low = int(np.floor(np.floor(self.row_info_diamond['pitch'] / self.cell_resolution + 0.5, dtype='float64') / 2.0 + 0.5, dtype='float64') - (np.floor(proj_bins / 2.0 + 0.5, dtype='float64') - 1) + 1)
+		proj_high = proj_low + proj_bins - 1
+		iteration = 0
+		min_delta = self.col_pitch
+		x_off_shifted, x_min = 0.0, 0.0
+		while abs(delta_x) > self.delta_offset_threshold and iteration < 100:
+			self.row_info_diamond['x_off'] -= np.divide(delta_x, self.col_pitch, dtype='float64') * (np.exp(-iteration) * (1 - factor) + factor)
+			self.DrawProfile2DDiamondCellOverlay('x_off_alignment', 'clusterCharge1', 'good', plot_option=plot_option)
+			# h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high)
+			h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high, 'e')
+			h_proj_x.GetXaxis().SetRangeUser(0.1, self.col_pitch - 0.1)
+			minx = h_proj_x.GetBinCenter(h_proj_x.GetMinimumBin())
+			minx = minx if abs(minx - self.row_info_diamond['pitch'] / 2.0) > self.cell_resolution * 1.5 else self.row_info_diamond['pitch'] / 2.0
+			bins_fit_range = max(np.floor(2.0 * 7 / self.cell_resolution + 0.5), 3)
+			fit_px = h_proj_x.Fit('pol2', 'QEFSN', '', max(minx - bins_fit_range * self.cell_resolution / 2.0, 0), min(minx + bins_fit_range * self.cell_resolution / 2.0, self.col_pitch))
+			x_min = -fit_px.Parameter(1) / (2 * fit_px.Parameter(2))
+			delta_x = self.col_pitch / 2.0 - x_min
+			if abs(delta_x) < min_delta:
+				min_delta = abs(delta_x)
+				x_off_shifted = self.row_info_diamond['x_off']
+			iteration += 1
+			print iteration, x_min, delta_x
+		print 'final', min_delta
+		self.row_info_diamond['x_off'] = x_off_shifted - 0.5
+
+		self.row_info_diamond['y_off'] += 3.0 * self.row_info_diamond['pitch'] / 2.0
+		delta_y = self.row_info_diamond['pitch']
+		proj_width = self.col_pitch / 5.0  # in mum
+		proj_bins = int(np.floor(proj_width / self.cell_resolution + 0.5, dtype='float64'))
+		proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
+		proj_low = int(np.floor(np.floor(self.col_pitch / self.cell_resolution + 0.5, dtype='float64') / 2.0 + 0.5, dtype='float64') - (np.floor(proj_bins / 2.0 + 0.5, dtype='float64') - 1) + 1)
+		proj_high = proj_low + proj_bins - 1
+		iteration = 0
+		min_delta = self.row_info_diamond['pitch']
+		y_off_shifted, y_min = 0.0, 0.0
+		while abs(delta_y) > self.delta_offset_threshold and iteration < 100:
+			self.row_info_diamond['y_off'] -= delta_y * (np.exp(-iteration) * (1-factor) + factor)
+			self.DrawProfile2DDiamondCellOverlay('y_off_alignment', 'clusterCharge1', 'good', plot_option=plot_option)
+			h_proj_y = self.profile['y_off_alignment'].ProjectionY('y_off_alignment_py', proj_low, proj_high, 'e')
+			h_proj_y.GetXaxis().SetRangeUser(0.1, self.row_info_diamond['pitch'] - 0.1)
+			miny = h_proj_y.GetBinCenter(h_proj_y.GetMinimumBin())
+			miny = miny if abs(miny - self.col_pitch / 2.0) > self.cell_resolution * 1.5 else self.col_pitch / 2.0
+			fit_py = h_proj_y.Fit('pol2', 'QEFSN', '', max(miny - 2.5 * self.cell_resolution - 1e-12, 0), min(miny + 2.5 * self.cell_resolution + 1e-12, self.row_info_diamond['pitch']))
+			y_min = -fit_py.Parameter(1) / (2 * fit_py.Parameter(2))
+			delta_y = self.row_info_diamond['pitch'] / 2.0 - y_min
+			if abs(delta_y) < min_delta:
+				min_delta = abs(delta_y)
+				y_off_shifted = self.row_info_diamond['y_off']
+			iteration += 1
+			print iteration, y_min, delta_y
+		print 'final', min_delta
+		self.row_info_diamond['y_off'] = y_off_shifted - self.row_info_diamond['pitch'] / 2.0
 
 	def AskUserLowerYLines(self):
 		do_diamond = raw_input('Enter 1 if you want to enter the lower y line parameters of the plots in diamond space')
@@ -491,35 +508,39 @@ class TransparentGrid:
 			self.gridTextDiamond.Fill(x0[0]-0.1, np.mean((y0, y1)), (row + 0.01))
 		self.gridTextDiamond.SetMarkerSize(0.8)
 
-	def DrawProfile2DDiamond(self, name, varz='clusterChargeN', cuts='', draw_top_borders=False, transp_ev=True):
+	def DrawProfile2DDiamond(self, name, varz='clusterChargeN', cuts='', draw_top_borders=False, transp_ev=True, plot_option='prof colz'):
 		xmin, xmax, deltax, xname = -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch'
 		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
 		if draw_top_borders:
-			self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev)
+			self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
 		else:
-			self.DrawProfile2DNoTopBottomBorders(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev)
+			self.DrawProfile2DNoTopBottomBorders(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
 
-	def DrawProfile2DNoTopBottomBorders(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True):
+	def DrawProfile2DNoTopBottomBorders(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True, plot_option='colz prof'):
 		list_cuts =['(({l}<=diaChYPred)&&(diaChYPred<={h}))'.format(l=self.row_info_diamond['0'], h=self.row_info_diamond['up'])]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz, zname, temp_cuts, transp_ev)
+		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz, zname, temp_cuts, transp_ev, plot_option)
 
-	def DrawProfile2D(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True):
+	def DrawProfile2D(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True, plot_option='colz prof'):
 		# ro.gStyle.SetOptStat('en')
 		ro.TFormula.SetMaxima(100000)
+		if name in self.profile.keys():
+			self.profile[name].Delete()
+
 		self.profile[name] = ro.TProfile2D('h_' + name, 'h_' + name, int(np.floor((xmax - xmin)/deltax + 0.5) + 2), xmin - deltax, xmax + deltax, int(np.floor((ymax - ymin)/deltay + 0.5) + 2), ymin - deltay, ymax + deltay)
 		self.profile[name].GetXaxis().SetTitle(xname)
 		self.profile[name].GetYaxis().SetTitle(yname)
 		self.profile[name].GetZaxis().SetTitle(zname)
-		self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-		self.canvas[name].cd()
+		if 'goff' not in plot_option:
+			self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
+			self.canvas[name].cd()
 		list_cuts = ['transparentEvent'] if transp_ev else []
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
-		self.trans_tree.Draw('{z}:{y}:{x}>>h_{n}'.format(z=varz, y=vary, x=varx, n=name), temp_cut, 'colz prof')
+		self.trans_tree.Draw('{z}:{y}:{x}>>h_{n}'.format(z=varz, y=vary, x=varx, n=name), temp_cut, plot_option)
 		ro.gPad.Update()
 		SetDefault2DStats(self.profile[name])
 		ro.TFormula.SetMaxima(1000)
@@ -709,16 +730,16 @@ class TransparentGrid:
 		temp_cuts = '&&'.join(list_cuts)
 		self.DrawPH(name, self.phmin, self.phmax, (self.phmax - self.phmin) / self.phbins, var, 'PH[ADC]', temp_cuts, transp_ev)
 
-	def DrawProfile2DDiamondChannelOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True):
+	def DrawProfile2DDiamondChannelOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
 		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_diamond) if cells == 'bad' else '(1)']
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
 		rowpitch, y0, xoff = self.row_info_diamond['pitch'], self.row_info_diamond['0'], self.row_info_diamond['x_off']
 		self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch,
-						   float(rowpitch)/self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=xoff, p=self.col_pitch), 'diaChYPred', var, 'PH[ADC]', temp_cuts, transp_ev)
+						   float(rowpitch)/self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=xoff, p=self.col_pitch), 'diaChYPred', var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
-	def DrawProfile2DDiamondRowOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True):
+	def DrawProfile2DDiamondRowOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
 		y0, rowpitch, numrows, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['y_off']
 		list_cuts = ['({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows)]
 		if cells == 'good':
@@ -728,9 +749,9 @@ class TransparentGrid:
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawProfile2D(name, -0.5, 127.5, self.cell_resolution, 'dia X ch', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=yoff, srp=int(10000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev)
+		self.DrawProfile2D(name, -0.5, 127.5, self.cell_resolution, 'dia X ch', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=yoff, srp=int(10000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
-	def DrawProfile2DDiamondCellOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True):
+	def DrawProfile2DDiamondCellOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
 		y0, rowpitch, numrows, xoff, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['x_off'], self.row_info_diamond['y_off']
 		list_cuts = ['({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows)]
 		if cells == 'good':
@@ -740,7 +761,7 @@ class TransparentGrid:
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '((diaChXPred-{ox})*{p})%{p}'.format(ox=xoff, p=self.col_pitch), '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=yoff, srp=int(10000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev)
+		self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '((diaChXPred-{ox})*{p})%{p}'.format(ox=xoff, p=self.col_pitch), '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=yoff, srp=int(10000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
 	def DrawHisto2DDiamondChannelOverlay(self, name, cells='all', cuts='', transp_ev=True):
 		rowpitch, y0, xoff = self.row_info_diamond['pitch'], self.row_info_diamond['0'], self.row_info_diamond['x_off']
