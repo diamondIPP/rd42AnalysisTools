@@ -225,7 +225,111 @@ class TransparentGrid:
 			self.align_info['xoff'] = self.align_obj.GetXOffset(4)
 			self.align_info['phi'] = self.align_obj.GetPhiXOffset(4)
 
+	def FindXandYOffests(self):
+		if not self.loaded_pickle:
+			self.FindUpperAndLowerLines()
+			self.FindBinningAndResolution()
+			self.row_info_diamond['y_off'] += 3.0 * self.row_info_diamond['pitch'] / 2.0
+			delta_y = self.row_info_diamond['pitch']
+			proj_width = self.col_pitch / 5.0  # in mum
+			proj_bins = int(np.floor(proj_width / self.cell_resolution + 0.5, dtype='float64'))
+			proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
+			proj_low = int(np.floor(np.floor(self.col_pitch / self.cell_resolution + 0.5, dtype='float64') / 2.0 + 0.5, dtype='float64') - (np.floor(proj_bins / 2.0 + 0.5, dtype='float64') - 1) + 1)
+			proj_high = proj_low + proj_bins - 1
+			iteration = 0
+			min_delta = self.row_info_diamond['pitch']
+			y_off_shifted, y_min = 0.0, 0.0
+			while abs(delta_y) > self.delta_offset_threshold and iteration < 50:
+				self.row_info_diamond['y_off'] -= delta_y * (np.exp(-iteration) * 0.9 + 0.1)
+				self.DrawProfile2DDiamondCellOverlay('y_off_alignment', 'clusterCharge1', 'good')
+				h_proj_y = self.profile['y_off_alignment'].ProjectionY('y_off_alignment_py', proj_low, proj_high, 'e')
+				h_proj_y.GetXaxis().SetRangeUser(0, self.row_info_diamond['pitch'])
+				miny = h_proj_y.GetBinCenter(h_proj_y.GetMinimumBin())
+				miny = miny if abs(miny - self.col_pitch / 2.0) > self.cell_resolution * 2.5 else self.col_pitch / 2.0
+				fit_py = h_proj_y.Fit('pol2', 'QEFSN', '', max(miny - 2.5 * self.cell_resolution - 1e-12, 0), min(miny + 2.5 * self.cell_resolution + 1e-12, self.row_info_diamond['pitch']))
+				y_min = -fit_py.Parameter(1) / (2 * fit_py.Parameter(2))
+				delta_y = self.row_info_diamond['pitch'] / 2.0 - y_min
+				if abs(delta_y) < min_delta:
+					min_delta = abs(delta_y)
+					y_off_shifted = self.row_info_diamond['y_off']
+				iteration += 1
+				print iteration, y_min, delta_y
+			print 'final', min_delta
+			self.row_info_diamond['y_off'] = y_off_shifted - self.row_info_diamond['pitch'] / 2.0
+
+			self.row_info_diamond['x_off'] += 3.0 / 2.0
+			delta_x = self.col_pitch
+			proj_width = self.row_info_diamond['pitch'] / 5.0  # in mum
+			proj_bins = int(np.floor(proj_width / self.cell_resolution + 0.5, dtype='float64'))
+			proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
+			proj_low = int(np.floor(np.floor(self.row_info_diamond['pitch'] / self.cell_resolution + 0.5, dtype='float64') / 2.0 + 0.5, dtype='float64') - (np.floor(proj_bins / 2.0 + 0.5, dtype='float64') - 1) + 1)
+			proj_high = proj_low + proj_bins - 1
+			iteration = 0
+			min_delta = self.col_pitch
+			x_off_shifted, x_min = 0.0, 0.0
+			while abs(delta_x) > self.delta_offset_threshold and iteration < 50:
+				self.row_info_diamond['x_off'] -= np.divide(delta_x, self.col_pitch, dtype='float64') * (np.exp(-iteration) * 0.9 + 0.1)
+				self.DrawProfile2DDiamondCellOverlay('x_off_alignment', 'clusterCharge1', 'good')
+				h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high)
+				h_proj_x.GetXaxis().SetRangeUser(0, self.col_pitch)
+				minx = h_proj_x.GetBinCenter(h_proj_x.GetMinimumBin())
+				minx = minx if abs(minx - self.row_info_diamond['pitch'] / 2.0) > self.cell_resolution * 2.5 else self.row_info_diamond['pitch'] / 2.0
+				fit_px = h_proj_x.Fit('pol2', 'QEFSN', '', max(minx - 2.5 * self.cell_resolution - 1e-12, 0), min(minx + 2.5 * self.cell_resolution + 1e-12, self.col_pitch))
+				x_min = -fit_px.Parameter(1) / (2 * fit_px.Parameter(2))
+				delta_x = self.col_pitch / 2.0 - x_min
+				if abs(delta_x) < min_delta:
+					min_delta = abs(delta_x)
+					x_off_shifted = self.row_info_diamond['x_off']
+				iteration += 1
+				print iteration, x_min, delta_x
+			print 'final', min_delta
+			self.row_info_diamond['x_off'] = x_off_shifted - 0.5
+			ipdb.set_trace()
+
+			self.SavePickle()
+
+	def FindUpperAndLowerLines(self):
+		self.DrawProfile2DDiamond('vertical_limits_profile', 'clusterChargeN', '', True)
+		xbinmin, xbinmax = self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5), self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5) + self.num_cols * self.bins_per_ch_x - 1
+		prof_proj_y = self.profile['vertical_limits_profile'].ProjectionY('vertical_limits_profile_py', xbinmin, xbinmax, 'e')
+		minbiny, maxbiny = prof_proj_y.FindFirstBinAbove(), prof_proj_y.FindLastBinAbove()
+		for biny in xrange(maxbiny, int(prof_proj_y.GetXaxis().GetNbins())):
+			if prof_proj_y.GetBinContent(biny) != 0:
+				maxbiny = biny
+		miny, maxy = prof_proj_y.GetXaxis().GetBinLowEdge(minbiny), prof_proj_y.GetXaxis().GetBinLowEdge(maxbiny + 1)
+		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-[1])/[2])+1)/2-[3]*(TMath::Erf((x-[4])/[5])+1)/2+[6]', miny, maxy)
+		func.SetNpx(int(self.row_info_diamond['num'] * self.bins_per_ch_y * 10))
+		zmin, zmax = prof_proj_y.GetMinimum(), prof_proj_y.GetMaximum()
+		y1bin, y2bin = prof_proj_y.FindFirstBinAbove((zmin + zmax) / 2.0), prof_proj_y.FindLastBinAbove((zmin + zmax) / 2.0) + 1
+		y1, y2 = prof_proj_y.GetXaxis().GetBinCenter(y1bin), prof_proj_y.GetXaxis().GetBinCenter(y2bin)
+		z0, z1, z2 = prof_proj_y.GetBinContent(int((minbiny + y1bin) / 2.0)), prof_proj_y.GetBinContent(int((y1bin + y2bin) / 2.0)), prof_proj_y.GetBinContent(int((maxbiny + y2bin) / 2.0))
+		func.SetParLimits(0, abs(z1 - z0) / 10.0, 2.0 * abs(z1 - z0))
+		func.SetParLimits(1, y1 - 200, y1 + 200)
+		func.SetParLimits(2, 0.1, 200)
+		func.SetParLimits(3, abs(z1 - z2) / 10.0, 2.0 * abs(z1 - z2))
+		func.SetParLimits(4, y2 - 200, y2 + 200)
+		func.SetParLimits(5, 0.1, 200)
+		func.SetParLimits(6, -2.0 * abs(z0), 10 * abs(z0))
+		params = np.array((abs(z1 - z0), y1, 20, abs(z1 - z2), y2, 20, z0), 'float64')
+		func.SetParameters(params)
+		fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', prof_proj_y.GetBinLowEdge(int((minbiny + y1bin) / 2.0)), prof_proj_y.GetBinLowEdge(int((maxbiny + y2bin) / 2.0)))
+		params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5), fit_prof_proj_y.Parameter(6)), 'float64')
+		func.SetParameters(params)
+		fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', (miny + fit_prof_proj_y.Parameter(1))/2.0, (maxy + fit_prof_proj_y.Parameter(4))/2.0)
+		extra_y_ch_sharing = fit_prof_proj_y.Parameter(4) - fit_prof_proj_y.Parameter(1) - self.row_info_diamond['num'] * self.row_info_diamond['pitch']
+		if extra_y_ch_sharing < 0:
+			ExitMessage('Obtained negative vertical extents due to charge sharing ({v}). Check number of rows, or pitch. Exiting'.format(v=extra_y_ch_sharing), os.EX_DATAERR)
+		self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(1) + extra_y_ch_sharing / 2.0
+		self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(4) - extra_y_ch_sharing / 2.0
+
 	def FindBinningAndResolution(self):
+		if self.gridAreas:
+			if len(self.gridAreas.goodAreas_index) == 0:
+				self.SelectGoodAndBadByThreshold()
+		else:
+			self.SetLines()
+			self.CreateTCutGs()
+			self.SelectGoodAndBadByThreshold()
 		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
 		histo_entries = float(self.histo['binning_temp'].GetEntries())
 		temp = np.abs(np.subtract(ph_bins_options, histo_entries, dtype='float32'), dtype='float32')
@@ -233,64 +337,6 @@ class TransparentGrid:
 		self.phbins_neg = ph_bins_options[temp.argmin()]
 		cell_bins = int(np.floor(np.sqrt(histo_entries * ((self.col_pitch / 2.0) ** 2) / 4500.0, dtype='float64') + 0.5))
 		self.cell_resolution = np.divide(self.col_pitch, cell_bins, dtype='float64') if cell_bins % 2 == 1 else np.divide(50.0, cell_bins + 1, dtype='float64')
-
-	def FindXandYOffests(self):
-		if not self.loaded_pickle:
-			self.FindBinningAndResolution()
-
-			self.row_info_diamond['y_off'] += 3.0 * self.col_pitch / 2.0
-			delta_y = self.col_pitch
-			proj_width = 10.0  # in mum
-			proj_bins = int(np.floor(proj_width / self.cell_resolution + 0.5, dtype='float64'))
-			proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
-			proj_low = int(np.floor(np.floor(self.col_pitch / self.cell_resolution + 0.5, dtype='float64') / 2.0 + 0.5, dtype='float64') - (np.floor(proj_bins / 2.0 + 0.5, dtype='float64') - 1) + 1)
-			proj_high = proj_low + proj_bins - 1
-			iteration = 0
-			min_delta = self.col_pitch
-			y_off_shifted = 0.0
-			while abs(delta_y) > self.delta_offset_threshold and iteration < 10:
-				self.row_info_diamond['y_off'] -= delta_y * (np.exp(-iteration) * 0.8 + 0.2)
-				self.DrawProfile2DDiamondCellOverlay('y_off_alignment', 'clusterCharge1', 'good')
-				h_proj_y = self.profile['y_off_alignment'].ProjectionY('y_off_alignment_py', proj_low, proj_high, 'e')
-				h_proj_y.GetXaxis().SetRangeUser(0, self.col_pitch)
-				miny = h_proj_y.GetBinCenter(h_proj_y.GetMinimumBin())
-				miny = miny if abs(miny - self.col_pitch / 2.0) > self.cell_resolution * 1.5 else self.col_pitch / 2.0
-				fit_py = h_proj_y.Fit('pol2', 'QEFSN', '', max(miny - 2.5 * self.cell_resolution - 1e-12, 0), min(miny + 2.5 * self.cell_resolution + 1e-12, self.col_pitch))
-				y_min = -fit_py.Parameter(1) / (2 * fit_py.Parameter(2))
-				delta_y = self.col_pitch / 2.0 - y_min
-				if delta_y < min_delta:
-					min_delta = delta_y
-					y_off_shifted = self.row_info_diamond['y_off']
-				iteration += 1
-				print 'Y min value:', y_min
-
-			self.row_info_diamond['y_off'] = y_off_shifted - self.col_pitch / 2.0
-
-			self.row_info_diamond['x_off'] += 3.0 / 2.0
-			delta_x = self.row_info_diamond['pitch']
-			iteration = 0
-			min_delta = self.row_info_diamond['pitch']
-			x_off_shifted = 0.0
-			while abs(delta_x) > self.delta_offset_threshold and iteration < 10:
-				# ipdb.set_trace()
-				self.row_info_diamond['x_off'] -= np.divide(delta_x, self.row_info_diamond['pitch'], dtype='float64') * (np.exp(-iteration) * 0.8 + 0.2)
-				self.DrawProfile2DDiamondCellOverlay('x_off_alignment', 'clusterCharge1', 'good')
-				h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high)
-				h_proj_x.GetXaxis().SetRangeUser(0, self.row_info_diamond['pitch'])
-				minx = h_proj_x.GetBinCenter(h_proj_x.GetMinimumBin())
-				minx = minx if abs(minx - self.row_info_diamond['pitch'] / 2.0) > self.cell_resolution * 1.5 else self.row_info_diamond['pitch'] / 2.0
-				fit_px = h_proj_x.Fit('pol2', 'QEFSN', '', max(minx - 2.5 * self.cell_resolution - 1e-12, 0), min(minx + 2.5 * self.cell_resolution + 1e-12, self.row_info_diamond['pitch']))
-				x_min = -fit_px.Parameter(1) / (2 * fit_px.Parameter(2))
-				delta_x = self.row_info_diamond['pitch'] / 2.0 - x_min
-				if delta_x < min_delta:
-					min_delta = delta_x
-					x_off_shifted = self.row_info_diamond['x_off']
-				iteration += 1
-				print 'X min value:', x_min
-			self.row_info_diamond['x_off'] = x_off_shifted - 0.5
-
-			ipdb.set_trace()
-			self.SavePickle()
 
 	def AskUserLowerYLines(self):
 		do_diamond = raw_input('Enter 1 if you want to enter the lower y line parameters of the plots in diamond space')
