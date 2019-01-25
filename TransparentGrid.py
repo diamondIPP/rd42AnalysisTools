@@ -13,7 +13,8 @@ from Langaus import LanGaus
 from GridAreas import GridAreas
 
 # ph_bins_options = np.array((1, 2, 4, 5, 10, 16, 20, 25, 32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000), 'uint16')
-ph_bins_options = np.array((32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000, 4000), 'uint16')
+# ph_bins_options = np.array((32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000, 4000), 'uint16')
+ph_bins_options = np.array((32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500), 'uint16')
 
 class TransparentGrid:
 	def __init__(self, dir='', run=25209, cellsize=50.0):
@@ -256,10 +257,10 @@ class TransparentGrid:
 		z0, z1, z2 = prof_proj_y.GetBinContent(int((minbiny + y1bin) / 2.0)), prof_proj_y.GetBinContent(int((y1bin + y2bin) / 2.0)), prof_proj_y.GetBinContent(int((maxbiny + y2bin) / 2.0))
 		func.SetParLimits(0, abs(z1 - z0) / 10.0, 2.0 * abs(z1 - z0))
 		func.SetParLimits(1, y1 - 200, y1 + 200)
-		func.SetParLimits(2, 0.1, 200)
+		func.SetParLimits(2, 0.1, 20)
 		func.SetParLimits(3, abs(z1 - z2) / 10.0, 2.0 * abs(z1 - z2))
 		func.SetParLimits(4, y2 - 200, y2 + 200)
-		func.SetParLimits(5, 0.1, 200)
+		func.SetParLimits(5, 0.1, 20)
 		func.SetParLimits(6, -2.0 * abs(z0), 10 * abs(z0))
 		params = np.array((abs(z1 - z0), y1, 20, abs(z1 - z2), y2, 20, z0), 'float64')
 		func.SetParameters(params)
@@ -714,21 +715,21 @@ class TransparentGrid:
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
-		self.DrawPH(name, self.phmin, self.phmax, (self.phmax - self.phmin) / self.phbins, var, 'PH[ADC]', temp_cut, transp_ev)
+		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, 'PH[ADC]', temp_cut, transp_ev)
 
 	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True):
 		list_cuts = ['{n}'.format(n=self.gridAreas.badAreasCutNames_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
-		self.DrawPH(name, self.phmin, self.phmax, (self.phmax - self.phmin) / self.phbins, var, 'PH[ADC]', temp_cut, transp_ev)
+		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, 'PH[ADC]', temp_cut, transp_ev)
 
 	def DrawPHCentralRegion(self, name, var='clusterChargeN', cells='good', cuts='', transp_ev=True):
 		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond_centers) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_diamond_centers) if cells == 'bad' else '({n}||{m})'.format(n=self.gridAreas.goodAreasCutNames_diamond_centers, m=self.gridAreas.badAreasCutNames_diamond_centers)]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawPH(name, self.phmin, self.phmax, (self.phmax - self.phmin) / self.phbins, var, 'PH[ADC]', temp_cuts, transp_ev)
+		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, 'PH[ADC]', temp_cuts, transp_ev)
 
 	def DrawProfile2DDiamondChannelOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
 		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_diamond) if cells == 'bad' else '(1)']

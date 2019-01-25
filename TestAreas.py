@@ -166,16 +166,16 @@ class TestAreas:
 		elif self.num == 9:
 			self.trans_grid.cell_resolution = 2
 			self.trans_grid.ResetAreas()
-			self.trans_grid.SelectGoodAndBadByThreshold(self.threshold)
+			self.trans_grid.SelectGoodAndBadByThreshold(self.threshold, 'clusterCharge{n}'.format(n=self.clust_size))
 		elif self.num == 100:
 			self.trans_grid.cell_resolution = 2
 			self.trans_grid.ResetAreas()
-			self.trans_grid.SelectGoodAndBadByThreshold(self.threshold)
+			self.trans_grid.SelectGoodAndBadByThreshold(self.threshold, 'clusterCharge{n}'.format(n=self.clust_size))
 
 	def PlotTestForNegative(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
-		list_cuts_clusters = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal/diaChPedSigmaCmc<{m})&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=self.max_snr, n=i)] for i in xrange(self.cluster_size)}
-		list_cuts_noise = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal/diaChPedSigmaCmc<{m})&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
+		list_cuts_clusters = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=self.max_snr, n=i)] for i in xrange(self.cluster_size)}
+		list_cuts_noise = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
 		if cells == 'good':
 			list_cuts_noise.append(self.trans_grid.gridAreas.goodAreasCutNames_diamond)
 		elif cells == 'bad':
@@ -185,15 +185,15 @@ class TestAreas:
 		lastbin = int(np.floor((self.max_snr - self.min_snr)/float(self.delta_snr) + 0.5))
 		tempmin, tempmax, tempbins = self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins
 		if cells == 'all':
-			temp = [self.trans_grid.DrawPH('ph_neg_c{n}_{c}'.format(n=i, c=cells), self.min_snr, self.max_snr, self.delta_snr, var='diaChSignal/diaChPedSigmaCmc', varname='PH closestStrip{n} (SNR)'.format(n=i), cuts=temp_cut_clusters[i]) for i in xrange(self.cluster_size)]
+			temp = [self.trans_grid.DrawPH('ph_neg_c{n}_{c}'.format(n=i, c=cells), self.min_snr, self.max_snr, self.delta_snr, var='diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='PH closestStrip{n} (SNR)'.format(n=i), cuts=temp_cut_clusters[i]) for i in xrange(self.cluster_size)]
 		elif cells == 'good':
 			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr, self.max_snr, int(np.floor((self.max_snr - self.min_snr)/float(self.delta_snr) + 0.5))
-			temp = [self.trans_grid.DrawPHGoodAreas('ph_neg_c{n}_{c}'.format(n=i, c=cells), 'diaChSignal/diaChPedSigmaCmc', temp_cut_clusters[i], 'diamond') for i in xrange(self.cluster_size)]
+			temp = [self.trans_grid.DrawPHGoodAreas('ph_neg_c{n}_{c}'.format(n=i, c=cells), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond') for i in xrange(self.cluster_size)]
 		elif cells == 'bad':
 			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr, self.max_snr, int(np.floor((self.max_snr - self.min_snr) / float(self.delta_snr) + 0.5))
-			temp = [self.trans_grid.DrawPHBadAreas('ph_neg_c{n}_{c}'.format(n=i, c=cells), 'diaChSignal/diaChPedSigmaCmc', temp_cut_clusters[i], 'diamond') for i in xrange(self.cluster_size)]
+			temp = [self.trans_grid.DrawPHBadAreas('ph_neg_c{n}_{c}'.format(n=i, c=cells), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond') for i in xrange(self.cluster_size)]
 		self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = tempmin, tempmax, tempbins
-		temp = [self.trans_grid.DrawPH('signal_noise_c{n}_{c}'.format(n=i, c=cells), self.min_snr, self.max_snr, self.delta_snr, 'diaChSignal/diaChPedSigmaCmc', varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='goff') for i in xrange(self.cluster_size)]
+		temp = [self.trans_grid.DrawPH('signal_noise_c{n}_{c}'.format(n=i, c=cells), self.min_snr, self.max_snr, self.delta_snr, 'diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='goff') for i in xrange(self.cluster_size)]
 		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=cells)].SetLineColor(ro.kGray + 1) for i in xrange(self.cluster_size)]
 		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=cells)].Scale(self.trans_grid.histo['ph_neg_c{n}_{c}'.format(n=i, c=cells)].GetBinContent(lastbin)/self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=cells)].GetBinContent(lastbin)) for i in xrange(self.cluster_size)]
 		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=cells)].SetStats(0) for i in xrange(self.cluster_size)]
