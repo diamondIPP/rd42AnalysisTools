@@ -55,7 +55,7 @@ class LanGaus:
 		self.paramsLimitsHigh[2] = self.histo.Integral() * 5000
 		self.paramsLimitsHigh[3] = self.histo.GetRMS()
 
-	def LanGausFit(self, nconv=1000, doLikelihood=False):
+	def LanGausFit(self, nconv=1000, doLikelihood=False, xmin=-10000000, xmax=-10000000):
 		fit_name = 'fit_{n}'.format(n=self.histo.GetName())
 		self.conv_steps = nconv
 
@@ -63,7 +63,9 @@ class LanGaus:
 		if fit_old:
 			fit_old.Delete()
 			del fit_old
-		self.fit = ro.TF1(fit_name, self.LangausFunc, self.histo.GetXaxis().GetXmin(), self.histo.GetXaxis().GetXmax(), 4)
+		xxmin = xmin if xmin > -10000000 else self.histo.GetXaxis().GetXmin()
+		xxmax = xmax if xmax > -10000000 else self.histo.GetXaxis().GetXmax()
+		self.fit = ro.TF1(fit_name, self.LangausFunc, xxmin, xxmax, 4)
 		self.fit.SetNpx(1000)
 		self.fit.SetParameters(self.params)
 		self.fit.SetParNames('Width', 'MP', 'Area', 'GSigma')

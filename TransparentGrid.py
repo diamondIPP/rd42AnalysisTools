@@ -71,6 +71,7 @@ class TransparentGrid:
 		self.line = {}
 		self.profile = {}
 		self.histo = {}
+		self.graph = {}
 		self.names = []
 		self.tcutgs_diamond = {}
 		self.tcutg_diamond_center = None
@@ -84,6 +85,8 @@ class TransparentGrid:
 		self.CheckFoldersAndFiles()
 		self.OpenFileAndGetTree()
 		self.FindDiamondChannelLimits()
+		self.list_neg_cuts_clusters = {}
+		self.list_neg_cuts_noise = {}
 
 	def CheckFoldersAndFiles(self):
 		if not os.path.isdir(self.dir):
@@ -791,24 +794,75 @@ class TransparentGrid:
 
 	def DrawHisto2DDiamondCellOverlay(self, name, cells='all', cuts='', transp_ev=True):
 		y0, rowpitch, numrows, xoff, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['x_off'], self.row_info_diamond['y_off']
-		list_cuts = ['({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows)]
-		if cells == 'good':
-			list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
-		elif cells == 'bad':
-			list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
-		if cuts != '':
-			list_cuts.append(cuts)
-		temp_cuts = '&&'.join(list_cuts)
+		# list_cuts = ['({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows)]
+		# if cells == 'good':
+		# 	list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+		# elif cells == 'bad':
+		# 	list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+		# if cuts != '':
+		# 	list_cuts.append(cuts)
+		# temp_cuts = '&&'.join(list_cuts)
+		temp_cuts = self.ConcatenateDiamondCuts('({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows), cells, cuts)
 		self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '((diaChXPred-{ox})*{p})%{p}'.format(ox=xoff, p=self.col_pitch), '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=yoff, srp=int(10000*rowpitch)), temp_cuts, transp_ev)
 
 	def DrawTCutCentersInCellOverlay(self, name):
 		self.canvas[name].cd()
 		self.tcutg_diamond_center.Draw('same')
 
-	def FitLanGaus(self, name, conv_steps=100, color=ro.kRed):
+	def ConcatenateDiamondCuts(self, cut0='', cells='all', cuts_extra=''):
+		list_cuts = [cut0] if cut0 != '' else []
+		if cells == 'good':
+			list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+		elif cells == 'bad':
+			list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+		if cuts_extra != '':
+			list_cuts.append(cuts_extra)
+		return '&&'.join(list_cuts)
+
+	def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='', xmin=0, xmax=4100, deltax=50):
+		minimum = min(0, self.GetMinimumBranch(var, cells, cut))
+		denominator = float(self.GetEfficiencyADCCut(var, minimum, cells, cut))
+		efficiencyDic = {adc_th: float(self.GetEfficiencyADCCut(var, adc_th, cells, cut))/denominator for adc_th in xrange(xmin, xmax, deltax)}
+		xvalues = np.arange(xmin, xmax, deltax, 'float64')
+		yvalues = np.array([efficiencyDic[xval] for xval in xvalues], 'float64')
+		self.graph[name] = ro.TGraph(len(xvalues), xvalues, yvalues)
+		self.graph[name].SetNameTitle('g_' + name, 'g_' + name)
+		self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
+		self.graph[name].Draw('AL*')
+		ro.gPad.Update()
+		self.canvas[name].SetGridx()
+		self.canvas[name].SetGridy()
+		self.canvas[name].SetTicky()
+		ro.gPad.Update()
+		# SetDefault1DStats(self.graph[name])
+
+	def GetMinimumBranch(self, var, cells='all', cut=''):
+		self.trans_tree.Draw('>>list{v}'.format(v=var), self.ConcatenateDiamondCuts('', cells, cut))
+		event_list = ro.gDirectory.Get('list{v}'.format(v=var))
+		self.trans_tree.SetEventList(event_list)
+		val = self.trans_tree.GetMinimum(var)
+		self.trans_tree.SetEventList(0)
+		event_list.Delete()
+		return val
+
+	def GetMaximumBranch(self, var, cells='all', cut=''):
+		self.trans_tree.Draw('>>list{v}'.format(v=var), self.ConcatenateDiamondCuts('', cells, cut))
+		event_list = ro.gDirectory.Get('list{v}'.format(v=var))
+		self.trans_tree.SetEventList(event_list)
+		val = self.trans_tree.GetMaximum(var)
+		self.trans_tree.SetEventList(0)
+		event_list.Delete()
+		return val
+
+	def GetEfficiencyADCCut(self, var='clusterChargeN', adc_th=50, cells='all', cut=''):
+		temp_cuts = self.ConcatenateDiamondCuts('({v}>={th})'.format(v=var, th=adc_th), cells, cut)
+		return self.trans_tree.GetEntries(temp_cuts)
+
+	def FitLanGaus(self, name, conv_steps=100, color=ro.kRed, xmin=-10000000, xmax=-10000000):
+
 		self.canvas[name].cd()
 		self.langaus[name] = LanGaus(self.histo[name])
-		self.langaus[name].LanGausFit(conv_steps)
+		self.langaus[name].LanGausFit(conv_steps, xmin=xmin, xmax=xmax)
 		lowbin, highbin = self.histo[name].FindFirstBinAbove(0, 1), self.histo[name].FindLastBinAbove(0, 1)
 		xlow, xhigh = self.histo[name].GetBinLowEdge(lowbin), self.histo[name].GetBinLowEdge(highbin + 1)
 		self.line[name] = ro.TLine(xlow, 0, xhigh, 0)
@@ -890,6 +944,11 @@ class TransparentGrid:
 			if self.canvas.has_key(canvas):
 				self.canvas[canvas].SaveAs('{d}/{r}/{sd}/{c}.png'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir, c=canvas))
 				self.canvas[canvas].SaveAs('{d}/{r}/{sd}/{c}.root'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir, c=canvas))
+
+	def SetNegativeCuts(self, max_snr=5):
+		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['x_off'], self.row_info_diamond['y_off'], self.col_pitch, self.num_cols, self.row_info_diamond['up']
+		self.list_neg_cuts_clusters = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=max_snr, n=i)] for i in xrange(self.num_strips)}
+		self.list_neg_cuts_noise = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=max_snr)]
 
 
 if __name__ == '__main__':
