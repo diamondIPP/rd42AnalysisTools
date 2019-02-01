@@ -863,8 +863,7 @@ class TransparentGrid:
 		self.canvas[name].cd()
 		self.langaus[name] = LanGaus(self.histo[name])
 		self.langaus[name].LanGausFit(conv_steps, xmin=xmin, xmax=xmax)
-		lowbin, highbin = self.histo[name].FindFirstBinAbove(0, 1), self.histo[name].FindLastBinAbove(0, 1)
-		xlow, xhigh = self.histo[name].GetBinLowEdge(lowbin), self.histo[name].GetBinLowEdge(highbin + 1)
+		xlow, xhigh = self.langaus[name].fit_range['min'], self.langaus[name].fit_range['max']
 		self.line[name] = ro.TLine(xlow, 0, xhigh, 0)
 		self.line[name].SetLineColor(ro.kViolet + 1)
 		self.line[name].SetLineWidth(4)
