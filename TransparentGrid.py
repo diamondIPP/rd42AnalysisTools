@@ -11,6 +11,7 @@ from Utils import *
 import cPickle as pickle
 from Langaus import LanGaus
 from GridAreas import GridAreas
+from array import array
 
 # ph_bins_options = np.array((1, 2, 4, 5, 10, 16, 20, 25, 32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000), 'uint16')
 # ph_bins_options = np.array((32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000, 4000), 'uint16')
@@ -819,13 +820,18 @@ class TransparentGrid:
 			list_cuts.append(cuts_extra)
 		return '&&'.join(list_cuts)
 
-	def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='', xmin=0, xmax=4100, deltax=50):
-		minimum = min(0, self.GetMinimumBranch(var, cells, cut))
-		denominator = float(self.GetEfficiencyADCCut(var, minimum, cells, cut))
-		efficiencyDic = {adc_th: float(self.GetEfficiencyADCCut(var, adc_th, cells, cut))/denominator for adc_th in xrange(xmin, xmax, deltax)}
+	def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='transparentEvent', xmin=0, xmax=4100, deltax=50, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2)), maxit=100000, tol=1e-15):
+		minimum = min(0, max(self.GetMinimumBranch(var, cells, cut), -9999))
+		denominator = float(self.GetEventsADCCut(var, minimum, cells, cut))
 		xvalues = np.arange(xmin, xmax, deltax, 'float64')
+		numerator = {adc_th: float(self.GetEventsADCCut(var, adc_th, cells, cut)) for adc_th in xvalues}
+		efficiencyDic = {adc_th: numerator[adc_th] / denominator for adc_th in xvalues}
 		yvalues = np.array([efficiencyDic[xval] for xval in xvalues], 'float64')
-		self.graph[name] = ro.TGraph(len(xvalues), xvalues, yvalues)
+		ySigmas = {xval: self.FindUpperLowerUncertainties(numerator[xval], denominator, sigma_errbar, maxit, tol) for xval in xvalues}
+		yLowerSigmas = np.array([ySigmas[xval]['lower'] for xval in xvalues], 'float64')
+		yUpperSigmas = np.array([ySigmas[xval]['upper'] for xval in xvalues], 'float64')
+		# self.graph[name] = ro.TGraph(len(xvalues), xvalues, yvalues)
+		self.graph[name] = ro.TGraphAsymmErrors(len(xvalues), xvalues, yvalues, np.zeros(len(xvalues), 'float64'), np.zeros(len(xvalues), 'float64'), yLowerSigmas, yUpperSigmas)
 		self.graph[name].SetNameTitle('g_' + name, 'g_' + name)
 		self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
 		self.graph[name].Draw('AL*')
@@ -854,9 +860,88 @@ class TransparentGrid:
 		event_list.Delete()
 		return val
 
-	def GetEfficiencyADCCut(self, var='clusterChargeN', adc_th=50, cells='all', cut=''):
+	def GetEventsADCCut(self, var='clusterChargeN', adc_th=50, cells='all', cut=''):
 		temp_cuts = self.ConcatenateDiamondCuts('({v}>={th})'.format(v=var, th=adc_th), cells, cut)
 		return self.trans_tree.GetEntries(temp_cuts)
+
+	def BetaDistIntegral(self, k, n, xinf, xsup):
+		return ro.TMath.BetaIncomplete(xsup, k + 1, n - k + 1) - ro.TMath.BetaIncomplete(xinf, k + 1, n - k + 1)
+
+	def LagrangeFcn(self, npar, par):
+		a = par[0]
+		b = par[1]
+		lambd = par[2]
+		k = par[3]
+		n = par[4]
+		sigm = par[5]
+		return float(b + a - lambd * (self.BetaDistIntegral(k, n, float(k)/float(n) - a, float(k)/float(n) + b) - sigm))
+
+	def MinuitFcn(self, npar, deriv, f, apar, iflag):
+		""" meaning of parametrs:
+		npar: number of parameters
+		deriv: aray of derivatives df/dp_i (x), optional
+		f: value of function to be minimised (typically chi2 or negLogL)
+		apar: the array of parameters
+		iflag: internal flag: 1 at first call , 3 at the last , 4 during minimisation
+		"""
+		f[0] = self.LagrangeFcn(npar, apar)
+
+	def FindUpperLowerUncertainties(self, k, n, sigm, max_iter=100000, tolerance=1e-15):
+		myMinuit = ro.TMinuit(6)  # 6 parameters: a, b, lambd, k, n, sigma
+		myMinuit.SetFCN(self.MinuitFcn)
+		ro.gMinuit.Command('SET PRINT -1')
+		myMinuit.SetPrintLevel(-1)
+		ierflg = ro.Long(0)
+		# Set Parameters
+		myMinuit.mnparm(0, 'lower', float(k) / float(n * 10000), float(k) / float(n * 100000), 0.0, float(k) / float(n), ierflg)
+		if ierflg != 0:
+			print 'There was an error starting the lower parameter! ierflg =', ierflg
+		myMinuit.mnparm(1, 'upper', 0.0001 - float(k) / float(n * 10000), 0.00001 - float(k) / float(n * 100000), 0.0, 1.0 - float(k) / float(n), ierflg)
+		if ierflg != 0:
+			print 'There was an error starting the upper parameter! ierflg =', ierflg
+		myMinuit.mnparm(2, 'lambd', 3.1415, 1e-4, 0, 100, ierflg)
+		if ierflg != 0:
+			print 'There was an error starting the lagrange multiplier parameter! ierflg =', ierflg
+		myMinuit.mnparm(3, 'k', k, k / float(10) + 0.001, 0, 0, ierflg)
+		if ierflg != 0:
+			print 'There was an error starting the fixed parameter k! ierflg =', ierflg
+		myMinuit.FixParameter(3)
+		if ierflg != 0:
+			print 'There was an error fixing parameter k! ierflg =', ierflg
+		myMinuit.mnparm(4, 'N', n, n / float(10) + 0.001, 0, 0, ierflg)
+		if ierflg != 0:
+			print 'There was an error starting the fixed parameter N! ierflg =', ierflg
+		myMinuit.FixParameter(4)
+		if ierflg != 0:
+			print 'There was an error fixing parameter N! ierflg =', ierflg
+		myMinuit.mnparm(5, 'sigma', sigm, sigm / float(10), 0, 0, ierflg)
+		if ierflg != 0:
+			print 'There was an error starting the fixed parameter sigma! ierflg =', ierflg
+		myMinuit.FixParameter(5)
+		if ierflg != 0:
+			print 'There was an error fixing parameter sigma! ierflg =', ierflg
+		# Configure Minuit
+		arglist = array('d', (0, 0))
+		arglist[0] = max_iter
+		arglist[1] = tolerance
+		# myMinuit.mnexcm("MINIMIZE", arglist, 2, ierflg)
+		myMinuit.mnexcm("MIGRAD", arglist, 2, ierflg)
+		if ierflg != 0:
+			print 'There was an error configuring the minimizer! ierflg =', ierflg
+		# Initialize Minuit status variables
+		amin, edm, errdef = ro.Double(0.), ro.Double(0.), ro.Double(0.)
+		nvpar, nparx, icstat = ro.Long(0), ro.Long(0), ro.Long(0)
+		# Run Minuit
+		myMinuit.mnstat(amin, edm, errdef, nvpar, nparx, icstat)
+		# Get results
+		p, pe = ro.Double(0), ro.Double(0)
+		myMinuit.GetParameter(0, p, pe)
+		low, lowerr = deepcopy(p), deepcopy(pe)
+		myMinuit.GetParameter(1, p, pe)
+		up, uperr = deepcopy(p), deepcopy(pe)
+		myMinuit.GetParameter(2, p, pe)
+		lambd, lambderr = deepcopy(p), deepcopy(pe)
+		return {'lower': low, 'upper': up, 'lambda': lambd, 'lower_err': lowerr, 'upper_err': uperr}
 
 	def FitLanGaus(self, name, conv_steps=100, color=ro.kRed, xmin=-10000000, xmax=-10000000):
 
