@@ -5,6 +5,7 @@ import numpy as np
 import ROOT as ro
 import ipdb  # set_trace, launch_ipdb_on_exception
 from copy import deepcopy
+from glob import glob
 from collections import OrderedDict
 import os, sys, shutil
 from Utils import *
@@ -568,7 +569,7 @@ class TransparentGrid:
 					self.tcutgs_diamond_center[col][row].Draw('same')
 		ro.gPad.Update()
 
-	def GetOccupancyFromProfile(self, name):
+	def GetOccupancyFromProfile(self, name, plot_option='colz'):
 		# ro.gStyle.SetOptStat('ne')
 		name_occupancy = 'hit_map_' + name
 		self.histo[name_occupancy] = self.profile[name].ProjectionXY('h_' + name_occupancy, 'B')
@@ -576,11 +577,12 @@ class TransparentGrid:
 		self.histo[name_occupancy].GetXaxis().SetTitle(self.profile[name].GetXaxis().GetTitle())
 		self.histo[name_occupancy].GetYaxis().SetTitle(self.profile[name].GetYaxis().GetTitle())
 		self.histo[name_occupancy].GetZaxis().SetTitle('entries')
-		self.canvas[name_occupancy] = ro.TCanvas('c_' + name_occupancy, 'c_' + name_occupancy, 1)
-		self.canvas[name_occupancy].cd()
-		self.histo[name_occupancy].Draw('colz')
-		ro.gPad.Update()
-		SetDefault2DStats(self.histo[name_occupancy])
+		if 'goff' not in plot_option:
+			self.canvas[name_occupancy] = ro.TCanvas('c_' + name_occupancy, 'c_' + name_occupancy, 1)
+			self.canvas[name_occupancy].cd()
+			self.histo[name_occupancy].Draw(plot_option)
+			ro.gPad.Update()
+			SetDefault2DStats(self.histo[name_occupancy])
 
 	def Draw2DHistoDiamond(self, name, cuts='', transp_ev=True):
 		self.DrawHisto2D(name, -0.5, 127.5, 1.0 / (self.bins_per_ch_x), 'dia X ch', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'],
@@ -714,26 +716,26 @@ class TransparentGrid:
 	def ResetAreas(self):
 		self.gridAreas.ResetAreas()
 
-	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True):
+	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]'):
 		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
-		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, 'PH[ADC]', temp_cut, transp_ev)
+		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cut, transp_ev)
 
-	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True):
+	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]'):
 		list_cuts = ['{n}'.format(n=self.gridAreas.badAreasCutNames_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
-		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, 'PH[ADC]', temp_cut, transp_ev)
+		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cut, transp_ev)
 
-	def DrawPHCentralRegion(self, name, var='clusterChargeN', cells='good', cuts='', transp_ev=True):
+	def DrawPHCentralRegion(self, name, var='clusterChargeN', cells='good', cuts='', transp_ev=True, varname='PH[ADC]'):
 		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond_centers) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_diamond_centers) if cells == 'bad' else '({n}||{m})'.format(n=self.gridAreas.goodAreasCutNames_diamond_centers, m=self.gridAreas.badAreasCutNames_diamond_centers)]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, 'PH[ADC]', temp_cuts, transp_ev)
+		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cuts, transp_ev)
 
 	def DrawProfile2DDiamondChannelOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
 		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_diamond) if cells == 'bad' else '(1)']
@@ -820,21 +822,39 @@ class TransparentGrid:
 			list_cuts.append(cuts_extra)
 		return '&&'.join(list_cuts)
 
-	def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='transparentEvent', xmin=0, xmax=4100, deltax=50, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2)), maxit=100000, tol=1e-15):
+	# def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='transparentEvent', xmin=0, xmax=4100, deltax=50, ymin_plot=0, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2)), maxit=100000, tol=0.1, minimizer='SIMPLEX', subdiv=50):
+	def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='transparentEvent', xmin=0, xmax=4100, deltax=50, ymin_plot=0, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2)), subdiv=50):
 		minimum = min(0, max(self.GetMinimumBranch(var, cells, cut), -9999))
 		denominator = float(self.GetEventsADCCut(var, minimum, cells, cut))
 		xvalues = np.arange(xmin, xmax, deltax, 'float64')
 		numerator = {adc_th: float(self.GetEventsADCCut(var, adc_th, cells, cut)) for adc_th in xvalues}
 		efficiencyDic = {adc_th: numerator[adc_th] / denominator for adc_th in xvalues}
+		lim_one_side = np.subtract(1, np.power(np.subtract(1, sigma_errbar, dtype='float64'), np.divide(1, denominator + 1, dtype='float64'), dtype='float64'), dtype='float64')
+		(xinf, xsup, yinf, ysup) = (xmin - 10, xmax + 10, 0 - lim_one_side, 1 + lim_one_side) if ymin_plot == 0 else (xmin - 10, xmax + 10, ymin_plot - lim_one_side, 1 + lim_one_side)
+		if ymin_plot != 0:
+			for it, value in enumerate(xvalues):
+				if efficiencyDic[value] <= ymin_plot:
+					xsup = value - deltax / 2.0
+					yinf = ymin_plot - lim_one_side
+					break
 		yvalues = np.array([efficiencyDic[xval] for xval in xvalues], 'float64')
-		ySigmas = {xval: self.FindUpperLowerUncertainties(numerator[xval], denominator, sigma_errbar, maxit, tol) for xval in xvalues}
+		# ySigmas = {xval: self.FindUpperLowerUncertaintiesWithMinuit(numerator[xval], denominator, sigma_errbar, maxit, tol, minimizer=minimizer) for xval in xvalues}
+		ySigmas = {xval: self.FindUpperLowerUncertaintiesWithDiscrete(numerator[xval], denominator, sigma_errbar, subdiv=subdiv) for xval in xvalues}
 		yLowerSigmas = np.array([ySigmas[xval]['lower'] for xval in xvalues], 'float64')
 		yUpperSigmas = np.array([ySigmas[xval]['upper'] for xval in xvalues], 'float64')
+		# for it, xval in enumerate(xvalues): print 'xval:', xval, 'k:', numerator[xval], 'n:', denominator, 'eff:', yvalues[it], 'low:', yLowerSigmas[it], 'up:', yUpperSigmas[it], 'area:', self.BetaDistIntegral(numerator[xval], denominator, yvalues[it] - yLowerSigmas[it], yvalues[it] + yUpperSigmas[it])
+		# for it, xval in enumerate(xvalues): print 'xval:', xval, 'k:', numerator[xval], 'n:', denominator, 'eff:', yvalues[it], 'low:', yLowerSigmas[it], 'up:', yUpperSigmas[it], 'lambda:', ySigmas[xval]['lambda'], 'area:', self.BetaDistIntegral(numerator[xval], denominator, yvalues[it] - yLowerSigmas[it], yvalues[it] + yUpperSigmas[it])
 		# self.graph[name] = ro.TGraph(len(xvalues), xvalues, yvalues)
-		self.graph[name] = ro.TGraphAsymmErrors(len(xvalues), xvalues, yvalues, np.zeros(len(xvalues), 'float64'), np.zeros(len(xvalues), 'float64'), yLowerSigmas, yUpperSigmas)
+		self.graph[name] = ro.TGraphAsymmErrors(len(xvalues), xvalues, yvalues, np.ones(len(xvalues), 'float64') * deltax / 2.0, np.ones(len(xvalues), 'float64') * deltax / 2.0, yLowerSigmas, yUpperSigmas)
 		self.graph[name].SetNameTitle('g_' + name, 'g_' + name)
 		self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-		self.graph[name].Draw('AL*')
+		self.graph[name].SetMarkerStyle(ro.TAttMarker.kFullDotMedium)
+		self.graph[name].SetMarkerColor(ro.kRed)
+		self.graph[name].Draw('AP')
+		self.graph[name].GetXaxis().SetTitle('ADC_cut')
+		self.graph[name].GetYaxis().SetTitle('Efficiency')
+		self.graph[name].GetXaxis().SetRangeUser(xinf, xsup)
+		self.graph[name].GetYaxis().SetRangeUser(yinf, ysup)
 		ro.gPad.Update()
 		self.canvas[name].SetGridx()
 		self.canvas[name].SetGridy()
@@ -874,6 +894,11 @@ class TransparentGrid:
 		k = par[3]
 		n = par[4]
 		sigm = par[5]
+		# if k == 0:
+		# 	return float(b - lambd * (1 - np.power(1 - b, n + 1, dtype='float64') - sigm))
+		# elif n == k:
+		# 	return float(a - lambd * (1 - np.power(1 - a, n + 1, dtype='float64') - sigm))
+		# else:
 		return float(b + a - lambd * (self.BetaDistIntegral(k, n, float(k)/float(n) - a, float(k)/float(n) + b) - sigm))
 
 	def MinuitFcn(self, npar, deriv, f, apar, iflag):
@@ -886,62 +911,107 @@ class TransparentGrid:
 		"""
 		f[0] = self.LagrangeFcn(npar, apar)
 
-	def FindUpperLowerUncertainties(self, k, n, sigm, max_iter=100000, tolerance=1e-15):
+	def FindUpperLowerUncertaintiesWithMinuit(self, k, n, sigm, max_iter=100000, tolerance=0.1, minimizer='SIMPLEX', a0=0, b0=0, is_last=True):
 		myMinuit = ro.TMinuit(6)  # 6 parameters: a, b, lambd, k, n, sigma
 		myMinuit.SetFCN(self.MinuitFcn)
 		ro.gMinuit.Command('SET PRINT -1')
 		myMinuit.SetPrintLevel(-1)
 		ierflg = ro.Long(0)
 		# Set Parameters
-		myMinuit.mnparm(0, 'lower', float(k) / float(n * 10000), float(k) / float(n * 100000), 0.0, float(k) / float(n), ierflg)
-		if ierflg != 0:
-			print 'There was an error starting the lower parameter! ierflg =', ierflg
-		myMinuit.mnparm(1, 'upper', 0.0001 - float(k) / float(n * 10000), 0.00001 - float(k) / float(n * 100000), 0.0, 1.0 - float(k) / float(n), ierflg)
-		if ierflg != 0:
-			print 'There was an error starting the upper parameter! ierflg =', ierflg
-		myMinuit.mnparm(2, 'lambd', 3.1415, 1e-4, 0, 100, ierflg)
-		if ierflg != 0:
-			print 'There was an error starting the lagrange multiplier parameter! ierflg =', ierflg
-		myMinuit.mnparm(3, 'k', k, k / float(10) + 0.001, 0, 0, ierflg)
-		if ierflg != 0:
-			print 'There was an error starting the fixed parameter k! ierflg =', ierflg
-		myMinuit.FixParameter(3)
-		if ierflg != 0:
-			print 'There was an error fixing parameter k! ierflg =', ierflg
-		myMinuit.mnparm(4, 'N', n, n / float(10) + 0.001, 0, 0, ierflg)
-		if ierflg != 0:
-			print 'There was an error starting the fixed parameter N! ierflg =', ierflg
-		myMinuit.FixParameter(4)
-		if ierflg != 0:
-			print 'There was an error fixing parameter N! ierflg =', ierflg
-		myMinuit.mnparm(5, 'sigma', sigm, sigm / float(10), 0, 0, ierflg)
-		if ierflg != 0:
-			print 'There was an error starting the fixed parameter sigma! ierflg =', ierflg
-		myMinuit.FixParameter(5)
-		if ierflg != 0:
-			print 'There was an error fixing parameter sigma! ierflg =', ierflg
-		# Configure Minuit
-		arglist = array('d', (0, 0))
-		arglist[0] = max_iter
-		arglist[1] = tolerance
-		# myMinuit.mnexcm("MINIMIZE", arglist, 2, ierflg)
-		myMinuit.mnexcm("MIGRAD", arglist, 2, ierflg)
-		if ierflg != 0:
-			print 'There was an error configuring the minimizer! ierflg =', ierflg
-		# Initialize Minuit status variables
+		initialValues = {}
+		limSup = {}
+		limInf = {}
+		lim_binomial = np.sqrt(k * (1 - float(k) / float(n))) / float(n)
+		lim_one_side = np.subtract(1, np.power(np.subtract(1, sigm, dtype='float64'), np.divide(1, n + 1, dtype='float64'), dtype='float64'), dtype='float64')
+		initialValues['lower'] = a0 if a0 != 0 else 0 if k == 0 else max(lim_binomial, 1.0 / float(n)) + 1e-6
+		initialValues['upper'] = b0 if b0 != 0 else 0 if k == n else max(lim_binomial, 1.0 / float(n)) + 1e-6
+		limInf['upper'] = 0 if k == n else min(lim_one_side, lim_binomial)
+		limInf['lower'] = 0 if k == 0 else min(lim_one_side, lim_binomial)
+		limSup['upper'] = 1e-15 if k == n else max(1.0 / float(n), lim_binomial * 2)
+		limSup['lower'] = 1e-15 if k == 0 else max(1.0 / float(n), lim_binomial * 2)
+		# limSup['upper'] = 0 if k == n else 1.0 - float(k) / float(n)
+		# limSup['upper'] = 0 if k == n else 1.0 - float(k) / float(n)
 		amin, edm, errdef = ro.Double(0.), ro.Double(0.), ro.Double(0.)
 		nvpar, nparx, icstat = ro.Long(0), ro.Long(0), ro.Long(0)
-		# Run Minuit
-		myMinuit.mnstat(amin, edm, errdef, nvpar, nparx, icstat)
-		# Get results
 		p, pe = ro.Double(0), ro.Double(0)
-		myMinuit.GetParameter(0, p, pe)
-		low, lowerr = deepcopy(p), deepcopy(pe)
-		myMinuit.GetParameter(1, p, pe)
-		up, uperr = deepcopy(p), deepcopy(pe)
-		myMinuit.GetParameter(2, p, pe)
-		lambd, lambderr = deepcopy(p), deepcopy(pe)
-		return {'lower': low, 'upper': up, 'lambda': lambd, 'lower_err': lowerr, 'upper_err': uperr}
+		if k != n and k!=0:
+			myMinuit.mnparm(0, 'lower', float(initialValues['lower']), 1e-6, float(limInf['lower']), float(limSup['lower']), ierflg)
+			if ierflg != 0:
+				print 'There was an error starting the lower parameter! ierflg =', ierflg
+			if k == 0:
+				myMinuit.FixParameter(0)
+			myMinuit.mnparm(1, 'upper', float(initialValues['upper']), 1e-6, float(limInf['upper']), float(limSup['upper']), ierflg)
+			if ierflg != 0:
+				print 'There was an error starting the upper parameter! ierflg =', ierflg
+			if k == n:
+				myMinuit.FixParameter(1)
+			myMinuit.mnparm(2, 'lambd', 0, 1e-6, 0, 0, ierflg)
+			if ierflg != 0:
+				print 'There was an error starting the lagrange multiplier parameter! ierflg =', ierflg
+			myMinuit.mnparm(3, 'k', k, k / float(10) + 0.001, 0, 0, ierflg)
+			if ierflg != 0:
+				print 'There was an error starting the fixed parameter k! ierflg =', ierflg
+			myMinuit.FixParameter(3)
+			myMinuit.mnparm(4, 'N', n, n / float(10) + 0.001, 0, 0, ierflg)
+			if ierflg != 0:
+				print 'There was an error starting the fixed parameter N! ierflg =', ierflg
+			myMinuit.FixParameter(4)
+			myMinuit.mnparm(5, 'sigma', sigm, sigm / float(10), 0, 0, ierflg)
+			if ierflg != 0:
+				print 'There was an error starting the fixed parameter sigma! ierflg =', ierflg
+			myMinuit.FixParameter(5)
+			# Configure Minuit
+			arglist = array('d', (0, 0))
+			arglist[0] = 2
+			myMinuit.mnexcm("SET STRATEGY", arglist, 1, ierflg)
+			arglist[0] = max_iter
+			arglist[1] = tolerance
+			# myMinuit.mnexcm("MINIMIZE", arglist, 2, ierflg)
+			# myMinuit.mnexcm("SIMPLEX", arglist, 2, ierflg)
+			myMinuit.mnexcm(minimizer, arglist, 2, ierflg)
+			# myMinuit.mnexcm("IMPROVE", arglist, 1, ierflg)
+			if ierflg != 0:
+				print 'There was an error configuring the minimizer! ierflg =', ierflg
+			# Initialize Minuit status variables
+			# Run Minuit
+			myMinuit.mnstat(amin, edm, errdef, nvpar, nparx, icstat)
+			# Get results
+			myMinuit.GetParameter(0, p, pe)
+			low, lowerr = deepcopy(p), deepcopy(pe)
+			myMinuit.GetParameter(1, p, pe)
+			up, uperr = deepcopy(p), deepcopy(pe)
+			myMinuit.GetParameter(2, p, pe)
+			lambd, lambderr = deepcopy(p), deepcopy(pe)
+		else:
+			low = 0 if k == 0 else np.subtract(1, np.power(np.subtract(1, sigm, dtype='float64'), np.divide(1, n + 1, dtype='float64'), dtype='float64'), dtype='float64')
+			up = np.subtract(1, np.power(np.subtract(1, sigm, dtype='float64'), np.divide(1, n + 1, dtype='float64'), dtype='float64'), dtype='float64') if k == 0 else 0
+			lambd, lowerr, uperr = 0, 0, 0
+		if is_last:
+			alt = np.sqrt(k * (1 - float(k) / float(n))) / float(n) + 1e-6
+			# low = 0 if k == 0 else alt if low == 0 else low
+			low = 0 if k == 0 else low
+			# up = 0 if k == n else alt if up == 0 else up
+			up = 0 if k == n else up
+			return {'lower': low, 'upper': up, 'lambda': lambd, 'lower_err': lowerr, 'upper_err': uperr}
+		else:
+			return self.FindUpperLowerUncertaintiesWithMinuit(k, n, sigm, max_iter, tolerance, low, up, is_last=True)
+
+	def FindUpperLowerUncertaintiesWithDiscrete(self, k, n, sigm, subdiv=50):
+		if k == 0 or k == n:
+			edge_value = np.subtract(1, np.power(np.subtract(1, sigm, dtype='float64'), np.divide(1, n + 1, dtype='float64'), dtype='float64'), dtype='float64')
+			low = 0 if k == 0 else edge_value
+			up = 0 if k == n else edge_value
+		else:
+			eps_vect = np.append(np.arange(0, 1, np.divide(1, subdiv * n, dtype='float64'), dtype='float64'), 1)
+			prob_vect = np.array([ro.TMath.BetaDist(eps, k + 1, n - k + 1) for it, eps in np.ndenumerate(eps_vect)], dtype='float64')
+			biggest_bins_pos = prob_vect.argsort()[::-1]
+			prob_vect_ordered = np.sort(prob_vect)[::-1]
+			# ipdb.set_trace()
+			ordered_integral = np.array([np.divide(prob_vect_ordered[:it].sum(), n * subdiv, dtype='float64') for it in xrange(1, len(prob_vect_ordered) + 1)], dtype='float64')
+			num_bins_used = (ordered_integral - sigm >= 0).argmax()
+			eps_in_integral = eps_vect[biggest_bins_pos[:num_bins_used + 1]]
+			low, up = np.subtract(eps_in_integral[0], eps_in_integral.min(), dtype='float64'), np.subtract(eps_in_integral.max(), eps_in_integral[0], dtype='float64')
+		return {'lower': low, 'upper': up}
 
 	def FitLanGaus(self, name, conv_steps=100, color=ro.kRed, xmin=-10000000, xmax=-10000000):
 
@@ -1034,6 +1104,36 @@ class TransparentGrid:
 		self.list_neg_cuts_clusters = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=max_snr, n=i)] for i in xrange(self.num_strips)}
 		self.list_neg_cuts_noise = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=max_snr)]
 
+	def LoadPlotsInSubdir(self):
+		if not os.path.isdir('{d}/{r}/{sd}'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir)):
+			print 'The working subdirectory: {d}/{r}/{sd} does not exist'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir)
+			return
+		root_files_list = glob('{d}/{r}/{sd}/*.root'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir))
+		for file_path_i in root_files_list:
+			file_i = ro.TFile(file_path_i, 'read')
+			canvas_name = file_i.GetListOfKeys()[0].GetTitle()
+			family_name = canvas_name[2:] if canvas_name.startswith('c_') else canvas_name
+			canvas = file_i.Get(canvas_name)
+			self.canvas[family_name] = canvas
+			histo = canvas.GetPrimitive('h_' + family_name)
+			if histo:
+				if self.IsObjectTH(histo):
+					self.histo[family_name] = histo
+				if self.IsObjectTProfile2D(histo):
+					self.profile[family_name] = histo
+			file_i.Close()
+
+	def IsObjectTH(self, obj):
+		if obj:
+			if obj.InheritsFrom(ro.TH1.Class().GetName()) or obj.InheritsFrom(ro.TH2.Class().GetName()):
+				return True
+		return False
+
+	def IsObjectTProfile2D(self, obj):
+		if obj:
+			if obj.InheritsFrom(ro.TProfile2D.Class().GetName()):
+				return True
+		return False
 
 if __name__ == '__main__':
 	parser = OptionParser()

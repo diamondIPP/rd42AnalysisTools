@@ -21,7 +21,8 @@ class TestAreas:
 		self.trans_grid.pkl_sbdir = 'test' + str(num)
 		self.threshold = 800 if cellsize == 50 else 200
 		self.window_shift = 10
-		self.min_snr, self.max_snr, self.delta_snr = -64.25, 0.25, 0.5
+		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.5
+		self.min_snr, self.max_snr = -64.25, 64.25
 		self.neg_cut_lines = {}
 		self.trash = []
 		self.w = 0
@@ -172,7 +173,7 @@ class TestAreas:
 			self.trans_grid.ResetAreas()
 			self.trans_grid.SelectGoodAndBadByThreshold(self.threshold, 'clusterCharge{n}'.format(n=self.clust_size))
 
-	def PlotTestForNegative(self, cells='all'):
+	def PlotTestClusterStudies(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
 		list_cuts_clusters = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=self.max_snr, n=i)] for i in xrange(self.cluster_size)}
 		list_cuts_noise = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
@@ -182,19 +183,104 @@ class TestAreas:
 			list_cuts_noise.append(self.trans_grid.gridAreas.badAreasCutNames_diamond)
 		temp_cut_clusters = {i: '&&'.join(list_cut) for i, list_cut in list_cuts_clusters.iteritems()}
 		temp_cut_noise = '&&'.join(list_cuts_noise)
-		lastbin = int(np.floor((self.max_snr - self.min_snr)/float(self.delta_snr) + 0.5))
+		lastbin = int(np.floor((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr) + 0.5))
 		tempmin, tempmax, tempbins = self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins
 		suffix = 'not_selection' if cells == 'bad' else 'selection' if cells == 'good' else 'all'
 		if cells == 'all':
-			temp = [self.trans_grid.DrawPH('ph_neg_c{n}_{c}'.format(n=i, c=suffix), self.min_snr, self.max_snr, self.delta_snr, var='diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='PH closestStrip{n} (SNR)'.format(n=i), cuts=temp_cut_clusters[i]) for i in xrange(self.cluster_size)]
+			temp = [self.trans_grid.DrawPH('ph_c{n}_{c}'.format(n=i, c=suffix), self.min_snr, self.max_snr, self.delta_snr, var='diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='PH closestStrip{n} (SNR)'.format(n=i), cuts=temp_cut_clusters[i]) for i in xrange(self.cluster_size)]
 		elif cells == 'good':
-			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr, self.max_snr, int(np.floor((self.max_snr - self.min_snr)/float(self.delta_snr) + 0.5))
-			temp = [self.trans_grid.DrawPHGoodAreas('ph_neg_c{n}_{c}'.format(n=i, c=suffix), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond') for i in xrange(self.cluster_size)]
+			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr, self.max_snr, int(np.floor((self.max_snr - self.min_snr) / float(self.delta_snr) + 0.5))
+			temp = [self.trans_grid.DrawPHGoodAreas('ph_c{n}_{c}'.format(n=i, c=suffix), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond', varname='PH closestStrip{n} (SNR)'.format(n=i)) for i in xrange(self.cluster_size)]
 		elif cells == 'bad':
 			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr, self.max_snr, int(np.floor((self.max_snr - self.min_snr) / float(self.delta_snr) + 0.5))
-			temp = [self.trans_grid.DrawPHBadAreas('ph_neg_c{n}_{c}'.format(n=i, c=suffix), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond') for i in xrange(self.cluster_size)]
+			temp = [self.trans_grid.DrawPHBadAreas('ph_c{n}_{c}'.format(n=i, c=suffix), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond', varname='PH closestStrip{n} (SNR)'.format(n=i)) for i in xrange(self.cluster_size)]
 		self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = tempmin, tempmax, tempbins
 		temp = [self.trans_grid.DrawPH('signal_noise_c{n}_{c}'.format(n=i, c=suffix), self.min_snr, self.max_snr, self.delta_snr, 'diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='goff') for i in xrange(self.cluster_size)]
+		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].SetLineColor(ro.kGray + 1) for i in xrange(self.cluster_size)]
+		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].Scale(self.trans_grid.histo['ph_c{n}_{c}'.format(n=i, c=suffix)].GetBinContent(lastbin)/self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].GetBinContent(lastbin)) for i in xrange(self.cluster_size)]
+		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].SetStats(0) for i in xrange(self.cluster_size)]
+		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].SetTitle('signal_not_in_cluster(scaled)') for i in xrange(self.cluster_size)]
+		for c in xrange(self.cluster_size):
+			ro.gPad.Update()
+			self.trans_grid.canvas['ph_c{n}_{c}'.format(n=c, c=suffix)].SetWindowPosition(self.w, self.w)
+			self.trans_grid.canvas['ph_c{n}_{c}'.format(n=c, c=suffix)].cd()
+			self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=c, c=suffix)].Draw('same')
+			ro.gPad.Update()
+			if self.trans_grid.histo['ph_c{n}_{c}'.format(n=c, c=suffix)].FindObject('stats'):
+				self.trans_grid.histo['ph_c{n}_{c}'.format(n=c, c=suffix)].FindObject('stats').SetX1NDC(0.15)
+				self.trans_grid.histo['ph_c{n}_{c}'.format(n=c, c=suffix)].FindObject('stats').SetX2NDC(0.45)
+				ro.gPad.Update()
+			legend = self.trans_grid.canvas['ph_c{n}_{c}'.format(n=c, c=suffix)].BuildLegend()
+			ro.gPad.Update()
+			legend.SetX1NDC(0.15)
+			legend.SetX2NDC(0.45)
+			legend.SetY1NDC(0.5)
+			legend.SetY2NDC(0.6)
+			ro.gPad.Update()
+			self.w += self.window_shift
+
+		self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)] = ro.TCanvas('ph_ch{c}'.format(c=suffix), 'ph_ch{c}'.format(c=suffix), 1)
+		for c in xrange(self.cluster_size):
+			self.trans_grid.histo['ph_c{n}_{c}'.format(n=self.cluster_size - c - 1, c=suffix)].SetStats(0)
+			self.trans_grid.histo['ph_c{n}_{c}'.format(n=self.cluster_size - c - 1, c=suffix)].Draw('same')
+			r, g, b = ReturnRGB(c, 0, self.cluster_size)
+			self.trash.append(ro.TColor(color_index + c, r, g, b))
+			self.trans_grid.histo['ph_c{n}_{c}'.format(n=self.cluster_size - c - 1, c=suffix)].SetLineColor(color_index + c)
+			self.trans_grid.histo['ph_c{n}_{c}'.format(n=self.cluster_size - c - 1, c=suffix)].SetMarkerColor(ro.kBlack)
+
+		self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)].SetLogy()
+		self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)].SetGridx()
+		self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)].SetGridy()
+		self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)].SetTicky()
+
+		legend = self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)].BuildLegend()
+		ro.gPad.Update()
+		legend.SetX1NDC(0.15)
+		legend.SetX2NDC(0.45)
+		legend.SetY1NDC(0.7)
+		legend.SetY2NDC(0.9)
+		ro.gPad.Update()
+		self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)].SetWindowPosition(self.w, self.w)
+		self.w += self.window_shift
+
+		for clch in ['1', '2', 'N']:
+			for c in xrange(self.cluster_size):
+				cuts = '({c})'.format(c=self.trans_grid.gridAreas.goodAreasCutNames_diamond) if cells == 'good' else '({c})'.format(c=self.trans_grid.gridAreas.badAreasCutNames_diamond) if cells == 'good' else ''
+				self.trans_grid.DrawHisto2D('ph_ch{ch}_vs_ph{clch}_{c}'.format(ch=c, clch=clch, c=suffix), -500, 2500, 50, 'ph_ch{c}[ADC]'.format(c=c), 0, 4200, 40, 'ph{clch}[ADC]'.format(clch=clch), 'diaChSignal[clusterChannel{c}]'.format(c=c), 'clusterCharge{clch}'.format(clch=clch), cuts)
+				self.trans_grid.canvas['ph_ch{ch}_vs_ph{clch}_{c}'.format(ch=c, clch=clch, c=suffix)].SetGridx()
+				self.trans_grid.canvas['ph_ch{ch}_vs_ph{clch}_{c}'.format(ch=c, clch=clch, c=suffix)].SetGridy()
+				ro.gPad.Update()
+				self.trans_grid.canvas['ph_ch{ch}_vs_ph{clch}_{c}'.format(ch=c, clch=clch, c=suffix)].SetWindowPosition(self.w, self.w)
+				self.w += self.window_shift
+
+	def PlotSaturation(self):
+		self.trans_grid.DrawPHGoodAreas('PH_Saturated_Events', 'clusterCharge2', '((transparentEvent)&&((diaChADC[clusterChannel0]==4095)||(diaChADC[clusterChannel1]==4095)||(diaChADC[clusterChannel2]==4095)))')
+		self.trans_grid.canvas['PH_Saturated_Events'].SetWindowPosition(self.w, self.w)
+		self.w += self.window_shift
+
+	def PlotTestForNegative(self, cells='all'):
+		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
+		list_cuts_clusters = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=self.max_snr_neg, n=i)] for i in xrange(self.cluster_size)}
+		list_cuts_noise = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr_neg)]
+		if cells == 'good':
+			list_cuts_noise.append(self.trans_grid.gridAreas.goodAreasCutNames_diamond)
+		elif cells == 'bad':
+			list_cuts_noise.append(self.trans_grid.gridAreas.badAreasCutNames_diamond)
+		temp_cut_clusters = {i: '&&'.join(list_cut) for i, list_cut in list_cuts_clusters.iteritems()}
+		temp_cut_noise = '&&'.join(list_cuts_noise)
+		lastbin = int(np.floor((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr) + 0.5))
+		tempmin, tempmax, tempbins = self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins
+		suffix = 'not_selection' if cells == 'bad' else 'selection' if cells == 'good' else 'all'
+		if cells == 'all':
+			temp = [self.trans_grid.DrawPH('ph_neg_c{n}_{c}'.format(n=i, c=suffix), self.min_snr_neg, self.max_snr_neg, self.delta_snr, var='diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='PH closestStrip{n} (SNR)'.format(n=i), cuts=temp_cut_clusters[i]) for i in xrange(self.cluster_size)]
+		elif cells == 'good':
+			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr_neg, self.max_snr_neg, int(np.floor((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr) + 0.5))
+			temp = [self.trans_grid.DrawPHGoodAreas('ph_neg_c{n}_{c}'.format(n=i, c=suffix), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond', varname='PH closestStrip{n} (SNR)'.format(n=i)) for i in xrange(self.cluster_size)]
+		elif cells == 'bad':
+			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr_neg, self.max_snr_neg, int(np.floor((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr) + 0.5))
+			temp = [self.trans_grid.DrawPHBadAreas('ph_neg_c{n}_{c}'.format(n=i, c=suffix), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond', varname='PH closestStrip{n} (SNR)'.format(n=i)) for i in xrange(self.cluster_size)]
+		self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = tempmin, tempmax, tempbins
+		temp = [self.trans_grid.DrawPH('signal_noise_c{n}_{c}'.format(n=i, c=suffix), self.min_snr_neg, self.max_snr_neg, self.delta_snr, 'diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='goff') for i in xrange(self.cluster_size)]
 		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].SetLineColor(ro.kGray + 1) for i in xrange(self.cluster_size)]
 		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].Scale(self.trans_grid.histo['ph_neg_c{n}_{c}'.format(n=i, c=suffix)].GetBinContent(lastbin)/self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].GetBinContent(lastbin)) for i in xrange(self.cluster_size)]
 		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].SetStats(0) for i in xrange(self.cluster_size)]
@@ -209,7 +295,7 @@ class TestAreas:
 				self.trans_grid.histo['ph_neg_c{n}_{c}'.format(n=c, c=suffix)].FindObject('stats').SetX1NDC(0.15)
 				self.trans_grid.histo['ph_neg_c{n}_{c}'.format(n=c, c=suffix)].FindObject('stats').SetX2NDC(0.45)
 				ro.gPad.Update()
-			hbla = ro.TH1F('bla{n}_{c}'.format(n=c, c=suffix), 'Negative cut', 2, self.max_snr + 1, self.max_snr + 2)
+			hbla = ro.TH1F('bla{n}_{c}'.format(n=c, c=suffix), 'Negative cut', 2, self.max_snr_neg + 1, self.max_snr_neg + 2)
 			hbla.SetLineStyle(7)
 			hbla.SetLineColor(ro.kRed)
 			hbla.SetLineWidth(2)
@@ -241,7 +327,7 @@ class TestAreas:
 			self.trans_grid.histo['ph_neg_c{n}_{c}'.format(n=self.cluster_size - c - 1, c=suffix)].SetLineColor(color_index + c)
 			self.trans_grid.histo['ph_neg_c{n}_{c}'.format(n=self.cluster_size - c - 1, c=suffix)].SetMarkerColor(ro.kBlack)
 
-		hbla = ro.TH1F('bla000', 'Negative cut', 2, self.max_snr + 1, self.max_snr + 2)
+		hbla = ro.TH1F('bla000', 'Negative cut', 2, self.max_snr_neg + 1, self.max_snr_neg + 2)
 		hbla.SetLineStyle(7)
 		hbla.SetLineColor(ro.kRed)
 		hbla.SetLineWidth(2)
@@ -301,13 +387,30 @@ class TestAreas:
 			#  plot cell overlay
 			self.trans_grid.DrawProfile2DDiamondCellOverlay('ph{c}_cells_test{n}'.format(c=ch, n=num), var='clusterCharge' + str(ch), cells='good')
 			self.trans_grid.canvas['ph{c}_cells_test{n}'.format(c=ch, n=num)].SetWindowPosition(self.w, self.w)
-			self.w += self.window_shift
-			#  show center region in cell
 			self.trans_grid.DrawTCutCentersInCellOverlay('ph{c}_cells_test{n}'.format(c=ch, n=num))
-			#  draw ph of selected areas
-			self.trans_grid.DrawEfficiencyADCCut('Eff_ph{c}VsADC_test{n}'.format(c=ch, n=num), 'clusterCharge' + str(ch), cells='good', cut='transparentEvent')
+			self.w += self.window_shift
+			self.trans_grid.GetOccupancyFromProfile('ph{c}_cells_test{n}'.format(c=ch, n=num), 'goff')
+			#  show center region in cell
+			#  Efficiency plots
+			self.trans_grid.DrawProfile2DDiamondCellOverlay('ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num), var='clusterCharge' + str(ch), cells='good', cuts='(clusterCharge{c}>=5*diaChPedSigmaCmc[clusterChannel0])'.format(c=ch), plot_option='prof colz goff')
+			self.trans_grid.GetOccupancyFromProfile('ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num))
+			self.trans_grid.canvas['hit_map_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num)].SetWindowPosition(self.w, self.w)
+			self.w += self.window_shift
+			self.trans_grid.histo['Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num)] = self.trans_grid.histo['hit_map_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num)].Clone('h_Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num))
+			self.trans_grid.histo['Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num)].SetTitle('h_Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num))
+			self.trans_grid.histo['Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num)].Sumw2()
+			self.trans_grid.histo['Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num)].Divide(self.trans_grid.histo['hit_map_ph{c}_cells_test{n}'.format(c=ch, n=num)])
+			self.trans_grid.canvas['Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num)] = ro.TCanvas('c_Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num), 'c_Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num), 1)
+			self.trans_grid.histo['Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num)].Draw('colz')
+			SetDefault2DStats(self.trans_grid.histo['Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num)])
+			self.trans_grid.histo['Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num)].GetZaxis().SetTitle('Efficiency')
+			self.trans_grid.histo['Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num)].GetZaxis().SetRangeUser(0.9, 1)
+			self.trans_grid.canvas['Eff_ph{c}_cells_5sigma_cut_test{n}'.format(c=ch, n=num)].SetWindowPosition(self.w, self.w)
+			self.w += self.window_shift
+			self.trans_grid.DrawEfficiencyADCCut('Eff_ph{c}VsADC_test{n}'.format(c=ch, n=num), 'clusterCharge' + str(ch), cells='good', cut='transparentEvent', ymin_plot=0.95)
 			self.trans_grid.canvas['Eff_ph{c}VsADC_test{n}'.format(c=ch, n=num)].SetWindowPosition(self.w, self.w)
 			self.w += self.window_shift
+			#  draw ph of selected areas
 			self.trans_grid.DrawPHGoodAreas('ph{c}_test{n}'.format(c=ch, n=num), var='clusterCharge' + str(ch))
 			self.trans_grid.canvas['ph{c}_test{n}'.format(c=ch, n=num)].SetWindowPosition(self.w, self.w)
 			self.w += self.window_shift
@@ -412,7 +515,7 @@ class TestAreas:
 				#  show center region in cell
 				self.trans_grid.DrawTCutCentersInCellOverlay('ph{c}_cells_test{n}'.format(c=self.num_strips, n=num))
 				#  draw ph of selected areas
-				self.trans_grid.DrawEfficiencyADCCut('Eff_ph{c}VsADC_test{n}'.format(c=self.num_strips, n=num), 'clusterChargeN', cells='good', cut='transparentEvent')
+				self.trans_grid.DrawEfficiencyADCCut('Eff_ph{c}VsADC_test{n}'.format(c=self.num_strips, n=num), 'clusterChargeN', cells='good', cut='transparentEvent', ymin_plot=0.95)
 				self.trans_grid.canvas['Eff_ph{c}VsADC_test{n}'.format(c=self.num_strips, n=num)].SetWindowPosition(self.w, self.w)
 				self.w += self.window_shift
 				self.trans_grid.DrawPHGoodAreas('ph{c}_test{n}'.format(c=self.num_strips, n=num), var='clusterChargeN')
@@ -501,6 +604,7 @@ if __name__ == '__main__':
 	parser.add_option('-f', '--dofit', dest='dofit', default=False, action='store_true', help='Enables fitting')
 	parser.add_option('-n', '--numstrips', dest='numstrips', type='int', default=2, help='Number of strips to use')
 	parser.add_option('-a', '--auto', dest='auto', default=False, action='store_true', help='Sets up test, creates plots and saves them automatically if toggled')
+	parser.add_option('-s', '--saturation', dest='saturation', default=False, action='store_true', help='Sets up saturation plots')
 
 	(options, args) = parser.parse_args()
 	run = int(options.run)
@@ -509,6 +613,7 @@ if __name__ == '__main__':
 	do_fit = bool(options.dofit)
 	numstrips = int(options.numstrips)
 	cellsize = int(options.cellsize) if testnum < 100 else 100
+	do_sat = bool(options.saturation)
 	autom = bool(options.auto)
 
 	t = TestAreas(testnum, numstrips, dir, run, cellsize, do_fit)
@@ -525,7 +630,10 @@ if __name__ == '__main__':
 			t.trans_grid.FindBinningAndResolution()
 			t.trans_grid.SavePickle()
 		if autom:
-			t.PlotTestForNegative()
+			t.PlotTestClusterStudies('good')
+			t.PlotTestForNegative('good')
 			t.PlotTest()
+			if do_sat:
+				t.PlotSaturation()
 			t.SaveCanvas()
 

@@ -354,7 +354,7 @@ def CloseSubprocess(p, stdin=False, stdout=False):
 	print 'Subprocess terminated successfully'
 
 def ReturnRGB(val, min, max):
-		hue = (val - min) * 1.0 / (max - min) if max != min else 0
+		hue = (val - min) * 1.0 / float(max - min) if max != min else 0
 		huep = hue * 6.0
 		i = int(huep)
 		v1 = 0.
@@ -374,7 +374,7 @@ def ReturnRGB(val, min, max):
 			r, g, b = 1., v1, v2
 		return r, g, b
 
-def Correct_Path(path):
+def Correct_Path(path, times=2):
 	abs_path = ''
 	if path[0] == '~':
 		abs_path += os.path.expanduser('~')
@@ -383,6 +383,8 @@ def Correct_Path(path):
 		abs_path += path
 	else:
 		abs_path += os.path.abspath(path)
+	if times != 1:
+		return Correct_Path(abs_path, 1)
 	return abs_path
 
 def DeleteDirectoryContents(dir):
