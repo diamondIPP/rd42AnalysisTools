@@ -2,6 +2,7 @@
 from optparse import OptionParser
 # from numpy import array, floor, average, std
 import numpy as np
+import scipy.stats as sps
 import ROOT as ro
 import ipdb  # set_trace, launch_ipdb_on_exception
 from copy import deepcopy
@@ -64,6 +65,7 @@ class TransparentGrid:
 		self.length_central_region = 30 if self.col_pitch == 50 else 40
 		self.conv_steps = 1000
 		self.sigma_conv = 5
+		self.efficiency_subdiv = 50
 		self.vertical_lines_diamond = []
 		self.vertical_lines_diamond_tline = []
 		self.horizontal_lines_diamond = []
@@ -140,6 +142,7 @@ class TransparentGrid:
 		object_dic['conv_steps'] = self.conv_steps
 		object_dic['sigma_conv'] = self.sigma_conv
 		object_dic['mpshift'] = self.mpshift
+		object_dic['efficiency_subdiv'] = self.efficiency_subdiv
 
 		if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
 			os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
@@ -214,6 +217,8 @@ class TransparentGrid:
 			self.sigma_conv = self.pkl['sigma_conv']
 		if 'mpshift' in self.pkl.keys():
 			self.mpshift = self.pkl['mpshift']
+		if 'efficiency_subdiv' in self.pkl.keys():
+			self.efficiency_subdiv = self.pkl['efficiency_subdiv']
 
 	def SetLines(self, try_align=True):
 		self.LoadPickle()
@@ -247,37 +252,48 @@ class TransparentGrid:
 	def FindUpperAndLowerLines(self):
 		self.DrawProfile2DDiamond('vertical_limits_profile', 'clusterChargeN', '', True)
 		xbinmin, xbinmax = self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5), self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5) + self.num_cols * self.bins_per_ch_x - 1
-		prof_proj_y = self.profile['vertical_limits_profile'].ProjectionY('vertical_limits_profile_py', xbinmin, xbinmax, 'e')
+		prof_proj_y = self.profile['vertical_limits_profile'].ProjectionY('vertical_limits_profile_py', xbinmin, xbinmax, 'e hist')
+		self.canvas['vertical_limits_profile_py'] = ro.TCanvas('c_vertical_limits_profile_py', 'c_vertical_limits_profile_py', 1)
+		self.canvas['vertical_limits_profile_py'].cd()
 		minbiny, maxbiny = prof_proj_y.FindFirstBinAbove(), prof_proj_y.FindLastBinAbove()
 		for biny in xrange(maxbiny, int(prof_proj_y.GetXaxis().GetNbins())):
 			if prof_proj_y.GetBinContent(biny) != 0:
 				maxbiny = biny
 		miny, maxy = prof_proj_y.GetXaxis().GetBinLowEdge(minbiny), prof_proj_y.GetXaxis().GetBinLowEdge(maxbiny + 1)
 		prof_proj_y.GetXaxis().SetRangeUser(miny, maxy)
-		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-[1])/[2])+1)/2-[3]*(TMath::Erf((x-[4])/[5])+1)/2+[6]', miny, maxy)
+		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-([3]-{p}))/[1])+1)/2-[2]*(TMath::Erf((x-[3])/[4])+1)/2+[5]'.format(p=self.row_info_diamond['num'] * self.row_info_diamond['pitch']), miny, maxy)
+		# func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-[1])/[2])+1)/2-[3]*(TMath::Erf((x-[4])/[5])+1)/2+[6]', miny, maxy)
 		func.SetNpx(int(self.row_info_diamond['num'] * self.bins_per_ch_y * 10))
 		zmin, zmax = prof_proj_y.GetMinimum(), prof_proj_y.GetMaximum()
 		y1bin, y2bin = prof_proj_y.FindFirstBinAbove((zmin + zmax) / 2.0), prof_proj_y.FindLastBinAbove((zmin + zmax) / 2.0) + 1
 		y1, y2 = prof_proj_y.GetXaxis().GetBinCenter(y1bin), prof_proj_y.GetXaxis().GetBinCenter(y2bin)
-		z0, z1, z2 = prof_proj_y.GetBinContent(int((minbiny + y1bin) / 2.0)), prof_proj_y.GetBinContent(int((y1bin + y2bin) / 2.0)), prof_proj_y.GetBinContent(int((maxbiny + y2bin) / 2.0))
+		z0, z1, z2 = prof_proj_y.GetBinContent(int((minbiny))), prof_proj_y.GetBinContent(int((y1bin + y2bin) / 2.0)), prof_proj_y.GetBinContent(int((maxbiny)))
+		# z0, z1, z2 = prof_proj_y.GetBinContent(int((minbiny + y1bin) / 2.0)), prof_proj_y.GetBinContent(int((y1bin + y2bin) / 2.0)), prof_proj_y.GetBinContent(int((maxbiny + y2bin) / 2.0))
 		func.SetParLimits(0, abs(z1 - z0) / 10.0, 2.0 * abs(z1 - z0))
-		func.SetParLimits(1, y1 - 200, y1 + 200)
-		func.SetParLimits(2, 0.1, 20)
-		func.SetParLimits(3, abs(z1 - z2) / 10.0, 2.0 * abs(z1 - z2))
-		func.SetParLimits(4, y2 - 200, y2 + 200)
-		func.SetParLimits(5, 0.1, 20)
-		func.SetParLimits(6, -2.0 * abs(z0), 10 * abs(z0))
-		params = np.array((abs(z1 - z0), y1, 20, abs(z1 - z2), y2, 20, z0), 'float64')
+		# func.SetParLimits(1, y1 - 200, y1 + 200)
+		func.SetParLimits(1, 0.1, 200)
+		# func.SetParLimits(1, 0.1, 20)
+		func.SetParLimits(2, abs(z1 - z2) / 10.0, 2.0 * abs(z1 - z2))
+		func.SetParLimits(3, y2 - 200, y2 + 200)
+		func.SetParLimits(4, 0.1, 200)
+		# func.SetParLimits(4, 0.1, 20)
+		func.SetParLimits(5, -2.0 * abs(z0), 10 * abs(z0))
+		# params = np.array((abs(z1 - z0), y1, 20, abs(z1 - z2), y2, 20, z0), 'float64')
+		params = np.array((abs(z1 - z0), 20, abs(z1 - z2), y2, 20, z0), 'float64')
 		func.SetParameters(params)
-		fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', prof_proj_y.GetBinLowEdge(int((minbiny + y1bin) / 2.0)), prof_proj_y.GetBinLowEdge(int((maxbiny + y2bin) / 2.0)))
-		params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5), fit_prof_proj_y.Parameter(6)), 'float64')
+		fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', prof_proj_y.GetBinLowEdge(int((minbiny))), prof_proj_y.GetBinLowEdge(int((maxbiny))))
+		# fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', prof_proj_y.GetBinLowEdge(int((minbiny + y1bin) / 2.0)), prof_proj_y.GetBinLowEdge(int((maxbiny + y2bin) / 2.0)))
+		params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5)), 'float64')
 		func.SetParameters(params)
-		fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', (miny + fit_prof_proj_y.Parameter(1))/2.0, (maxy + fit_prof_proj_y.Parameter(4))/2.0)
-		extra_y_ch_sharing = fit_prof_proj_y.Parameter(4) - fit_prof_proj_y.Parameter(1) - self.row_info_diamond['num'] * self.row_info_diamond['pitch']
-		if extra_y_ch_sharing < 0:
-			ExitMessage('Obtained negative vertical extents due to charge sharing ({v}). Check number of rows, or pitch. Exiting'.format(v=extra_y_ch_sharing), os.EX_DATAERR)
-		self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(1) + extra_y_ch_sharing / 2.0
-		self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(4) - extra_y_ch_sharing / 2.0
+		fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', (miny), (maxy))
+		# fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', (miny + fit_prof_proj_y.Parameter(1))/2.0, (maxy + fit_prof_proj_y.Parameter(4))/2.0)
+		# extra_y_ch_sharing = fit_prof_proj_y.Parameter(4) - fit_prof_proj_y.Parameter(1) - self.row_info_diamond['num'] * self.row_info_diamond['pitch']
+		# if extra_y_ch_sharing < 0:
+		# 	ExitMessage('Obtained negative vertical extents due to charge sharing ({v}). Check number of rows, or pitch. Exiting'.format(v=extra_y_ch_sharing), os.EX_DATAERR)
+		self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(3) - self.row_info_diamond['pitch'] * self.row_info_diamond['num']
+		# self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(1) + extra_y_ch_sharing / 2.0
+		self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(3)
+		# self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(4) - extra_y_ch_sharing / 2.0
 
 	def FindBinningAndResolution(self):
 		if self.gridAreas:
@@ -317,7 +333,7 @@ class TransparentGrid:
 			self.row_info_diamond['x_off'] -= np.divide(delta_x, self.col_pitch, dtype='float64') * (np.exp(-iteration) * (1 - factor) + factor)
 			self.DrawProfile2DDiamondCellOverlay('x_off_alignment', 'clusterCharge1', 'good', plot_option=plot_option)
 			# h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high)
-			h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high, 'e')
+			h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high, 'e hist')
 			h_proj_x.GetXaxis().SetRangeUser(0.1, self.col_pitch - 0.1)
 			minx = h_proj_x.GetBinCenter(h_proj_x.GetMinimumBin())
 			minx = minx if abs(minx - self.row_info_diamond['pitch'] / 2.0) > self.cell_resolution * 1.5 else self.row_info_diamond['pitch'] / 2.0
@@ -346,7 +362,7 @@ class TransparentGrid:
 		while abs(delta_y) > self.delta_offset_threshold and iteration < 100:
 			self.row_info_diamond['y_off'] -= delta_y * (np.exp(-iteration) * (1-factor) + factor)
 			self.DrawProfile2DDiamondCellOverlay('y_off_alignment', 'clusterCharge1', 'good', plot_option=plot_option)
-			h_proj_y = self.profile['y_off_alignment'].ProjectionY('y_off_alignment_py', proj_low, proj_high, 'e')
+			h_proj_y = self.profile['y_off_alignment'].ProjectionY('y_off_alignment_py', proj_low, proj_high, 'e hist')
 			h_proj_y.GetXaxis().SetRangeUser(0.1, self.row_info_diamond['pitch'] - 0.1)
 			miny = h_proj_y.GetBinCenter(h_proj_y.GetMinimumBin())
 			miny = miny if abs(miny - self.col_pitch / 2.0) > self.cell_resolution * 1.5 else self.col_pitch / 2.0
@@ -606,7 +622,7 @@ class TransparentGrid:
 		SetDefault2DStats(self.histo[name])
 		ro.TFormula.SetMaxima(1000)
 
-	def DrawPH(self, name, xmin, xmax, deltax, var='clusterChargeN', varname='PH[ADC]', cuts='', transp_ev=True, option='e'):
+	def DrawPH(self, name, xmin, xmax, deltax, var='clusterChargeN', varname='PH[ADC]', cuts='', transp_ev=True, option='e hist'):
 		ro.TFormula.SetMaxima(100000)
 		# ro.gStyle.SetOptStat('neMmRruo')
 		self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, int(np.floor((xmax - xmin) / deltax + 0.5)), xmin, xmax)
@@ -823,7 +839,7 @@ class TransparentGrid:
 		return '&&'.join(list_cuts)
 
 	# def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='transparentEvent', xmin=0, xmax=4100, deltax=50, ymin_plot=0, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2)), maxit=100000, tol=0.1, minimizer='SIMPLEX', subdiv=50):
-	def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='transparentEvent', xmin=0, xmax=4100, deltax=50, ymin_plot=0, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2)), subdiv=50):
+	def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='transparentEvent', xmin=0, xmax=4100, deltax=50, ymin_plot=0, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2))):
 		minimum = min(0, max(self.GetMinimumBranch(var, cells, cut), -9999))
 		denominator = float(self.GetEventsADCCut(var, minimum, cells, cut))
 		xvalues = np.arange(xmin, xmax, deltax, 'float64')
@@ -838,8 +854,17 @@ class TransparentGrid:
 					yinf = ymin_plot - lim_one_side
 					break
 		yvalues = np.array([efficiencyDic[xval] for xval in xvalues], 'float64')
+		self.efficiency_subdiv = int(np.round(40000.0 / denominator))
 		# ySigmas = {xval: self.FindUpperLowerUncertaintiesWithMinuit(numerator[xval], denominator, sigma_errbar, maxit, tol, minimizer=minimizer) for xval in xvalues}
-		ySigmas = {xval: self.FindUpperLowerUncertaintiesWithDiscrete(numerator[xval], denominator, sigma_errbar, subdiv=subdiv) for xval in xvalues}
+		print 'Calculating sigmas for efficiency plot... the step is {d} ...'.format(d=1.0 / (self.efficiency_subdiv * denominator))
+		ySigmas = {}
+		temp_bar = CreateProgressBarUtils(len(xvalues))
+		temp_bar.start()
+		for it, xval in enumerate(xvalues):
+			ySigmas[xval] = self.FindUpperLowerUncertaintiesWithDiscrete(numerator[xval], denominator, sigma_errbar)
+			temp_bar.update(it + 1)
+		temp_bar.finish()
+		# ySigmas = {xval: self.FindUpperLowerUncertaintiesWithDiscrete(numerator[xval], denominator, sigma_errbar) for xval in xvalues}
 		yLowerSigmas = np.array([ySigmas[xval]['lower'] for xval in xvalues], 'float64')
 		yUpperSigmas = np.array([ySigmas[xval]['upper'] for xval in xvalues], 'float64')
 		# for it, xval in enumerate(xvalues): print 'xval:', xval, 'k:', numerator[xval], 'n:', denominator, 'eff:', yvalues[it], 'low:', yLowerSigmas[it], 'up:', yUpperSigmas[it], 'area:', self.BetaDistIntegral(numerator[xval], denominator, yvalues[it] - yLowerSigmas[it], yvalues[it] + yUpperSigmas[it])
@@ -996,19 +1021,22 @@ class TransparentGrid:
 		else:
 			return self.FindUpperLowerUncertaintiesWithMinuit(k, n, sigm, max_iter, tolerance, low, up, is_last=True)
 
-	def FindUpperLowerUncertaintiesWithDiscrete(self, k, n, sigm, subdiv=50):
+	def FindUpperLowerUncertaintiesWithDiscrete(self, k, n, sigm):
+		subdiv = self.efficiency_subdiv
 		if k == 0 or k == n:
 			edge_value = np.subtract(1, np.power(np.subtract(1, sigm, dtype='float64'), np.divide(1, n + 1, dtype='float64'), dtype='float64'), dtype='float64')
 			low = 0 if k == 0 else edge_value
 			up = 0 if k == n else edge_value
 		else:
 			eps_vect = np.append(np.arange(0, 1, np.divide(1, subdiv * n, dtype='float64'), dtype='float64'), 1)
-			prob_vect = np.array([ro.TMath.BetaDist(eps, k + 1, n - k + 1) for it, eps in np.ndenumerate(eps_vect)], dtype='float64')
+			beta_pdf = sps.beta(k + 1, n - k + 1)
+			prob_vect = beta_pdf.pdf(eps_vect).astype('float64')
+			# prob_vect = np.array([ro.TMath.BetaDist(eps, k + 1, n - k + 1) for it, eps in np.ndenumerate(eps_vect)], dtype='float64')
 			biggest_bins_pos = prob_vect.argsort()[::-1]
 			prob_vect_ordered = np.sort(prob_vect)[::-1]
-			# ipdb.set_trace()
 			ordered_integral = np.array([np.divide(prob_vect_ordered[:it].sum(), n * subdiv, dtype='float64') for it in xrange(1, len(prob_vect_ordered) + 1)], dtype='float64')
 			num_bins_used = (ordered_integral - sigm >= 0).argmax()
+			# ipdb.set_trace()
 			eps_in_integral = eps_vect[biggest_bins_pos[:num_bins_used + 1]]
 			low, up = np.subtract(eps_in_integral[0], eps_in_integral.min(), dtype='float64'), np.subtract(eps_in_integral.max(), eps_in_integral[0], dtype='float64')
 		return {'lower': low, 'upper': up}

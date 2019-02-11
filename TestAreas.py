@@ -595,6 +595,14 @@ class TestAreas:
 	def SaveCanvas(self):
 		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys())
 
+	def DoAutomatic(self, cells='good', do_sat=True):
+		self.PlotTestClusterStudies(cells)
+		self.PlotTestForNegative(cells)
+		self.PlotTest()
+		if do_sat:
+			self.PlotSaturation()
+		self.SaveCanvas()
+
 if __name__ == '__main__':
 	parser = OptionParser()
 	parser.add_option('-d', '--dir', dest='dir', type='string', help='Path to the subdirectory that contains the output of different runs')
@@ -630,10 +638,5 @@ if __name__ == '__main__':
 			t.trans_grid.FindBinningAndResolution()
 			t.trans_grid.SavePickle()
 		if autom:
-			t.PlotTestClusterStudies('good')
-			t.PlotTestForNegative('good')
-			t.PlotTest()
-			if do_sat:
-				t.PlotSaturation()
-			t.SaveCanvas()
+			t.DoAutomatic('good', do_sat)
 
