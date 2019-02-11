@@ -200,6 +200,7 @@ class TestAreas:
 		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].Scale(self.trans_grid.histo['ph_c{n}_{c}'.format(n=i, c=suffix)].GetBinContent(lastbin)/self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].GetBinContent(lastbin)) for i in xrange(self.cluster_size)]
 		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].SetStats(0) for i in xrange(self.cluster_size)]
 		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].SetTitle('signal_not_in_cluster(scaled)') for i in xrange(self.cluster_size)]
+
 		for c in xrange(self.cluster_size):
 			ro.gPad.Update()
 			self.trans_grid.canvas['ph_c{n}_{c}'.format(n=c, c=suffix)].SetWindowPosition(self.w, self.w)
@@ -252,6 +253,15 @@ class TestAreas:
 				ro.gPad.Update()
 				self.trans_grid.canvas['ph_ch{ch}_vs_ph{clch}_{c}'.format(ch=c, clch=clch, c=suffix)].SetWindowPosition(self.w, self.w)
 				self.w += self.window_shift
+
+		for c in xrange(self.cluster_size):
+			self.trans_grid.DrawProfile2DDiamond('ph_map_c{n}'.format(n=c, c=suffix), 'diaChSignal[clusterChannel{i}]'.format(i=c))
+			self.trans_grid.profile['ph_map_c{n}'.format(n=c, c=suffix)].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
+			self.trans_grid.profile['ph_map_c{n}'.format(n=c, c=suffix)].GetYaxis().SetRangeUser(y0 - int(rowpitch / self.trans_grid.bins_per_ch_y), yup + int(rowpitch / self.trans_grid.bins_per_ch_y))
+			self.trans_grid.canvas['ph_map_c{n}'.format(n=c, c=suffix)].SetWindowPosition(self.w, self.w)
+			self.trans_grid.DrawTCutGs('ph_map_c{n}'.format(n=c, c=suffix), 'diamond')
+			self.trans_grid.DrawGoodAreasDiamondCenters('ph_map_c{n}'.format(n=c, c=suffix))
+			self.w += self.window_shift
 
 	def PlotSaturation(self):
 		self.trans_grid.DrawPHGoodAreas('PH_Saturated_Events', 'clusterCharge2', '((transparentEvent)&&((diaChADC[clusterChannel0]==4095)||(diaChADC[clusterChannel1]==4095)||(diaChADC[clusterChannel2]==4095)))')
@@ -347,7 +357,8 @@ class TestAreas:
 		self.w += self.window_shift
 
 		for c in xrange(self.cluster_size):
-			self.trans_grid.DrawProfile2DDiamond('ph_neg_map_c{n}'.format(n=c, c=suffix), 'diaChSignal', '(diaChannels==clusterChannel{i})'.format(i=c))
+			self.trans_grid.DrawProfile2DDiamond('ph_neg_map_c{n}'.format(n=c, c=suffix), 'diaChSignal[clusterChannel{i}]'.format(i=c), '(diaChSignal[clusterChannel{i}]/diaChPedSigmaCmc[clusterChannel{i}]<=-{c})'.format(i=c, c=self.trans_grid.neg_cut))
+			# self.trans_grid.DrawProfile2DDiamond('ph_neg_map_c{n}'.format(n=c, c=suffix), 'diaChSignal', '(diaChannels==clusterChannel{i})'.format(i=c))
 			self.trans_grid.profile['ph_neg_map_c{n}'.format(n=c, c=suffix)].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
 			self.trans_grid.profile['ph_neg_map_c{n}'.format(n=c, c=suffix)].GetYaxis().SetRangeUser(y0 - int(rowpitch / self.trans_grid.bins_per_ch_y), yup + int(rowpitch / self.trans_grid.bins_per_ch_y))
 			self.trans_grid.canvas['ph_neg_map_c{n}'.format(n=c, c=suffix)].SetWindowPosition(self.w, self.w)
