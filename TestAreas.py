@@ -7,29 +7,30 @@ from TransparentGrid import TransparentGrid
 from optparse import OptionParser
 from Utils import *
 
-tests = range(0, 10) + [100]
 color_index = 10000
 
 class TestAreas:
-	def __init__(self, configfile='', num=0, clust_size=1, dir='.', run=0, cellsize=50, do_fit=True):
-		self.do_fit = do_fit
-		self.do_saturation = False
-		self.num = num
-		self.clust_size = clust_size
-		self.dir = dir
+	def __init__(self, configfile='', run=0):
+		self.do_fit = False
+		self.do_saturation = True
+		self.num = 0
+		self.clust_size = 2
+		self.dir = '.'
 		self.run = run
-		self.cellsize = cellsize
-		self.threshold = 800 if cellsize == 50 else 200
+		self.cellsize = 50
+		self.threshold = 800
 		self.do_threshold = False
-		self.window_shift = 4
-		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.5
+		self.window_shift = 5
+		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.125
 		self.min_snr, self.max_snr = -64.25, 64.25
 		self.neg_cut_lines = {}
 		self.trash = []
 		self.w = 0
+		self.num_rows = 0
 		self.rows = []
 		self.cols = []
 		self.cells = []
+		self.rcells = []
 		self.config_file = configfile
 		if self.config_file != '':
 			self.config_file = Correct_Path(self.config_file)
@@ -38,13 +39,16 @@ class TestAreas:
 		self.trans_grid.pkl_sbdir = 'test' + str(self.num)
 		self.num_strips = self.trans_grid.num_strips if self.trans_grid.num_strips != 0 else 3
 		self.cluster_size = self.trans_grid.num_strips if self.trans_grid.num_strips != 0 else 3
+		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
+		if self.num_rows != 0:
+			self.trans_grid.row_info_diamond['num'] = self.num_rows
 
 	def ReadConfigFile(self):
 		def unpack_row_col(string):
 			elements = string.replace('{', '').replace('}', '')
 			elements = elements.split(';')
 			elements = [elem.split(',') for elem in elements]
-			elements = [[int(j[0]), int(j[1]), int(j[2])] for j in elements]
+			elements = [[int(elemij) for elemij in elemi] for elemi in elements]
 			return elements
 		if os.path.isfile(self.config_file):
 			pars = ConfigParser()
@@ -73,14 +77,20 @@ class TestAreas:
 				if pars.has_option('ROWS', 'rows'):
 					rows = pars.get('ROWS', 'rows')
 					self.rows = unpack_row_col(rows)
+				if pars.has_option('ROWS', 'num'):
+					self.num_rows = pars.getint('ROWS', 'num')
 			if pars.has_section('COLUMNS'):
-				if pars.has_option('COLUMNS', 'columns'):
-					cols = pars.get('COLUMNS', 'columns')
+				if pars.has_option('COLUMNS', 'cols'):
+					cols = pars.get('COLUMNS', 'cols')
 					self.cols = unpack_row_col(cols)
 			if pars.has_section('CELLS'):
 				if pars.has_option('CELLS', 'cells'):
 					cells = pars.get('CELLS', 'cells')
 					self.cells = unpack_row_col(cells)
+			if pars.has_section('REMOVECELLS'):
+				if pars.has_option('REMOVECELLS', 'rcells'):
+					rcells = pars.get('REMOVECELLS', 'rcells')
+					self.rcells = unpack_row_col(rcells)
 			print 'Done'
 
 	def SetTest(self):
@@ -102,166 +112,52 @@ class TestAreas:
 			for cell in self.cells:
 				self.trans_grid.AddGoodAreas(cell[0], cell[1])
 				print 'Added cell with column {c} and row {r} to selection'.format(c=cell[0], r=cell[1])
+			for rcell in self.rcells:
+				self.trans_grid.RemoveFromGoodArea(rcell[0], rcell[1])
+				print 'Removed cell with column {c} and row {r} from selection'.format(c=rcell[0], r=rcell[1])
 			self.trans_grid.AddRemainingToBadAreas()
 			print 'Marked the remaining cells as bad'
-
 		else:
-			self.trans_grid.cell_resolution = 50.0 / 13.0 if self.trans_grid.col_pitch == 50 else 100.0 / 51
-			if self.num == 0:
-				self.trans_grid.cell_resolution = 50.0 / 25.0
-				self.trans_grid.ResetAreas()
-				self.trans_grid.AddGoodAreasCol(2 + 1 - self.clust_size, 17, 20)
-				self.trans_grid.AddGoodAreasCol(3 + 1 - self.clust_size, 7, 9)
-				self.trans_grid.AddGoodAreasCol(3 + 1 - self.clust_size, 17, 19)
-				self.trans_grid.AddGoodAreasCol(4 + 1 - self.clust_size, 6, 13)
-				self.trans_grid.AddGoodAreasCol(4 + 1 - self.clust_size, 16, 20)
-				# self.trans_grid.AddGoodAreasCol(5 + 1 - self.clust_size, 8, 19)
-				self.trans_grid.AddGoodAreasCol(5 + 1 - self.clust_size, 8, 16)
-				self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 7, 9)
-				# self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 11, 18)
-				self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 11, 17)
-				# self.trans_grid.AddGoodAreasCol(7 + 1 - self.clust_size, 8, 8)
-				# self.trans_grid.AddGoodAreasCol(7 + 1 - self.clust_size, 12, 12)
-				self.trans_grid.AddGoodAreasCol(7 + 1 - self.clust_size, 14, 19)
-				self.trans_grid.AddGoodAreasCol(7 + 1 - self.clust_size, 21, 21)
-				self.trans_grid.AddGoodAreasCol(8 + 1 - self.clust_size, 15, 21)
-				self.trans_grid.AddGoodAreasCol(8 + 1 - self.clust_size, 24, 24)
-				self.trans_grid.AddGoodAreasCol(9 + 1 - self.clust_size, 12, 12)
-				self.trans_grid.AddGoodAreasCol(9 + 1 - self.clust_size, 14, 17)
-				self.trans_grid.AddGoodAreasCol(9 + 1 - self.clust_size, 19, 25)
-				self.trans_grid.AddGoodAreasCol(10 + 1 - self.clust_size, 12, 17)
-				self.trans_grid.AddGoodAreasCol(10 + 1 - self.clust_size, 19, 19)
-				self.trans_grid.AddGoodAreasCol(11 + 1 - self.clust_size, 13, 17)
-				self.trans_grid.AddGoodAreasCol(11 + 1 - self.clust_size, 19, 20)
-				self.trans_grid.RemoveFromGoodArea(3 + 1 - self.clust_size, 17)
-				self.trans_grid.RemoveFromGoodArea(5 + 1 - self.clust_size, 17)
-				self.trans_grid.RemoveFromGoodArea(5 + 1 - self.clust_size, 18)
-				self.trans_grid.RemoveFromGoodArea(6 + 1 - self.clust_size, 7)
-				self.trans_grid.RemoveFromGoodArea(7 + 1 - self.clust_size, 14)
-				self.trans_grid.RemoveFromGoodArea(9 + 1 - self.clust_size, 16)
-				self.trans_grid.RemoveFromGoodArea(9 + 1 - self.clust_size, 17)
-				self.trans_grid.RemoveFromGoodArea(10 + 1 - self.clust_size, 17)
-				self.trans_grid.RemoveFromGoodArea(10 + 1 - self.clust_size, 19)
-				self.trans_grid.AddRemainingToBadAreas()
-			elif self.num == 1:
-				self.trans_grid.cell_resolution = 50.0 / 11.0
-				# self.trans_grid.cell_resolution = 50.0 / 17.0
-				self.trans_grid.ResetAreas()
-				# self.trans_grid.AddGoodAreas(2 + 1 - self.clust_size, 8)
-				self.trans_grid.AddGoodAreasCol(3 + 1 - self.clust_size, 7, 9)
-				self.trans_grid.AddGoodAreasCol(4 + 1 - self.clust_size, 6, 13)
-				self.trans_grid.AddGoodAreasCol(5 + 1 - self.clust_size, 8, 19)
-				# self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 11, 18)
-				self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 11, 16)
-				# self.trans_grid.AddGoodAreasCol(7 + 1 - self.clust_size, 14, 19)
-				self.trans_grid.AddGoodAreasCol(7 + 1 - self.clust_size, 14, 17)
-				# self.trans_grid.AddGoodAreasCol(8 + 1 - self.clust_size, 15, 21)
-				self.trans_grid.AddGoodAreasCol(8 + 1 - self.clust_size, 15, 17)
-				self.trans_grid.AddGoodAreasCol(9 + 1 - self.clust_size, 14, 17)
-				self.trans_grid.AddGoodAreasCol(10 + 1 - self.clust_size, 12, 17)
-				self.trans_grid.AddGoodAreasCol(11 + 1 - self.clust_size, 13, 17)
-				self.trans_grid.RemoveFromGoodArea(5 + 1 - self.clust_size, 17)
-				self.trans_grid.RemoveFromGoodArea(5 + 1 - self.clust_size, 18)
-				self.trans_grid.RemoveFromGoodArea(5 + 1 - self.clust_size, 19)
-				self.trans_grid.RemoveFromGoodArea(6 + 1 - self.clust_size, 18)
-				self.trans_grid.RemoveFromGoodArea(7 + 1 - self.clust_size, 14)
-				self.trans_grid.RemoveFromGoodArea(9 + 1 - self.clust_size, 16)
-				self.trans_grid.RemoveFromGoodArea(9 + 1 - self.clust_size, 17)
-				self.trans_grid.RemoveFromGoodArea(10 + 1 - self.clust_size, 16)
-				self.trans_grid.RemoveFromGoodArea(10 + 1 - self.clust_size, 17)
-				self.trans_grid.AddRemainingToBadAreas()
-			elif self.num == 2:
-				self.trans_grid.cell_resolution = 50.0 / 15.0
-				self.trans_grid.ResetAreas()
-				self.trans_grid.AddGoodAreasCol(4 + 1 - self.clust_size, 6, 13)
-				# self.trans_grid.AddGoodAreasCol(5 + 1 - self.clust_size, 8, 19)
-				self.trans_grid.AddGoodAreasCol(5 + 1 - self.clust_size, 8, 16)
-				# self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 11, 18)
-				self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 11, 17)
-				# self.trans_grid.AddGoodAreasCol(7 + 1 - self.clust_size, 14, 19)
-				self.trans_grid.AddGoodAreasCol(7 + 1 - self.clust_size, 15, 19)
-				self.trans_grid.AddGoodAreasCol(8 + 1 - self.clust_size, 15, 21)
-				self.trans_grid.AddGoodAreasCol(8 + 1 - self.clust_size, 15, 21)
-				self.trans_grid.AddRemainingToBadAreas()
-			elif self.num == 3:
-				self.trans_grid.cell_resolution = 50.0 / 15.0
-				self.trans_grid.ResetAreas()
-				self.trans_grid.AddGoodAreasCol(4 + 1 - self.clust_size, 8, 19)
-				self.trans_grid.AddGoodAreasCol(5 + 1 - self.clust_size, 8, 19)
-				self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 8, 19)
-				self.trans_grid.AddRemainingToBadAreas()
-			elif self.num == 4:
-				self.trans_grid.ResetAreas()
-				# self.trans_grid.AddGoodAreasCol(5 + 1 - self.clust_size, 8, 19)
-				self.trans_grid.AddGoodAreasCol(5 + 1 - self.clust_size, 8, 16)
-				# self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 8, 19)
-				self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 8, 16)
-				self.trans_grid.AddRemainingToBadAreas()
-			elif self.num == 5:
-				self.trans_grid.ResetAreas()
-				self.trans_grid.AddGoodAreasCol(5 + 1 - self.clust_size, 14, 19)
-				self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 14, 19)
-				self.trans_grid.AddGoodAreasCol(7 + 1 - self.clust_size, 14, 19)
-				self.trans_grid.AddGoodAreasCol(8 + 1 - self.clust_size, 14, 19)
-				self.trans_grid.AddGoodAreasCol(9 + 1 - self.clust_size, 14, 19)
-				self.trans_grid.RemoveFromGoodArea(5 + 1 - self.clust_size, 17)
-				self.trans_grid.RemoveFromGoodArea(5 + 1 - self.clust_size, 18)
-				self.trans_grid.RemoveFromGoodArea(6 + 1 - self.clust_size, 18)
-				self.trans_grid.RemoveFromGoodArea(7 + 1 - self.clust_size, 14)
-				self.trans_grid.RemoveFromGoodArea(9 + 1 - self.clust_size, 16)
-				self.trans_grid.RemoveFromGoodArea(9 + 1 - self.clust_size, 17)
-				self.trans_grid.RemoveFromGoodArea(9 + 1 - self.clust_size, 18)
-				self.trans_grid.AddRemainingToBadAreas()
-			elif self.num == 6:
-				self.trans_grid.cell_resolution = 50.0 / 11.0
-				self.trans_grid.ResetAreas()
-				self.trans_grid.AddGoodAreasCol(5 + 1 - self.clust_size, 14, 18)
-				self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 14, 18)
-				self.trans_grid.AddGoodAreasCol(7 + 1 - self.clust_size, 14, 18)
-				self.trans_grid.RemoveFromGoodArea(5 + 1 - self.clust_size, 17)
-				self.trans_grid.RemoveFromGoodArea(5 + 1 - self.clust_size, 18)
-				self.trans_grid.RemoveFromGoodArea(6 + 1 - self.clust_size, 18)
-				self.trans_grid.RemoveFromGoodArea(7 + 1 - self.clust_size, 14)
-				self.trans_grid.AddRemainingToBadAreas()
-			elif self.num == 7:
-				self.trans_grid.cell_resolution = 50.0 / 11.0
-				self.trans_grid.ResetAreas()
-				# self.trans_grid.AddGoodAreasCol(5 + 1 - self.clust_size, 15, 18)
-				self.trans_grid.AddGoodAreasCol(5 + 1 - self.clust_size, 15, 16)
-				# self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 15, 18)
-				self.trans_grid.AddGoodAreasCol(6 + 1 - self.clust_size, 15, 17)
-				self.trans_grid.AddGoodAreasCol(7 + 1 - self.clust_size, 15, 18)
-				self.trans_grid.AddGoodAreasCol(8 + 1 - self.clust_size, 15, 18)
-				self.trans_grid.AddRemainingToBadAreas()
-			elif self.num == 8:
-				self.trans_grid.cell_resolution = 50.0 / 11.0
-				self.trans_grid.ResetAreas()
-				self.trans_grid.AddGoodAreasRow(15, 5 + 1 - self.clust_size, 11 + 2 - 2 * self.clust_size)
-				self.trans_grid.AddGoodAreasRow(16, 5 + 1 - self.clust_size, 11 + 2 - 2 * self.clust_size)
-				self.trans_grid.AddGoodAreasRow(17, 5 + 1 - self.clust_size, 11 + 2 - 2 * self.clust_size)
-				self.trans_grid.AddRemainingToBadAreas()
-			elif self.num == 9:
-				self.trans_grid.cell_resolution = 2
-				self.trans_grid.ResetAreas()
-				self.trans_grid.SelectGoodAndBadByThreshold(self.threshold, 'clusterCharge{n}'.format(n=self.clust_size))
-			elif self.num == 100:
-				self.trans_grid.cell_resolution = 2
-				self.trans_grid.ResetAreas()
-				self.trans_grid.SelectGoodAndBadByThreshold(self.threshold, 'clusterCharge{n}'.format(n=self.clust_size))
+			print 'Enter a correct settings file for the test area in variable config_file and re run ReadConfigFile before setting the test...'
+
+	def PlotNoiseNotInCluster(self, cells='all'):
+		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
+		list_cuts_noise_snr = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(transparentEvent)&&(diaChHits==0)&&(diaChSeed==0)&&(diaChsScreened==0)&&(diaChsNoisy==0)&&(diaChsNC==0)&&(TMath::Abs(diaChSignal)/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
+		list_cuts_noise_adc = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(transparentEvent)&&(diaChHits==0)&&(diaChSeed==0)&&(diaChsScreened==0)&&(diaChsNoisy==0)&&(diaChsNC==0)&&(TMath::Abs(diaChSignal)<{m}*diaChPedSigmaCmc)&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
+		if cells == 'good':
+			list_cuts_noise_snr.append(self.trans_grid.gridAreas.goodAreasCutNames_diamond)
+		elif cells == 'bad':
+			list_cuts_noise_snr.append(self.trans_grid.gridAreas.badAreasCutNames_diamond)
+		temp_cut_noise_snr = '&&'.join(list_cuts_noise_snr)
+		temp_cut_noise_adc = '&&'.join(list_cuts_noise_adc)
+		lastbin = int(np.floor((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr) + 0.5))
+		tempmin, tempmax, tempbins = self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins
+		temph = ro.TH1F('temph0', 'temph0', 100, -32, 32)
+		self.trans_grid.trans_tree.Draw('diaChSignal>>temph0', temp_cut_noise_adc, 'goff')
+		mean, sigma = temph.GetMean(), temph.GetRMS()
+		temph.Delete()
+		suffix = self.suffix[cells]
+		self.trans_grid.DrawPH('signal_noise_{c}_snr'.format(c=suffix), self.min_snr, self.max_snr, self.delta_snr, 'diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='Signal not in cluster (SNR)', cuts=temp_cut_noise_snr, option='goff')
+		self.trans_grid.DrawPH('signal_noise_{c}_adc'.format(c=suffix), self.min_snr * sigma, self.max_snr * sigma, self.delta_snr * sigma, 'diaChSignal', varname='Signal not in cluster (ADC)', cuts=temp_cut_noise_snr, option='goff')
 
 	def PlotTestClusterStudies(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
-		list_cuts_clusters = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=self.max_snr, n=i)] for i in xrange(self.cluster_size)}
-		list_cuts_noise = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
+		list_cuts_clusters_snr_ci = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=self.max_snr, n=i)] for i in xrange(self.cluster_size)}
+		list_cuts_noise_snr_ci = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
+		list_cuts_clusters_adc_ci = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal<{m}*diaChPedSigmaCmc)&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=self.max_snr, n=i)] for i in xrange(self.cluster_size)}
+		list_cuts_noise_adc_ci = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal<{m}*diaChPedSigmaCmc)&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
+		list_cuts_clusters_adc_phjk = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal<{m}*diaChPedSigmaCmc)&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=self.max_snr, n=i)] for i in xrange(self.cluster_size)}
+		list_cuts_noise_adc_phjk = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal<{m}*diaChPedSigmaCmc)&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
+
 		if cells == 'good':
-			list_cuts_noise.append(self.trans_grid.gridAreas.goodAreasCutNames_diamond)
+			list_cuts_noise_snr_ci.append(self.trans_grid.gridAreas.goodAreasCutNames_diamond)
 		elif cells == 'bad':
-			list_cuts_noise.append(self.trans_grid.gridAreas.badAreasCutNames_diamond)
-		temp_cut_clusters = {i: '&&'.join(list_cut) for i, list_cut in list_cuts_clusters.iteritems()}
-		temp_cut_noise = '&&'.join(list_cuts_noise)
+			list_cuts_noise_snr_ci.append(self.trans_grid.gridAreas.badAreasCutNames_diamond)
+		temp_cut_clusters = {i: '&&'.join(list_cut) for i, list_cut in list_cuts_clusters_snr_ci.iteritems()}
+		temp_cut_noise = '&&'.join(list_cuts_noise_snr_ci)
 		lastbin = int(np.floor((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr) + 0.5))
 		tempmin, tempmax, tempbins = self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins
-		suffix = 'not_selection' if cells == 'bad' else 'selection' if cells == 'good' else 'all'
+		suffix = self.suffix[cells]
 		if cells == 'all':
 			temp = [self.trans_grid.DrawPH('ph_c{n}_{c}'.format(n=i, c=suffix), self.min_snr, self.max_snr, self.delta_snr, var='diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='PH closestStrip{n} (SNR)'.format(n=i), cuts=temp_cut_clusters[i]) for i in xrange(self.cluster_size)]
 		elif cells == 'good':
@@ -692,50 +588,38 @@ class TestAreas:
 	def SaveCanvas(self):
 		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys())
 
-	def DoAutomatic(self, cells='good', do_sat=True):
+	def DoAutomatic(self, cells='good', do_save=True):
 		self.PlotTestClusterStudies(cells)
 		self.PlotTestForNegative(cells)
 		self.PlotTest()
-		if do_sat:
+		if self.do_saturation:
 			self.PlotSaturation()
-		self.SaveCanvas()
+		if do_save:
+			self.SaveCanvas()
 
 if __name__ == '__main__':
 	parser = OptionParser()
-	parser.add_option('-d', '--dir', dest='dir', type='string', default='.', help='Path to the subdirectory that contains the output of different runs')
 	parser.add_option('-r', '--run', dest='run', type='int', default=0, help='run number to be analysed (e.g. 25209)')
-	parser.add_option('-c', '--cellsize', dest='cellsize', type='int', default=50, help='cell size of the square 3D device')
-	parser.add_option('-t', '--test', dest='testnumber', type='int', default=-1, help='Run a automatically one of the predefined tests')
-	parser.add_option('-f', '--dofit', dest='dofit', default=False, action='store_true', help='Enables fitting')
-	parser.add_option('-n', '--numstrips', dest='numstrips', type='int', default=2, help='Number of strips to use')
 	parser.add_option('-a', '--auto', dest='auto', default=False, action='store_true', help='Sets up test, creates plots and saves them automatically if toggled')
-	parser.add_option('-s', '--saturation', dest='saturation', default=False, action='store_true', help='Sets up saturation plots')
-	parser.add_option('--config', dest='config', default='', type='string', help='gives the path to a configuration file for the selected areas')
+	parser.add_option('-c', '--config', dest='config', default='', type='string', help='gives the path to a config file for the test area')
 
 	(options, args) = parser.parse_args()
 	run = int(options.run)
-	dir = str(options.dir)
-	testnum = int(options.testnumber)
-	do_fit = bool(options.dofit)
-	numstrips = int(options.numstrips)
-	cellsize = int(options.cellsize) if testnum < 100 else 100
-	do_sat = bool(options.saturation)
 	autom = bool(options.auto)
 	config = str(options.config)
 
-	t = TestAreas(config, testnum, numstrips, dir, run, cellsize, do_fit)
+	t = TestAreas(config, run)
 	t.trans_grid.SetLines()
 	t.trans_grid.CreateTCutGs()
-	if testnum in tests:
-		t.SetTest()
-		if t.trans_grid.loaded_pickle:
-			t.trans_grid.LoadPickle()
-		else:
-			t.trans_grid.FindPickleValues()
-			ExitMessage('Run it again to load the generated pickle :)', os.EX_OK)
-		if t.trans_grid.loaded_default_pickle:
-			t.trans_grid.FindBinningAndResolution()
-			t.trans_grid.SavePickle()
-		if autom:
-			t.DoAutomatic('good', do_sat)
+	t.SetTest()
+	if t.trans_grid.loaded_pickle:
+		t.trans_grid.LoadPickle()
+	else:
+		t.trans_grid.FindPickleValues()
+		ExitMessage('Run it again to load the generated pickle :)', os.EX_OK)
+	if t.trans_grid.loaded_default_pickle:
+		t.trans_grid.FindBinningAndResolution()
+		t.trans_grid.SavePickle()
+	if autom:
+		t.DoAutomatic('good')
 

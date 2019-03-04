@@ -262,38 +262,25 @@ class TransparentGrid:
 		miny, maxy = prof_proj_y.GetXaxis().GetBinLowEdge(minbiny), prof_proj_y.GetXaxis().GetBinLowEdge(maxbiny + 1)
 		prof_proj_y.GetXaxis().SetRangeUser(miny, maxy)
 		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-([3]-{p}))/[1])+1)/2-[2]*(TMath::Erf((x-[3])/[4])+1)/2+[5]'.format(p=self.row_info_diamond['num'] * self.row_info_diamond['pitch']), miny, maxy)
-		# func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-[1])/[2])+1)/2-[3]*(TMath::Erf((x-[4])/[5])+1)/2+[6]', miny, maxy)
 		func.SetNpx(int(self.row_info_diamond['num'] * self.bins_per_ch_y * 10))
 		zmin, zmax = prof_proj_y.GetMinimum(), prof_proj_y.GetMaximum()
 		y1bin, y2bin = prof_proj_y.FindFirstBinAbove((zmin + zmax) / 2.0), prof_proj_y.FindLastBinAbove((zmin + zmax) / 2.0) + 1
 		y1, y2 = prof_proj_y.GetXaxis().GetBinCenter(y1bin), prof_proj_y.GetXaxis().GetBinCenter(y2bin)
 		z0, z1, z2 = prof_proj_y.GetBinContent(int((minbiny))), prof_proj_y.GetBinContent(int((y1bin + y2bin) / 2.0)), prof_proj_y.GetBinContent(int((maxbiny)))
-		# z0, z1, z2 = prof_proj_y.GetBinContent(int((minbiny + y1bin) / 2.0)), prof_proj_y.GetBinContent(int((y1bin + y2bin) / 2.0)), prof_proj_y.GetBinContent(int((maxbiny + y2bin) / 2.0))
 		func.SetParLimits(0, abs(z1 - z0) / 10.0, 2.0 * abs(z1 - z0))
-		# func.SetParLimits(1, y1 - 200, y1 + 200)
-		func.SetParLimits(1, 0.1, 200)
-		# func.SetParLimits(1, 0.1, 20)
+		func.SetParLimits(1, 0.1, 50)
 		func.SetParLimits(2, abs(z1 - z2) / 10.0, 2.0 * abs(z1 - z2))
 		func.SetParLimits(3, y2 - 200, y2 + 200)
-		func.SetParLimits(4, 0.1, 200)
-		# func.SetParLimits(4, 0.1, 20)
+		func.SetParLimits(4, 0.1, 50)
 		func.SetParLimits(5, -2.0 * abs(z0), 10 * abs(z0))
-		# params = np.array((abs(z1 - z0), y1, 20, abs(z1 - z2), y2, 20, z0), 'float64')
 		params = np.array((abs(z1 - z0), 20, abs(z1 - z2), y2, 20, z0), 'float64')
 		func.SetParameters(params)
 		fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', prof_proj_y.GetBinLowEdge(int((minbiny))), prof_proj_y.GetBinLowEdge(int((maxbiny))))
-		# fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', prof_proj_y.GetBinLowEdge(int((minbiny + y1bin) / 2.0)), prof_proj_y.GetBinLowEdge(int((maxbiny + y2bin) / 2.0)))
 		params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5)), 'float64')
 		func.SetParameters(params)
 		fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', (miny), (maxy))
-		# fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', (miny + fit_prof_proj_y.Parameter(1))/2.0, (maxy + fit_prof_proj_y.Parameter(4))/2.0)
-		# extra_y_ch_sharing = fit_prof_proj_y.Parameter(4) - fit_prof_proj_y.Parameter(1) - self.row_info_diamond['num'] * self.row_info_diamond['pitch']
-		# if extra_y_ch_sharing < 0:
-		# 	ExitMessage('Obtained negative vertical extents due to charge sharing ({v}). Check number of rows, or pitch. Exiting'.format(v=extra_y_ch_sharing), os.EX_DATAERR)
 		self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(3) - self.row_info_diamond['pitch'] * self.row_info_diamond['num']
-		# self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(1) + extra_y_ch_sharing / 2.0
 		self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(3)
-		# self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(4) - extra_y_ch_sharing / 2.0
 
 	def FindBinningAndResolution(self):
 		if self.gridAreas:
@@ -545,6 +532,14 @@ class TransparentGrid:
 		temp_cuts = '&&'.join(list_cuts)
 		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz, zname, temp_cuts, transp_ev, plot_option)
 
+	def DrawProfile2DDiamondChannel(self, name, varx='clusterChannel0', xname='C0', varz='clusterChargeN', cuts='', draw_top_borders=False, transp_ev=True, plot_option='prof colz'):
+		xmin, xmax, deltax = -0.5, 127.5, 1.0
+		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
+		if draw_top_borders:
+			self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
+		else:
+			self.DrawProfile2DNoTopBottomBorders(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
+
 	def DrawProfile2D(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True, plot_option='colz prof'):
 		# ro.gStyle.SetOptStat('en')
 		ro.TFormula.SetMaxima(100000)
@@ -602,7 +597,7 @@ class TransparentGrid:
 
 	def Draw2DHistoDiamond(self, name, cuts='', transp_ev=True):
 		self.DrawHisto2D(name, -0.5, 127.5, 1.0 / (self.bins_per_ch_x), 'dia X ch', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'],
-						 float(self.row_info_diamond['pitch']) / (self.bins_per_ch_y), 'dia Y [#mum]', 'diaChXPred', 'diaChYPred', cuts, transp_ev)
+		                 float(self.row_info_diamond['pitch']) / (self.bins_per_ch_y), 'dia Y [#mum]', 'diaChXPred', 'diaChYPred', cuts, transp_ev)
 
 	def DrawHisto2D(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, cuts='', transp_ev=True):
 		# ro.gStyle.SetOptStat('en')
@@ -760,7 +755,7 @@ class TransparentGrid:
 		temp_cuts = '&&'.join(list_cuts)
 		rowpitch, y0, xoff = self.row_info_diamond['pitch'], self.row_info_diamond['0'], self.row_info_diamond['x_off']
 		self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch,
-						   float(rowpitch)/self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=xoff, p=self.col_pitch), 'diaChYPred', var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
+		                   float(rowpitch)/self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=xoff, p=self.col_pitch), 'diaChYPred', var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
 	def DrawProfile2DDiamondRowOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
 		y0, rowpitch, numrows, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['y_off']
@@ -797,7 +792,7 @@ class TransparentGrid:
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
 		self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch,
-						 float(rowpitch) / self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=xoff, p=self.col_pitch), 'diaChYPred', temp_cuts, transp_ev)
+		                 float(rowpitch) / self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=xoff, p=self.col_pitch), 'diaChYPred', temp_cuts, transp_ev)
 
 	def DrawHisto2DDiamondRowOverlay(self, name, cells='all', cuts='', transp_ev=True):
 		y0, rowpitch, numrows, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['y_off']
@@ -885,7 +880,7 @@ class TransparentGrid:
 		self.canvas[name].SetGridy()
 		self.canvas[name].SetTicky()
 		ro.gPad.Update()
-		# SetDefault1DStats(self.graph[name])
+	# SetDefault1DStats(self.graph[name])
 
 	def GetMinimumBranch(self, var, cells='all', cut=''):
 		self.trans_tree.Draw('>>list{v}'.format(v=var), self.ConcatenateDiamondCuts('', cells, cut))
