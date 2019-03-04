@@ -141,7 +141,7 @@ class GridAreas:
 		self.badAreas_simplified_diamond = CreateTCutGDic(bad_polygons_dic, ro.kBlue, ro.kRed)
 		self.badAreasCutNames_simplified_diamond = ReturnNameCutGWithHoles(bad_polygons_dic)
 
-	def SimplifyAreas(self, area_list, polygon_list=[], name_list=[], prefix='g', finished=False):
+	def SimplifyAreas(self, area_list, polygon_list=[], name_list=[], prefix='g', num_merged=0, finished=False):
 		def CheckAreas(ai, aj):
 			def DistancePointLine(xa, ya, xb, yb, x0, y0):
 				return np.divide(np.abs((yb - ya) * x0 - (xb - xa) * y0 + xb * ya - yb * xa, dtype='float64'), np.sqrt(np.power(yb - ya, 2) + np.power(xb - xa, 2), dtype='float64'), dtype='float64')
@@ -179,7 +179,8 @@ class GridAreas:
 				# colrowaj = aj.GetName().split('cutg_dia_')[-1].split('_')
 				colrowaj = namej.split('cutg_dia_')[-1].split('_')
 				colrownew = colrowai + colrowaj
-				newname = 'cutg_dia_' + '_'.join(colrownew)
+				newname = 'cutg_dia_' + '_' + str(num)
+				# newname = 'cutg_dia_' + '_'.join(colrownew)
 				# newtcutg = ro.TCutG(newname, len(xnew), xnew, ynew)
 				# newtcutg.SetNameTitle(newname, newname)
 				# newtcutg.SetVarX(ai.GetVarX())
@@ -226,7 +227,8 @@ class GridAreas:
 				namei, namej = tempnames0[i], tempnames0[j]
 				# i0, i1, j0, j1 = CheckAreas(ai, aj)
 				# if i0 + i1 + j0 + j1 != 0:
-				dic_areaij = MergeAreas(ai, aj, namei, namej)
+				dic_areaij = MergeAreas(ai, aj, namei, namej, prefix, num_merged)
+				num_merged += 1
 				if dic_areaij:
 					dic_new_list = CreateNewList(temp0, tempnames0, i, j, dic_areaij)
 					new_list = dic_new_list['polygons']
@@ -239,7 +241,7 @@ class GridAreas:
 		# ipdb.set_trace()
 		# if finito:
 		# 	ipdb.set_trace()
-		return self.SimplifyAreas(area_list, new_list, new_names, finito)
+		return self.SimplifyAreas(area_list, new_list, new_names, prefix, num_merged, finito)
 
 	def ResetAreas(self):
 		self.goodAreas_diamond = []
