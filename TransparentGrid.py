@@ -728,14 +728,16 @@ class TransparentGrid:
 		self.gridAreas.ResetAreas()
 
 	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]'):
-		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond if type == 'diamond' else '')]
+		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
+		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
 		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cut, transp_ev)
 
 	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]'):
-		list_cuts = ['{n}'.format(n=self.gridAreas.badAreasCutNames_diamond if type == 'diamond' else '')]
+		list_cuts = ['{n}'.format(n=self.gridAreas.badAreasCutNames_simplified_diamond if type == 'diamond' else '')]
+		# list_cuts = ['{n}'.format(n=self.gridAreas.badAreasCutNames_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
@@ -749,7 +751,8 @@ class TransparentGrid:
 		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cuts, transp_ev)
 
 	def DrawProfile2DDiamondChannelOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
-		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_diamond) if cells == 'bad' else '(1)']
+		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_diamond) if cells == 'bad' else '(1)']
+		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_simplified_diamond) if cells == 'bad' else '(1)']
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
@@ -761,9 +764,11 @@ class TransparentGrid:
 		y0, rowpitch, numrows, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['y_off']
 		list_cuts = ['({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows)]
 		if cells == 'good':
-			list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+			# list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+			list_cuts.append(self.gridAreas.goodAreasCutNames_simplified_diamond)
 		elif cells == 'bad':
-			list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+			# list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+			list_cuts.append(self.gridAreas.badAreasCutNames_simplified_diamond)
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
@@ -773,9 +778,11 @@ class TransparentGrid:
 		y0, rowpitch, numrows, xoff, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['x_off'], self.row_info_diamond['y_off']
 		list_cuts = ['({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows)]
 		if cells == 'good':
-			list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+			# list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+			list_cuts.append(self.gridAreas.goodAreasCutNames_simplified_diamond)
 		elif cells == 'bad':
-			list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+			# list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+			list_cuts.append(self.gridAreas.badAreasCutNames_simplified_diamond)
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
@@ -785,9 +792,11 @@ class TransparentGrid:
 		rowpitch, y0, xoff = self.row_info_diamond['pitch'], self.row_info_diamond['0'], self.row_info_diamond['x_off']
 		list_cuts = []
 		if cells == 'good':
-			list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+			# list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+			list_cuts.append(self.gridAreas.goodAreasCutNames_simplified_diamond)
 		elif cells == 'bad':
-			list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+			# list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+			list_cuts.append(self.gridAreas.badAreasCutNames_simplified_diamond)
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
@@ -798,9 +807,11 @@ class TransparentGrid:
 		y0, rowpitch, numrows, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['y_off']
 		list_cuts = ['({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows)]
 		if cells == 'good':
-			list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+			# list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+			list_cuts.append(self.gridAreas.goodAreasCutNames_simplified_diamond)
 		elif cells == 'bad':
-			list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+			# list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+			list_cuts.append(self.gridAreas.badAreasCutNames_simplified_diamond)
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
@@ -810,9 +821,11 @@ class TransparentGrid:
 		y0, rowpitch, numrows, xoff, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['x_off'], self.row_info_diamond['y_off']
 		# list_cuts = ['({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows)]
 		# if cells == 'good':
-		# 	list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+		# # 	list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+		# 	list_cuts.append(self.gridAreas.goodAreasCutNames_simplified_diamond)
 		# elif cells == 'bad':
-		# 	list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+		# # 	list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+		# 	list_cuts.append(self.gridAreas.badAreasCutNames_simplified_diamond)
 		# if cuts != '':
 		# 	list_cuts.append(cuts)
 		# temp_cuts = '&&'.join(list_cuts)
@@ -826,9 +839,11 @@ class TransparentGrid:
 	def ConcatenateDiamondCuts(self, cut0='', cells='all', cuts_extra=''):
 		list_cuts = [cut0] if cut0 != '' else []
 		if cells == 'good':
-			list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+			# list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
+			list_cuts.append(self.gridAreas.goodAreasCutNames_simplified_diamond)
 		elif cells == 'bad':
-			list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+			# list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
+			list_cuts.append(self.gridAreas.badAreasCutNames_simplified_diamond)
 		if cuts_extra != '':
 			list_cuts.append(cuts_extra)
 		return '&&'.join(list_cuts)

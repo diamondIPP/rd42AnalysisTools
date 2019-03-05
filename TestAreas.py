@@ -101,6 +101,7 @@ class TestAreas:
 			print 'Done'
 			self.trans_grid.AddRemainingToBadAreas()
 			print 'Marked the remaining cells as bad'
+			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
 		elif len(self.rows) + len(self.cols) + len(self.cells) > 0:
 			self.trans_grid.ResetAreas()
 			for row in self.rows:
@@ -116,6 +117,7 @@ class TestAreas:
 				self.trans_grid.RemoveFromGoodArea(rcell[0], rcell[1])
 				print 'Removed cell with column {c} and row {r} from selection'.format(c=rcell[0], r=rcell[1])
 			self.trans_grid.AddRemainingToBadAreas()
+			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
 			print 'Marked the remaining cells as bad'
 		else:
 			print 'Enter a correct settings file for the test area in variable config_file and re run ReadConfigFile before setting the test...'

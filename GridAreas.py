@@ -126,20 +126,20 @@ class GridAreas:
 			list_names = []
 			for polygon_dic in polygon_dic_list:
 				holes = polygon_dic['holes']
-				not_hole_names = ['(!' + hole.GetNames + ')' for hole in holes]
-				not_holes_part = '(' + '||'.join(not_hole_names) + ')'
 				polygon = polygon_dic['polygon']
-				polygon_part_with_holes = '(' + polygon.GetName() + '&&' + not_holes_part + ')'
+				not_hole_names = ['(!' + hole.GetName() + ')' for hole in holes]
+				not_holes_part = '(' + '&&'.join(not_hole_names) + ')'
+				polygon_part_with_holes = '(' + polygon.GetName() + '&&' + not_holes_part + ')' if len(holes) != 0 else '(' + polygon.GetName() + ')'
 				list_names.append(polygon_part_with_holes)
 			return '(' + '||'.join(list_names) + ')'
 
 		good_polygons_dic = self.SimplifyAreas(self.goodAreas_diamond, [])
 		self.goodAreas_simplified_diamond = CreateTCutGDic(good_polygons_dic, ro.kRed, ro.kBlue)
-		self.goodAreasCutNames_simplified_diamond = ReturnNameCutGWithHoles(good_polygons_dic)
+		self.goodAreasCutNames_simplified_diamond = ReturnNameCutGWithHoles(self.goodAreas_simplified_diamond)
 
 		bad_polygons_dic = self.SimplifyAreas(self.badAreas_diamond, [])
 		self.badAreas_simplified_diamond = CreateTCutGDic(bad_polygons_dic, ro.kBlue, ro.kRed)
-		self.badAreasCutNames_simplified_diamond = ReturnNameCutGWithHoles(bad_polygons_dic)
+		self.badAreasCutNames_simplified_diamond = ReturnNameCutGWithHoles(self.badAreas_simplified_diamond)
 
 	def SimplifyAreas(self, area_list, polygon_list=[], name_list=[], prefix='g', num_merged=0, finished=False):
 		def CheckAreas(ai, aj):
