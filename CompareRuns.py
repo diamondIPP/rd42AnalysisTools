@@ -50,7 +50,9 @@ class CompareRuns:
 	def LoadRuns(self):
 		for it, run in enumerate(self.run_numbers):
 			if os.path.isdir(self.runs_path[it]):
-				self.runs_ta[run] = TestAreas(self.testnum, self.numstrips, self.runs_subidr[it], run, self.cellsize, self.do_fit)
+				# self.runs_ta[run] = TestAreas(self.testnum, self.numstrips, self.runs_subidr[it], run, self.cellsize, self.do_fit)
+				self.runs_ta[run] = TestAreas('', run)
+				self.runs_ta[run].trans_grid
 				self.runs_ta[run].trans_grid.LoadPlotsInSubdir()
 
 	def CompareAllPairs(self, histoname='ph2_test1', do_norm=False, plot_option='e hist'):
@@ -118,6 +120,16 @@ class CompareRuns:
 			ro.gPad.Update()
 			self.stuff.append(histo1)
 			self.stuff.append(histo2)
+
+	def PlotSaturationEvents(self, list_runs, histoname='', do_norm=False):
+		tg_dic = {run: self.runs_ta[run].trans_grid for run in list_runs}
+		suffix = '' if not do_norm else '_norm'
+		saturated = {}
+		not_saturated = {}
+		saturated_cuts = {}
+		not_saturated_cuts = {}
+		# if np.array([tg.histo.has_key(histoname) for tg in tg_dic.values()], dtype='?').all():
+
 
 	def SaveCanvasInList(self, list):
 		if not os.path.isdir('{d}/test{sd}'.format(d=self.outdir, sd=self.subdir)):
