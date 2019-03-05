@@ -133,11 +133,11 @@ class GridAreas:
 				list_names.append(polygon_part_with_holes)
 			return '(' + '||'.join(list_names) + ')'
 
-		good_polygons_dic = self.SimplifyAreas(self.goodAreas_diamond, [])
+		good_polygons_dic = self.SimplifyAreas(self.goodAreas_diamond, [], [], prefix='g')
 		self.goodAreas_simplified_diamond = CreateTCutGDic(good_polygons_dic, ro.kRed, ro.kBlue)
 		self.goodAreasCutNames_simplified_diamond = ReturnNameCutGWithHoles(self.goodAreas_simplified_diamond)
 
-		bad_polygons_dic = self.SimplifyAreas(self.badAreas_diamond, [])
+		bad_polygons_dic = self.SimplifyAreas(self.badAreas_diamond, [], [], prefix='b')
 		self.badAreas_simplified_diamond = CreateTCutGDic(bad_polygons_dic, ro.kBlue, ro.kRed)
 		self.badAreasCutNames_simplified_diamond = ReturnNameCutGWithHoles(self.badAreas_simplified_diamond)
 
@@ -162,7 +162,7 @@ class GridAreas:
 						return i, i+1, j, j+1
 			return 0, 0, 0, 0
 
-		def MergeAreas(ai, aj, namei, namej, prefix='g', num=0):
+		def MergeAreas(ai, aj, prefix='g', num=0):
 			# nai, naj = ai.GetN(), aj.GetN()
 			# xai, xaj, yai, yaj = ai.GetX(), aj.GetX(), ai.GetY(), aj.GetY()
 			# xai, xaj, yai, yaj = [xai[i] for i in xrange(nai)], [xaj[i] for i in xrange(naj)], [yai[i] for i in xrange(nai)], [yaj[i] for i in xrange(naj)]
@@ -175,23 +175,23 @@ class GridAreas:
 			# try:
 				xnew, ynew = polij.exterior.xy
 				# colrowai = ai.GetName().split('cutg_dia_')[-1].split('_')
-				colrowai = namei.split('cutg_dia_')[-1].split('_')
+				# colrowai = namei.split('cutg_dia_')[-1].split('_')
 				# colrowaj = aj.GetName().split('cutg_dia_')[-1].split('_')
-				colrowaj = namej.split('cutg_dia_')[-1].split('_')
-				colrownew = colrowai + colrowaj
-				newname = 'cutg_dia_' + '_' + str(num)
+				# colrowaj = namej.split('cutg_dia_')[-1].split('_')
+				# colrownew = colrowai + colrowaj
+				newname = 'cutg_dia_' + prefix + '_' + str(num)
 				# newname = 'cutg_dia_' + '_'.join(colrownew)
 				# newtcutg = ro.TCutG(newname, len(xnew), xnew, ynew)
 				# newtcutg.SetNameTitle(newname, newname)
 				# newtcutg.SetVarX(ai.GetVarX())
 				# newtcutg.SetVarY(ai.GetVarY())
 				# newtcutg.SetLineColor(ro.kRed)
-				dic_newcutg = {'name': newname, 'polygon': polij}
+				dic_newpolyg = {'name': newname, 'polygon': polij}
 			# except Exception:
 			else:
 				# ipdb.set_trace()
-				dic_newcutg = None
-			return dic_newcutg
+				dic_newpolyg = None
+			return dic_newpolyg
 
 		def CreateNewList(area_listij, name_list, posi, posj, dic_areaij):
 			new_area_list = [area_listij[i] for i in xrange(len(area_listij)) if i not in [posi, posj]]
@@ -214,7 +214,9 @@ class GridAreas:
 				xi, yi = [xi[i] for i in xrange(ni)], [yi[i] for i in xrange(ni)]
 				poli = geom.Polygon([[xi[i], yi[i]] for i in xrange(ni)])
 				polygon_list.append(poli)
-				name_list.append(areai.GetName())
+				namei = areai.GetName()
+				namei = 'cutg_dia_' + prefix + '_' + '_'.join(namei.split('_')[-2:])
+				name_list.append(namei)
 		finito = True
 		new_list = polygon_list[:]
 		new_names = name_list[:]
@@ -224,12 +226,11 @@ class GridAreas:
 		for i in xrange(len(temp0)):
 			for j in xrange(i+1, len(temp0)):
 				ai, aj = temp0[i], temp0[j]
-				namei, namej = tempnames0[i], tempnames0[j]
 				# i0, i1, j0, j1 = CheckAreas(ai, aj)
 				# if i0 + i1 + j0 + j1 != 0:
-				dic_areaij = MergeAreas(ai, aj, namei, namej, prefix, num_merged)
-				num_merged += 1
+				dic_areaij = MergeAreas(ai, aj, prefix, num_merged)
 				if dic_areaij:
+					num_merged += 1
 					dic_new_list = CreateNewList(temp0, tempnames0, i, j, dic_areaij)
 					new_list = dic_new_list['polygons']
 					new_names = dic_new_list['names']
