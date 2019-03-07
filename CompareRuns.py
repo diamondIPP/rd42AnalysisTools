@@ -79,8 +79,8 @@ class CompareRuns:
 	# 		self.runs_subidr = [path.split('/' + str(self.run_numbers[it]))[0] for it, path in enumerate(self.runs_path)]
 
 	def LoadRuns(self):
-		for it, run in enumerate(self.run_numbers):
-			if os.path.isdir(self.runs_path[it]):
+		for run in enumerate(self.run_numbers):
+			if os.path.isdir(self.runs_path[run]):
 				# self.runs_ta[run] = TestAreas(self.testnum, self.numstrips, self.runs_subidr[it], run, self.cellsize, self.do_fit)
 				self.runs_ta[run] = TestAreas(self.runs_settings[0], run)
 				self.runs_ta[run].trans_grid.LoadPlotsInSubdir()
