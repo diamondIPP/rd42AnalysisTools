@@ -162,7 +162,7 @@ class CompareRuns:
 
 
 	def SaveCanvasInList(self, list):
-		if not os.path.isdir('{d}/test{sd}'.format(d=self.outdir, sd=self.subdir)):
+		if not os.path.isdir('{d}/{sd}'.format(d=self.outdir, sd=self.subdir)):
 			os.makedirs('{d}/{sd}'.format(d=self.outdir, sd=self.subdir))
 		for canvas in list:
 			if self.canvas.has_key(canvas):
