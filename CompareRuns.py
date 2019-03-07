@@ -7,23 +7,26 @@ from TransparentGrid import TransparentGrid
 from TestAreas import TestAreas
 from optparse import OptionParser
 from Utils import *
+from ConfigParser import ConfigParser
 
 color_index = 0
 hspace = 0.1
 vspace = 0.0
 class CompareRuns:
-	def __init__(self, runlist, outdir='.', cellsize=50, numstrips=2, testnum=1, do_fit=False):
-		self.runlist = runlist
-		self.outdir = Correct_Path(outdir)
-		self.cellsize = cellsize
-		self.numstrips = numstrips
-		self.testnum = testnum
+	def __init__(self, config_file=''):
+		self.config_file = config_file
+		self.runlist = []
+		# self.outdir = Correct_Path(outdir)
+		# self.cellsize = cellsize
+		# self.numstrips = numstrips
+		# self.testnum = testnum
 		self.subdir = 'test' + str(self.testnum)
-		self.do_fit = do_fit
-		self.runs_path = []
+		# self.do_fit = do_fit
+		self.runs_path = {}
+		self.runs_settings = {}
 		self.run_numbers = []
-		self.runs_subidr = []
-		self.ReadRunList()
+		self.runs_subidr = {}
+		# self.ReadRunList()
 		self.runs_ta = {}
 		self.canvas = {}
 		self.histo = {}
@@ -40,19 +43,43 @@ class CompareRuns:
 		self.CompareAllPairs('PH_Saturated_Events', do_norm=True)
 		self.SaveCanvasInList(self.canvas.keys())
 
-	def ReadRunList(self):
-		with open(self.runlist, 'r') as rl:
-			lines = rl.readlines()
-			self.runs_path = [Correct_Path(line.replace('\n', '')) for line in lines if os.path.isdir(Correct_Path(line.replace('\n', ''))) and ('#' not in line) and (';' not in line) and (len(line) > 2)]
-			self.run_numbers = np.array([int(runpath.split('/')[-1]) for runpath in self.runs_path], 'uint32')
-			self.runs_subidr = [path.split('/' + str(self.run_numbers[it]))[0] for it, path in enumerate(self.runs_path)]
+	def ReadCompareConfig(self):
+		if os.path.isfile(self.config_file):
+			pars = ConfigParser()
+			pars.read(self.config_file)
+			print 'Reading config file for comparing runs...', ; sys.stdout.flush()
+			if pars.has_section('RUNS'):
+				if pars.has_option('RUNS', 'rundirs'):
+					temp_dirs = pars.get('RUNS', 'rundirs')
+					elements = temp_dirs.replace('{', '').replace('}', '')
+					elements = elements.split(',')
+					temp_runs_path = [Correct_Path(element) for element in elements if os.path.isdir(Correct_Path(element)) and (len(element) > 2)]
+					self.run_numbers = np.array([int(runpath.split('/')[-1]) for runpath in temp_runs_path], 'uint32')
+					self.runs_path = {self.run_numbers[i]: temp_runs_path[i] for i in xrange(len(temp_runs_path))}
+					self.runs_subidr = {path.split('/' + str(run))[0] for run, path in self.runs_path.iteritems()}
+				if pars.has_option('RUNS', 'settings'):
+					temp_setts = pars.get('RUNS', 'settings')
+					elements = temp_setts.replace('{', '').replace('}', '')
+					elements = elements.split(',')
+					self.runs_settings = [Correct_Path(element) for element in elements if os.path.isdir(Correct_Path(element)) and (len(element) > 2)]
+				if pars.has_option('RUNS', 'outdir'):
+					temp_outdir = pars.get('RUNS', 'outdir')
+					self.outdir = Correct_Path(temp_outdir)
+				if pars.has_option('RUNS', 'do_fit'):
+					self.do_fit = pars.getboolean('RUNS', 'do_fit')
+
+	# def ReadRunList(self):
+	# 	with open(self.runlist, 'r') as rl:
+	# 		lines = rl.readlines()
+	# 		self.runs_path = [Correct_Path(line.replace('\n', '')) for line in lines if os.path.isdir(Correct_Path(line.replace('\n', ''))) and ('#' not in line) and (';' not in line) and (len(line) > 2)]
+	# 		self.run_numbers = np.array([int(runpath.split('/')[-1]) for runpath in self.runs_path], 'uint32')
+	# 		self.runs_subidr = [path.split('/' + str(self.run_numbers[it]))[0] for it, path in enumerate(self.runs_path)]
 
 	def LoadRuns(self):
 		for it, run in enumerate(self.run_numbers):
 			if os.path.isdir(self.runs_path[it]):
 				# self.runs_ta[run] = TestAreas(self.testnum, self.numstrips, self.runs_subidr[it], run, self.cellsize, self.do_fit)
-				self.runs_ta[run] = TestAreas('', run)
-				self.runs_ta[run].trans_grid
+				self.runs_ta[run] = TestAreas(self.runs_settings[0], run)
 				self.runs_ta[run].trans_grid.LoadPlotsInSubdir()
 
 	def CompareAllPairs(self, histoname='ph2_test1', do_norm=False, plot_option='e hist'):
@@ -141,21 +168,22 @@ class CompareRuns:
 
 if __name__ == '__main__':
 	parser = OptionParser()
-	parser.add_option('-r', '--runlist', dest='runlist', type='string', help='Path to the file containing the list of runs')
-	parser.add_option('-o', '--outdir', dest='outdir', type='string', default='.' ,help='Path to the directory where the files will be saved')
-	parser.add_option('-c', '--cellsize', dest='cellsize', type='int', default=50, help='cell size of the square 3D device')
-	parser.add_option('-n', '--numstrips', dest='numstrips', type='int', default=2, help='Number of strips to use')
-	parser.add_option('-t', '--test', dest='testnumber', type='int', default=1, help='Run a automatically one of the predefined tests')
-	parser.add_option('-f', '--dofit', dest='dofit', default=False, action='store_true', help='Enables fitting')
+	parser.add_option('-c', '--config', dest='config', type='string', help='Path to config file for comparing runs')
+	# parser.add_option('-r', '--runlist', dest='runlist', type='string', help='Path to the file containing the list of runs')
+	# parser.add_option('-o', '--outdir', dest='outdir', type='string', default='.' ,help='Path to the directory where the files will be saved')
+	# parser.add_option('-c', '--cellsize', dest='cellsize', type='int', default=50, help='cell size of the square 3D device')
+	# parser.add_option('-n', '--numstrips', dest='numstrips', type='int', default=2, help='Number of strips to use')
+	# parser.add_option('-t', '--test', dest='testnumber', type='int', default=1, help='Run a automatically one of the predefined tests')
+	# parser.add_option('-f', '--dofit', dest='dofit', default=False, action='store_true', help='Enables fitting')
 
 
 	(options, args) = parser.parse_args()
-	runlist = str(options.runlist)
-	outdir = str(options.outdir)
-	cellsize = int(options.cellsize)
-	numstrips = int(options.numstrips)
-	testnum = int(options.testnumber)
-	do_fit = bool(options.dofit)
+	config = str(options.config)
+	# runlist = str(options.runlist)
+	# outdir = str(options.outdir)
+	# cellsize = int(options.cellsize)
+	# numstrips = int(options.numstrips)
+	# testnum = int(options.testnumber)
+	# do_fit = bool(options.dofit)
 
-
-	c = CompareRuns(runlist, outdir, cellsize, numstrips, testnum, do_fit)
+	c = CompareRuns(config)
