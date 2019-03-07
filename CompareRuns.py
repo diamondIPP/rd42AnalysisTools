@@ -168,33 +168,33 @@ class CompareRuns:
 		saturated_cuts = {}
 		not_saturated_cuts = {}
 		for run, tg in tg_dic.iteritems():
-			num_strips_tree = int(tg.GetMaximum('numStrips'))
-			satChs = '(' + '||'.join(['(diaChADC[clusterCharge{i}]==4095)' for i in xrange(num_strips_tree)]) + ')'
-			notSatChs = '(' + '&&'.join(['(diaChADC[clusterCharge{i}]<4095)' for i in xrange(num_strips_tree)]) + ')'
+			num_strips_tree = int(tg.trans_tree.GetMaximum('numStrips'))
+			satChs = '(' + '||'.join(['(diaChADC[clusterChannel{i}]==4095)'.format(i=i) for i in xrange(num_strips_tree)]) + ')'
+			notSatChs = '(' + '&&'.join(['(diaChADC[clusterChannel{i}]<4095)'.format(i=i) for i in xrange(num_strips_tree)]) + ')'
 			areaCut = '({c})'.format(c=tg.gridAreas.goodAreasCutNames_simplified_diamond)
 			listSat = ['(transparentEvent)', satChs, areaCut]
 			listNoSat = ['(transparentEvent)', notSatChs, areaCut]
 
-			saturated[run] = tg.Draw('clusterChargeN', '(' + '&&'.join(listSat) + ')', 'goff')
+			saturated[run] = tg.trans_tree.Draw('clusterChargeN', '(' + '&&'.join(listSat) + ')', 'goff')
 			saturated_err[run] = np.sqrt(saturated[run])
-			not_saturated[run] = tg.Draw('clusterChargeN', '(' + '&&'.join(listSat) + ')', 'goff')
+			not_saturated[run] = tg.trans_tree.Draw('clusterChargeN', '(' + '&&'.join(listNoSat) + ')', 'goff')
 			not_saturated_err[run] = np.sqrt(not_saturated[run])
 
 			saturated_norm[run] = np.divide(saturated[run], saturated[run] + not_saturated[run], dtype='f8')
-			saturated_err_norm[run] = np.divide(saturated_err[run], saturated[run] + not_saturated[run], dtype='f8')
+			saturated_err_norm[run] = np.divide(saturated_err[run] * not_saturated[run], np.power(saturated[run] + not_saturated[run],2,dtype='f8'), dtype='f8')
 			not_saturated_norm[run] = np.divide(not_saturated[run], saturated[run] + not_saturated[run], dtype='f8')
-			not_saturated_err_norm[run] = np.divide(not_saturated_norm[run], saturated[run] + not_saturated[run], dtype='f8')
+			not_saturated_err_norm[run] = np.divide(not_saturated_norm[run] * saturated[run], np.power(saturated[run] + not_saturated[run],2,dtype='f8'), dtype='f8')
 		xvals = np.array(self.run_numbers, 'f8')
 
 		y_sat_values = np.array([saturated[run] for run in self.run_numbers], 'f8')
 		y_sat_values_err = np.array([saturated_err[run] for run in self.run_numbers], 'f8')
 		y_not_sat_values = np.array([not_saturated[run] for run in self.run_numbers], 'f8')
-		y_not_sat_values_err = np.array([not_saturated[run] for run in self.run_numbers], 'f8')
+		y_not_sat_values_err = np.array([not_saturated_err[run] for run in self.run_numbers], 'f8')
 
 		y_sat_values_norm = np.array([saturated_norm[run] for run in self.run_numbers], 'f8')
 		y_sat_values_err_norm = np.array([saturated_err_norm[run] for run in self.run_numbers], 'f8')
 		y_not_sat_values_norm = np.array([not_saturated_norm[run] for run in self.run_numbers], 'f8')
-		y_not_sat_values_err_norm = np.array([not_saturated_norm[run] for run in self.run_numbers], 'f8')
+		y_not_sat_values_err_norm = np.array([not_saturated_err_norm[run] for run in self.run_numbers], 'f8')
 
 		graph_sat = ro.TGraphErrors(len(self.run_numbers), xvals, y_sat_values, np.zeros(len(self.run_numbers), 'f8'), y_sat_values_err)
 		satname = 'SaturatedAfterCuts'
