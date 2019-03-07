@@ -8,9 +8,10 @@ import ipdb
 import sys
 
 class GridAreas:
-	def __init__(self, numcols=0, numrows=0):
+	def __init__(self, numcols=0, numrows=0, run=0):
 		self.num_cols = numcols
 		self.num_rows = numrows
+		self.run = run
 		self.goodAreas_diamond = []
 		self.goodAreas_simplified_diamond = []
 		self.goodAreas_diamond_centers = []
@@ -174,13 +175,13 @@ class GridAreas:
 			if polij.type == 'Polygon':
 			# try:
 				xnew, ynew = polij.exterior.xy
-				# colrowai = ai.GetName().split('cutg_dia_')[-1].split('_')
-				# colrowai = namei.split('cutg_dia_')[-1].split('_')
-				# colrowaj = aj.GetName().split('cutg_dia_')[-1].split('_')
-				# colrowaj = namej.split('cutg_dia_')[-1].split('_')
+				# colrowai = ai.GetName().split('cutg_dia_' + str(self.run) + '_')[-1].split('_')
+				# colrowai = namei.split('cutg_dia_' + str(self.run) + '_')[-1].split('_')
+				# colrowaj = aj.GetName().split('cutg_dia_' + str(self.run) + '_')[-1].split('_')
+				# colrowaj = namej.split('cutg_dia_' + str(self.run) + '_')[-1].split('_')
 				# colrownew = colrowai + colrowaj
-				newname = 'cutg_dia_' + prefix + '_' + str(num)
-				# newname = 'cutg_dia_' + '_'.join(colrownew)
+				newname = 'cutg_dia_' + str(self.run) + '_' + prefix + '_' + str(num)
+				# newname = 'cutg_dia_' + str(self.run) + '_' + '_'.join(colrownew)
 				# newtcutg = ro.TCutG(newname, len(xnew), xnew, ynew)
 				# newtcutg.SetNameTitle(newname, newname)
 				# newtcutg.SetVarX(ai.GetVarX())
@@ -215,7 +216,7 @@ class GridAreas:
 				poli = geom.Polygon([[xi[i], yi[i]] for i in xrange(ni)])
 				polygon_list.append(poli)
 				namei = areai.GetName()
-				namei = 'cutg_dia_' + prefix + '_' + '_'.join(namei.split('_')[-2:])
+				namei = 'cutg_dia_' + str(self.run) + '_' + prefix + '_' + '_'.join(namei.split('_')[-2:])
 				name_list.append(namei)
 		finito = True
 		new_list = polygon_list[:]

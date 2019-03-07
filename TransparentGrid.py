@@ -229,7 +229,7 @@ class TransparentGrid:
 		else:
 			self.AskUserLowerYLines()
 			self.CreateLines()
-		self.gridAreas = GridAreas(self.num_cols, self.row_info_diamond['num'])
+		self.gridAreas = GridAreas(self.num_cols, self.row_info_diamond['num'], self.run)
 
 	def FindHorizontalParametersThroughAlignment(self):
 		self.LoadAlignmentParameters()
@@ -462,8 +462,8 @@ class TransparentGrid:
 			for row in xrange(self.row_info_diamond['num']):
 				tempx = GetNumpyArraysX(col)
 				tempy = GetNumpyArraysY(row)
-				self.tcutgs_diamond[col][row] = ro.TCutG('cutg_dia_{c}_{r}'.format(c=col, r=row), 5, tempx, tempy)
-				self.tcutgs_diamond[col][row].SetNameTitle('cutg_dia_{c}_{r}'.format(c=col, r=row), 'cutg_dia_{c}_{r}'.format(c=col, r=row))
+				self.tcutgs_diamond[col][row] = ro.TCutG('cutg_dia_' + str(self.run) + '_{c}_{r}'.format(c=col, r=row), 5, tempx, tempy)
+				self.tcutgs_diamond[col][row].SetNameTitle('cutg_dia_' + str(self.run) + '_{c}_{r}'.format(c=col, r=row), 'cutg_dia_' + str(self.run) + '_{c}_{r}'.format(c=col, r=row))
 				self.tcutgs_diamond[col][row].SetVarX('diaChXPred')
 				self.tcutgs_diamond[col][row].SetVarY('diaChYPred')
 				self.tcutgs_diamond[col][row].SetLineColor(ro.kBlack)
@@ -487,8 +487,8 @@ class TransparentGrid:
 		y1i = self.row_info_diamond['pitch'] / 2.0 + self.length_central_region / 2.0
 		tempi = np.array((x0i, x0i, x1i, x1i, x0i), 'f8')
 		tempj = np.array((y0i, y1i, y1i, y0i, y0i), 'f8')
-		self.tcutg_diamond_center = ro.TCutG('cutg_dia_center', 5, tempi, tempj)
-		self.tcutg_diamond_center.SetNameTitle('cutg_dia_center', 'cutg_dia_center')
+		self.tcutg_diamond_center = ro.TCutG('cutg_dia_' + str(self.run) + '_center', 5, tempi, tempj)
+		self.tcutg_diamond_center.SetNameTitle('cutg_dia_' + str(self.run) + '_center', 'cutg_dia_' + str(self.run) + '_center')
 		self.tcutg_diamond_center.SetVarX('diaChXPred')
 		self.tcutg_diamond_center.SetVarY('diaChYPred')
 		self.tcutg_diamond_center.SetLineColor(ro.kViolet)
@@ -498,8 +498,8 @@ class TransparentGrid:
 			for row in xrange(self.row_info_diamond['num']):
 				tempx = GetNumpyArraysX(col)
 				tempy = GetNumpyArraysY(row)
-				self.tcutgs_diamond_center[col][row] = ro.TCutG('cutg_dia_center_{c}_{r}'.format(c=col, r=row), 5, tempx, tempy)
-				self.tcutgs_diamond_center[col][row].SetNameTitle('cutg_dia_center_{c}_{r}'.format(c=col, r=row), 'cutg_center_dia_{c}_{r}'.format(c=col, r=row))
+				self.tcutgs_diamond_center[col][row] = ro.TCutG('cutg_dia_' + str(self.run) + '_center_{c}_{r}'.format(c=col, r=row), 5, tempx, tempy)
+				self.tcutgs_diamond_center[col][row].SetNameTitle('cutg_dia_' + str(self.run) + '_center_{c}_{r}'.format(c=col, r=row), 'cutg_center_dia_{c}_{r}'.format(c=col, r=row))
 				self.tcutgs_diamond_center[col][row].SetVarX('diaChXPred')
 				self.tcutgs_diamond_center[col][row].SetVarY('diaChYPred')
 				self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
