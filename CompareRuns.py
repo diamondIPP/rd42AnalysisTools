@@ -36,13 +36,13 @@ class CompareRuns:
 		self.run_colors = {run: ro.TColor(color_index + run, ReturnRGB(run, min(self.run_numbers), max(self.run_numbers))[0], ReturnRGB(run, min(self.run_numbers), max(self.run_numbers))[1], ReturnRGB(run, min(self.run_numbers), max(self.run_numbers))[2]) for run in self.run_numbers}
 		self.numruns = len(self.run_numbers)
 		self.run_pairs_comb = [[run1, run2] for run1, run2 in itt.combinations(self.run_numbers, 2)]
-		self.CompareAllPairs('ph1_{t}'.format(t=self.subdir))
-		self.CompareAllPairs('ph1_{t}'.format(t=self.subdir), do_norm=True)
-		self.CompareAllPairs('ph2_{t}'.format(t=self.subdir))
-		self.CompareAllPairs('ph2_{t}'.format(t=self.subdir), do_norm=True)
-		self.CompareAllPairs('PH_Saturated_Events')
-		self.CompareAllPairs('PH_Saturated_Events', do_norm=True)
-		self.SaveCanvasInList(self.canvas.keys())
+		#self.CompareAllPairs('ph1_{t}'.format(t=self.subdir))
+		#self.CompareAllPairs('ph1_{t}'.format(t=self.subdir), do_norm=True)
+		#self.CompareAllPairs('ph2_{t}'.format(t=self.subdir))
+		#self.CompareAllPairs('ph2_{t}'.format(t=self.subdir), do_norm=True)
+		#self.CompareAllPairs('PH_Saturated_Events')
+		#self.CompareAllPairs('PH_Saturated_Events', do_norm=True)
+		#self.SaveCanvasInList(self.canvas.keys())
 
 	def ReadCompareConfig(self):
 		if os.path.isfile(self.config_file):
@@ -162,9 +162,9 @@ class CompareRuns:
 		saturated_cuts = {}
 		not_saturated_cuts = {}
 		for run, tg in tg_dic.iteritems():
-			tg.trans_tree.
+			tg.trans_tree
 		if np.array([tg.histo.has_key(histoname) for tg in tg_dic.values()], dtype='?').all():
-
+                        pass
 
 	def SaveCanvasInList(self, list):
 		if not os.path.isdir('{d}/{sd}'.format(d=self.outdir, sd=self.subdir)):
