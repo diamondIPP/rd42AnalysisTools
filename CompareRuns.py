@@ -17,16 +17,16 @@ class CompareRuns:
 		self.config_file = config_file
 		# self.runlist = []
 		self.outdir = '.'
+		self.runs_path = {}
+		self.runs_settings = {}
+		self.run_numbers = []
+		self.runs_subidr = {}
 		# self.cellsize = cellsize
 		# self.numstrips = numstrips
 		self.testnum = 0
 		self.ReadCompareConfig()
 		self.subdir = 'test' + str(self.testnum)
 		self.do_fit = False
-		self.runs_path = {}
-		self.runs_settings = {}
-		self.run_numbers = []
-		self.runs_subidr = {}
 		# self.ReadRunList()
 		self.runs_ta = {}
 		self.canvas = {}
