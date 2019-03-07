@@ -62,7 +62,7 @@ class CompareRuns:
 					temp_setts = pars.get('RUNS', 'settings')
 					elements = temp_setts.replace('{', '').replace('}', '')
 					elements = elements.split(',')
-					self.runs_settings = [Correct_Path(element) for element in elements if os.path.isdir(Correct_Path(element)) and (len(element) > 2)]
+					self.runs_settings = [Correct_Path(element) for element in elements if os.path.isfile(Correct_Path(element)) and (len(element) > 2)]
 				if pars.has_option('RUNS', 'outdir'):
 					temp_outdir = pars.get('RUNS', 'outdir')
 					self.outdir = Correct_Path(temp_outdir)

@@ -1,0 +1,10 @@
+tv__tree = (TTree *)0x557f45ef9630;
+tv__tree_list->Add(tv__tree);
+tv__tree->Draw("diaChSignal","","", 900000, 0);
+tv__tree->Draw("clusterCharge2","transparentEvent","", 900000, 0);
+tv__tree->Draw("clusterChargeN","transparentEvent","", 900000, 0);
+tv__tree->Draw("clusterCharge2","transparentEvent","", 900000, 0);
+tv__tree->Draw("clusterCharge1","transparentEvent","", 900000, 0);
+tv__tree->Draw("diaChSeed","transparentEvent","", 900000, 0);
+tv__tree->Draw("diaChSignal","transparentEvent","", 900000, 0);
+tv__tree->Draw("event","transparentEvent","", 900000, 0);
