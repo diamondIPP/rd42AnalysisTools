@@ -183,7 +183,7 @@ class CompareRuns:
 			saturated_norm[run] = np.divide(saturated[run], saturated[run] + not_saturated[run], dtype='f8')
 			saturated_err_norm[run] = np.divide(saturated_err[run] * not_saturated[run], np.power(saturated[run] + not_saturated[run], 2, dtype='f8'), dtype='f8')
 			not_saturated_norm[run] = np.divide(not_saturated[run], saturated[run] + not_saturated[run], dtype='f8')
-			not_saturated_err_norm[run] = np.divide(not_saturated_err_norm[run] * saturated[run], np.power(saturated[run] + not_saturated[run], 2, dtype='f8'), dtype='f8')
+			not_saturated_err_norm[run] = np.divide(not_saturated_err[run] * saturated[run], np.power(saturated[run] + not_saturated[run], 2, dtype='f8'), dtype='f8')
 		xvals = np.array(self.run_numbers, 'f8')
 
 		y_sat_values = np.array([saturated[run] for run in self.run_numbers], 'f8')
