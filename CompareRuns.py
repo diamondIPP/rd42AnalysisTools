@@ -15,13 +15,14 @@ vspace = 0.0
 class CompareRuns:
 	def __init__(self, config_file=''):
 		self.config_file = config_file
-		self.runlist = []
-		# self.outdir = Correct_Path(outdir)
+		# self.runlist = []
+		self.outdir = '.'
 		# self.cellsize = cellsize
 		# self.numstrips = numstrips
-		# self.testnum = testnum
+		self.testnum = 0
+		self.ReadCompareConfig()
 		self.subdir = 'test' + str(self.testnum)
-		# self.do_fit = do_fit
+		self.do_fit = False
 		self.runs_path = {}
 		self.runs_settings = {}
 		self.run_numbers = []
@@ -56,7 +57,7 @@ class CompareRuns:
 					temp_runs_path = [Correct_Path(element) for element in elements if os.path.isdir(Correct_Path(element)) and (len(element) > 2)]
 					self.run_numbers = np.array([int(runpath.split('/')[-1]) for runpath in temp_runs_path], 'uint32')
 					self.runs_path = {self.run_numbers[i]: temp_runs_path[i] for i in xrange(len(temp_runs_path))}
-					self.runs_subidr = {path.split('/' + str(run))[0] for run, path in self.runs_path.iteritems()}
+					self.runs_subidr = {run: path.split('/' + str(run))[0] for run, path in self.runs_path.iteritems()}
 				if pars.has_option('RUNS', 'settings'):
 					temp_setts = pars.get('RUNS', 'settings')
 					elements = temp_setts.replace('{', '').replace('}', '')
@@ -67,7 +68,9 @@ class CompareRuns:
 					self.outdir = Correct_Path(temp_outdir)
 				if pars.has_option('RUNS', 'do_fit'):
 					self.do_fit = pars.getboolean('RUNS', 'do_fit')
-
+				if pars.has_option('RUNS', 'testnum'):
+					self.testnum = pars.getint('RUNS', 'testnum')
+			print 'Done'
 	# def ReadRunList(self):
 	# 	with open(self.runlist, 'r') as rl:
 	# 		lines = rl.readlines()
