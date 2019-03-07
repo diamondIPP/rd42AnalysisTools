@@ -181,9 +181,9 @@ class CompareRuns:
 			not_saturated_err[run] = np.sqrt(not_saturated[run])
 
 			saturated_norm[run] = np.divide(saturated[run], saturated[run] + not_saturated[run], dtype='f8')
-			saturated_err_norm[run] = np.divide(saturated_err[run] * not_saturated[run], np.power(saturated[run] + not_saturated[run],2,dtype='f8'), dtype='f8')
+			saturated_err_norm[run] = np.divide(saturated_err[run] * not_saturated[run], np.power(saturated[run] + not_saturated[run], 2, dtype='f8'), dtype='f8')
 			not_saturated_norm[run] = np.divide(not_saturated[run], saturated[run] + not_saturated[run], dtype='f8')
-			not_saturated_err_norm[run] = np.divide(not_saturated_norm[run] * saturated[run], np.power(saturated[run] + not_saturated[run],2,dtype='f8'), dtype='f8')
+			not_saturated_err_norm[run] = np.divide(not_saturated_err_norm[run] * saturated[run], np.power(saturated[run] + not_saturated[run], 2, dtype='f8'), dtype='f8')
 		xvals = np.array(self.run_numbers, 'f8')
 
 		y_sat_values = np.array([saturated[run] for run in self.run_numbers], 'f8')
@@ -215,6 +215,7 @@ class CompareRuns:
 		graph_sat_norm.SetNameTitle(satnamenorm, satnamenorm)
 		graph_sat_norm.GetXaxis().SetTitle('run')
 		graph_sat_norm.GetYaxis().SetTitle('norm')
+		graph_sat_norm.GetYaxis().SetRangeUser(0, 1)
 		graph_sat_norm.SetMarkerStyle(7)
 		graph_sat_norm.SetMarkerColor(ro.kRed)
 		graph_nosat_norm = ro.TGraphErrors(len(self.run_numbers), xvals, y_not_sat_values_norm, np.zeros(len(self.run_numbers), 'f8'), y_not_sat_values_err_norm)
@@ -222,6 +223,7 @@ class CompareRuns:
 		graph_nosat_norm.SetNameTitle(notsatnamenorm, notsatnamenorm)
 		graph_nosat_norm.GetXaxis().SetTitle('run')
 		graph_nosat_norm.GetYaxis().SetTitle('norm')
+		graph_nosat_norm.GetYaxis().SetRangeUser(0, 1)
 		graph_nosat_norm.SetMarkerStyle(7)
 		graph_nosat_norm.SetMarkerColor(ro.kBlue)
 
