@@ -83,6 +83,9 @@ class CompareRuns:
 			if os.path.isdir(self.runs_path[run]):
 				# self.runs_ta[run] = TestAreas(self.testnum, self.numstrips, self.runs_subidr[it], run, self.cellsize, self.do_fit)
 				self.runs_ta[run] = TestAreas(self.runs_settings[0], run)
+				self.runs_ta[run].trans_grid.SetLines()
+				self.runs_ta[run].trans_grid.CreateTCutGs()
+				self.runs_ta[run].SetTest()
 				self.runs_ta[run].trans_grid.LoadPlotsInSubdir()
 
 	def CompareAllPairs(self, histoname='ph2_test1', do_norm=False, plot_option='e hist'):
@@ -151,14 +154,16 @@ class CompareRuns:
 			self.stuff.append(histo1)
 			self.stuff.append(histo2)
 
-	def PlotSaturationEvents(self, list_runs, histoname='', do_norm=False):
-		tg_dic = {run: self.runs_ta[run].trans_grid for run in list_runs}
+	def PlotSaturationEvents(self, histoname='', do_norm=False):
+		tg_dic = {run: self.runs_ta[run].trans_grid for run in self.run_numbers}
 		suffix = '' if not do_norm else '_norm'
 		saturated = {}
 		not_saturated = {}
 		saturated_cuts = {}
 		not_saturated_cuts = {}
-		# if np.array([tg.histo.has_key(histoname) for tg in tg_dic.values()], dtype='?').all():
+		for run, tg in tg_dic.iteritems():
+			tg.trans_tree.
+		if np.array([tg.histo.has_key(histoname) for tg in tg_dic.values()], dtype='?').all():
 
 
 	def SaveCanvasInList(self, list):
