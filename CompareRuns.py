@@ -36,13 +36,13 @@ class CompareRuns:
 		self.run_colors = {run: ro.TColor(color_index + run, ReturnRGB(run, min(self.run_numbers), max(self.run_numbers))[0], ReturnRGB(run, min(self.run_numbers), max(self.run_numbers))[1], ReturnRGB(run, min(self.run_numbers), max(self.run_numbers))[2]) for run in self.run_numbers}
 		self.numruns = len(self.run_numbers)
 		self.run_pairs_comb = [[run1, run2] for run1, run2 in itt.combinations(self.run_numbers, 2)]
-		#self.CompareAllPairs('ph1_{t}'.format(t=self.subdir))
-		#self.CompareAllPairs('ph1_{t}'.format(t=self.subdir), do_norm=True)
-		#self.CompareAllPairs('ph2_{t}'.format(t=self.subdir))
-		#self.CompareAllPairs('ph2_{t}'.format(t=self.subdir), do_norm=True)
-		#self.CompareAllPairs('PH_Saturated_Events')
-		#self.CompareAllPairs('PH_Saturated_Events', do_norm=True)
-		#self.SaveCanvasInList(self.canvas.keys())
+	#self.CompareAllPairs('ph1_{t}'.format(t=self.subdir))
+	#self.CompareAllPairs('ph1_{t}'.format(t=self.subdir), do_norm=True)
+	#self.CompareAllPairs('ph2_{t}'.format(t=self.subdir))
+	#self.CompareAllPairs('ph2_{t}'.format(t=self.subdir), do_norm=True)
+	#self.CompareAllPairs('PH_Saturated_Events')
+	#self.CompareAllPairs('PH_Saturated_Events', do_norm=True)
+	#self.SaveCanvasInList(self.canvas.keys())
 
 	def ReadCompareConfig(self):
 		if os.path.isfile(self.config_file):
@@ -154,17 +154,105 @@ class CompareRuns:
 			self.stuff.append(histo1)
 			self.stuff.append(histo2)
 
-	def PlotSaturationEvents(self, histoname='', do_norm=False):
+	def PlotSaturationEvents(self, histoname=''):
 		tg_dic = {run: self.runs_ta[run].trans_grid for run in self.run_numbers}
-		suffix = '' if not do_norm else '_norm'
 		saturated = {}
+		saturated_err = {}
 		not_saturated = {}
+		not_saturated_err = {}
+		saturated_norm = {}
+		saturated_err_norm = {}
+		not_saturated_norm = {}
+		not_saturated_err_norm = {}
+
 		saturated_cuts = {}
 		not_saturated_cuts = {}
 		for run, tg in tg_dic.iteritems():
-			tg.trans_tree
-		if np.array([tg.histo.has_key(histoname) for tg in tg_dic.values()], dtype='?').all():
-                        pass
+			num_strips_tree = int(tg.GetMaximum('numStrips'))
+			satChs = '(' + '||'.join(['(diaChADC[clusterCharge{i}]==4095)' for i in xrange(num_strips_tree)]) + ')'
+			notSatChs = '(' + '&&'.join(['(diaChADC[clusterCharge{i}]<4095)' for i in xrange(num_strips_tree)]) + ')'
+			areaCut = '({c})'.format(c=tg.gridAreas.goodAreasCutNames_simplified_diamond)
+			listSat = ['(transparentEvent)', satChs, areaCut]
+			listNoSat = ['(transparentEvent)', notSatChs, areaCut]
+
+			saturated[run] = tg.Draw('clusterChargeN', '(' + '&&'.join(listSat) + ')', 'goff')
+			saturated_err[run] = np.sqrt(saturated[run])
+			not_saturated[run] = tg.Draw('clusterChargeN', '(' + '&&'.join(listSat) + ')', 'goff')
+			not_saturated_err[run] = np.sqrt(not_saturated[run])
+
+			saturated_norm[run] = np.divide(saturated[run], saturated[run] + not_saturated[run], dtype='f8')
+			saturated_err_norm[run] = np.divide(saturated_err[run], saturated[run] + not_saturated[run], dtype='f8')
+			not_saturated_norm[run] = np.divide(not_saturated[run], saturated[run] + not_saturated[run], dtype='f8')
+			not_saturated_err_norm[run] = np.divide(not_saturated_norm[run], saturated[run] + not_saturated[run], dtype='f8')
+		xvals = np.array(self.run_numbers, 'f8')
+
+		y_sat_values = np.array([saturated[run] for run in self.run_numbers], 'f8')
+		y_sat_values_err = np.array([saturated_err[run] for run in self.run_numbers], 'f8')
+		y_not_sat_values = np.array([not_saturated[run] for run in self.run_numbers], 'f8')
+		y_not_sat_values_err = np.array([not_saturated[run] for run in self.run_numbers], 'f8')
+
+		y_sat_values_norm = np.array([saturated_norm[run] for run in self.run_numbers], 'f8')
+		y_sat_values_err_norm = np.array([saturated_err_norm[run] for run in self.run_numbers], 'f8')
+		y_not_sat_values_norm = np.array([not_saturated_norm[run] for run in self.run_numbers], 'f8')
+		y_not_sat_values_err_norm = np.array([not_saturated_norm[run] for run in self.run_numbers], 'f8')
+
+		graph_sat = ro.TGraphErrors(len(self.run_numbers), xvals, y_sat_values, np.zeros(len(self.run_numbers), 'f8'), y_sat_values_err)
+		satname = 'SaturatedAfterCuts'
+		graph_sat.SetNameTitle(satname, satname)
+		graph_sat.GetXaxis().SetTitle('run')
+		graph_sat.GetYaxis().SetTitle('# events')
+		graph_sat.SetMarkerStyle(7)
+		graph_sat.SetMarkerColor(ro.kRed)
+		graph_nosat = ro.TGraphErrors(len(self.run_numbers), xvals, y_not_sat_values, np.zeros(len(self.run_numbers), 'f8'), y_not_sat_values_err)
+		notsatname = 'NotSaturatedAfterCuts'
+		graph_nosat.SetNameTitle(notsatname, notsatname)
+		graph_nosat.GetXaxis().SetTitle('run')
+		graph_nosat.GetYaxis().SetTitle('# events')
+		graph_nosat.SetMarkerStyle(7)
+		graph_nosat.SetMarkerColor(ro.kBlue)
+		graph_sat_norm = ro.TGraphErrors(len(self.run_numbers), xvals, y_sat_values_norm, np.zeros(len(self.run_numbers), 'f8'), y_sat_values_err_norm)
+		satnamenorm = 'SaturatedAfterCutsNorm'
+		graph_sat_norm.SetNameTitle(satnamenorm, satnamenorm)
+		graph_sat_norm.GetXaxis().SetTitle('run')
+		graph_sat_norm.GetYaxis().SetTitle('norm')
+		graph_sat_norm.SetMarkerStyle(7)
+		graph_sat_norm.SetMarkerColor(ro.kRed)
+		graph_nosat_norm = ro.TGraphErrors(len(self.run_numbers), xvals, y_not_sat_values_norm, np.zeros(len(self.run_numbers), 'f8'), y_not_sat_values_err_norm)
+		notsatnamenorm = 'NotSaturatedAfterCutsNorm'
+		graph_nosat_norm.SetNameTitle(notsatnamenorm, notsatnamenorm)
+		graph_nosat_norm.GetXaxis().SetTitle('run')
+		graph_nosat_norm.GetYaxis().SetTitle('norm')
+		graph_nosat_norm.SetMarkerStyle(7)
+		graph_nosat_norm.SetMarkerColor(ro.kBlue)
+
+		self.canvas[satname] = ro.TCanvas('c_' + satname, 'c_' + satname, 1)
+		self.canvas[satname].SetGridx()
+		self.canvas[satname].SetGridy()
+		self.canvas[satname].SetTicky()
+		graph_sat.Draw('ALP')
+
+		self.canvas[notsatname] = ro.TCanvas('c_' + notsatname, 'c_' + notsatname, 1)
+		self.canvas[notsatname].SetGridx()
+		self.canvas[notsatname].SetGridy()
+		self.canvas[notsatname].SetTicky()
+		graph_nosat.Draw('ALP')
+
+		self.canvas[satnamenorm] = ro.TCanvas('c_' + satnamenorm, 'c_' + satnamenorm, 1)
+		self.canvas[satnamenorm].SetGridx()
+		self.canvas[satnamenorm].SetGridy()
+		self.canvas[satnamenorm].SetTicky()
+		graph_sat_norm.Draw('ALP')
+
+		self.canvas[notsatnamenorm] = ro.TCanvas('c_' + notsatnamenorm, 'c_' + notsatnamenorm, 1)
+		self.canvas[notsatnamenorm].SetGridx()
+		self.canvas[notsatnamenorm].SetGridy()
+		self.canvas[notsatnamenorm].SetTicky()
+		graph_nosat_norm.Draw('ALP')
+
+		self.stuff.append(graph_sat)
+		self.stuff.append(graph_nosat)
+		self.stuff.append(graph_sat_norm)
+		self.stuff.append(graph_nosat_norm)
 
 	def SaveCanvasInList(self, list):
 		if not os.path.isdir('{d}/{sd}'.format(d=self.outdir, sd=self.subdir)):
