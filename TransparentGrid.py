@@ -104,14 +104,12 @@ class TransparentGrid:
 	def OpenFileAndGetTree(self):
 		self.trans_file = ro.TFile('{d}/{r}/transparent.{r}.root'.format(d=self.dir, r=self.run), 'r')
 		self.trans_tree = self.trans_file.Get('transparentTree')
-		tempnh = ro.TH1F('tempn', 'tempn', 128, 0, 128)
-		tempch = ro.TH1F('tempc', 'tempc', 128, 0, 128)
 		if self.trans_tree.FindLeaf('numStrips'):
-			self.trans_tree.Draw('numStrips>>tempn','transparentEvent', 'goff')
-			self.num_strips = int(np.floor(tempnh.GetMean() + 0.5))
+			self.num_strips = self.trans_tree.GetMaximum('numStrips')
+			self.num_strips = RoundInt(self.num_strips)
 		if self.trans_tree.FindLeaf('clusterSize'):
-			self.trans_tree.Draw('numStrips>>tempc', 'transparentEvent', 'goff')
-			self.cluster_size = int(np.floor(tempch.GetMean() + 0.5))
+			self.cluster_size = self.trans_tree.GetMaximum('clusterSize')
+			self.cluster_size = RoundInt(self.cluster_size)
 
 	def FindDiamondChannelLimits(self):
 		temph = ro.TH1F('temph', 'temph', 128, -0.5, 127.5)
@@ -303,7 +301,7 @@ class TransparentGrid:
 		temp = np.abs(np.subtract(ph_bins_options, histo_entries * 200.0 / 4500.0, dtype='float32'), dtype='float32')
 		self.phbins = ph_bins_options[temp.argmin()]
 		self.phbins_neg = ph_bins_options[temp.argmin()]
-		cell_bins = min(25, max(11, int(np.floor(np.sqrt(histo_entries * ((self.col_pitch / 2.0) ** 2) / 4500.0, dtype='float64') + 0.5))))
+		cell_bins = min(25, max(11, RoundInt(np.sqrt(histo_entries * ((self.col_pitch / 2.0) ** 2) / 4500.0, dtype='float64'))))
 		self.cell_resolution = np.divide(self.col_pitch, cell_bins, dtype='float64') if cell_bins % 2 == 1 else np.divide(50.0, cell_bins + 1, dtype='float64')
 		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
 
@@ -313,9 +311,9 @@ class TransparentGrid:
 		delta_x = self.col_pitch
 		# proj_width = self.row_info_diamond['pitch'] / 5.0  # in mum
 		proj_width = self.row_info_diamond['pitch']  # in mum
-		proj_bins = int(np.floor(proj_width / self.cell_resolution + 0.5, dtype='float64'))
+		proj_bins = RoundInt(proj_width / self.cell_resolution)
 		proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
-		proj_low = int(np.floor(np.floor(self.row_info_diamond['pitch'] / self.cell_resolution + 0.5, dtype='float64') / 2.0 + 0.5, dtype='float64') - (np.floor(proj_bins / 2.0 + 0.5, dtype='float64') - 1) + 1)
+		proj_low = int(RoundInt(RoundInt(self.row_info_diamond['pitch'] / self.cell_resolution, 'f8') / 2.0, 'f8') - (RoundInt(proj_bins / 2.0, 'f8') - 1) + 1)
 		proj_high = proj_low + proj_bins - 1
 		iteration = 0
 		min_delta = self.col_pitch
@@ -328,7 +326,7 @@ class TransparentGrid:
 			h_proj_x.GetXaxis().SetRangeUser(0.1, self.col_pitch - 0.1)
 			minx = h_proj_x.GetBinCenter(h_proj_x.GetMinimumBin())
 			minx = minx if abs(minx - self.row_info_diamond['pitch'] / 2.0) > self.cell_resolution * 1.5 else self.row_info_diamond['pitch'] / 2.0
-			bins_fit_range = max(np.floor(2.0 * 7 / self.cell_resolution + 0.5), 3)
+			bins_fit_range = max(RoundInt(2.0 * 7 / self.cell_resolution, 'f8'), 3)
 			fit_px = h_proj_x.Fit('pol2', 'QEFSN', '', max(minx - bins_fit_range * self.cell_resolution / 2.0, 0), min(minx + bins_fit_range * self.cell_resolution / 2.0, self.col_pitch))
 			x_min = -fit_px.Parameter(1) / (2 * fit_px.Parameter(2))
 			delta_x = self.col_pitch / 2.0 - x_min
@@ -343,9 +341,9 @@ class TransparentGrid:
 		self.row_info_diamond['y_off'] += 3.0 * self.row_info_diamond['pitch'] / 2.0
 		delta_y = self.row_info_diamond['pitch']
 		proj_width = self.col_pitch / 5.0  # in mum
-		proj_bins = int(np.floor(proj_width / self.cell_resolution + 0.5, dtype='float64'))
+		proj_bins = RoundInt(proj_width / self.cell_resolution)
 		proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
-		proj_low = int(np.floor(np.floor(self.col_pitch / self.cell_resolution + 0.5, dtype='float64') / 2.0 + 0.5, dtype='float64') - (np.floor(proj_bins / 2.0 + 0.5, dtype='float64') - 1) + 1)
+		proj_low = int(RoundInt(RoundInt(self.col_pitch / self.cell_resolution, 'f8') / 2.0, 'f8') - (RoundInt(proj_bins / 2.0, 'f8') - 1) + 1)
 		proj_high = proj_low + proj_bins - 1
 		iteration = 0
 		min_delta = self.row_info_diamond['pitch']
@@ -509,7 +507,7 @@ class TransparentGrid:
 				self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
 
 	def CreateGridText(self):
-		self.gridTextDiamond = ro.TH2F('gridText_diamond', 'gridText_diamond', int(np.floor(128.0 * self.bins_per_ch_x + 0.5) + 2), -0.5 - 1.0 / self.bins_per_ch_x, 127.5 + 1.0 / self.bins_per_ch_x, int(np.floor(256 * self.bins_per_ch_y + 0.5) + 2), self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'] - (float(self.row_info_diamond['pitch']) / self.bins_per_ch_y), self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'] + (float(self.row_info_diamond['pitch']) / self.bins_per_ch_y))
+		self.gridTextDiamond = ro.TH2F('gridText_diamond', 'gridText_diamond', int(RoundInt(128.0 * self.bins_per_ch_x, 'f8') + 2), -0.5 - 1.0 / self.bins_per_ch_x, 127.5 + 1.0 / self.bins_per_ch_x, int(RoundInt(256 * self.bins_per_ch_y, 'f8') + 2), self.row_info_diamond['0'] - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'] - (float(self.row_info_diamond['pitch']) / self.bins_per_ch_y), self.row_info_diamond['0'] + (256 - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'] + (float(self.row_info_diamond['pitch']) / self.bins_per_ch_y))
 		x0, x1, y0, y1 = np.zeros(1, 'f8'), np.zeros(1, 'f8'), np.zeros(1, 'f8'), np.zeros(1, 'f8')
 		for col in xrange(0, self.num_cols):
 			self.tcutgs_diamond[col][0].GetPoint(0, x0, y0)
@@ -523,7 +521,7 @@ class TransparentGrid:
 
 	def DrawProfile2DDiamond(self, name, varz='clusterChargeN', cuts='', draw_top_borders=False, transp_ev=True, plot_option='prof colz'):
 		xmin, xmax, deltax, xname = -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch'
-		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
+		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
 		if draw_top_borders:
 			self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
 		else:
@@ -538,7 +536,7 @@ class TransparentGrid:
 
 	def DrawProfile2DDiamondChannel(self, name, varx='clusterChannel0', xname='C0', varz='clusterChargeN', cuts='', draw_top_borders=False, transp_ev=True, plot_option='prof colz'):
 		xmin, xmax, deltax = -0.5, 127.5, 1.0
-		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
+		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
 		if draw_top_borders:
 			self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
 		else:
@@ -550,7 +548,7 @@ class TransparentGrid:
 		if name in self.profile.keys():
 			self.profile[name].Delete()
 
-		self.profile[name] = ro.TProfile2D('h_' + name, 'h_' + name, int(np.floor((xmax - xmin)/deltax + 0.5) + 2), xmin - deltax, xmax + deltax, int(np.floor((ymax - ymin)/deltay + 0.5) + 2), ymin - deltay, ymax + deltay)
+		self.profile[name] = ro.TProfile2D('h_' + name, 'h_' + name, int(RoundInt((xmax - xmin)/deltax, 'f8') + 2), xmin - deltax, xmax + deltax, int(RoundInt((ymax - ymin)/deltay, 'f8') + 2), ymin - deltay, ymax + deltay)
 		self.profile[name].GetXaxis().SetTitle(xname)
 		self.profile[name].GetYaxis().SetTitle(yname)
 		self.profile[name].GetZaxis().SetTitle(zname)
@@ -600,13 +598,13 @@ class TransparentGrid:
 			SetDefault2DStats(self.histo[name_occupancy])
 
 	def Draw2DHistoDiamond(self, name, cuts='', transp_ev=True):
-		self.DrawHisto2D(name, -0.5, 127.5, 1.0 / (self.bins_per_ch_x), 'dia X ch', self.row_info_diamond['0'] - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5) * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - np.floor(self.row_info_diamond['0'] / self.row_info_diamond['pitch'] + 0.5)) * self.row_info_diamond['pitch'],
+		self.DrawHisto2D(name, -0.5, 127.5, 1.0 / (self.bins_per_ch_x), 'dia X ch', self.row_info_diamond['0'] - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'],
 		                 float(self.row_info_diamond['pitch']) / (self.bins_per_ch_y), 'dia Y [#mum]', 'diaChXPred', 'diaChYPred', cuts, transp_ev)
 
 	def DrawHisto2D(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, cuts='', transp_ev=True):
 		# ro.gStyle.SetOptStat('en')
 		ro.TFormula.SetMaxima(100000)
-		self.histo[name] = ro.TH2F('h_' + name, 'h_' + name, int(np.floor((xmax - xmin) / deltax + 0.5) + 2), xmin - deltax, xmax + deltax, int(np.floor((ymax - ymin) / deltay + 0.5) + 2), ymin - deltay, ymax + deltay)
+		self.histo[name] = ro.TH2F('h_' + name, 'h_' + name, int(RoundInt((xmax - xmin) / deltax, 'f8') + 2), xmin - deltax, xmax + deltax, int(RoundInt((ymax - ymin) / deltay, 'f8') + 2), ymin - deltay, ymax + deltay)
 		self.histo[name].GetXaxis().SetTitle(xname)
 		self.histo[name].GetYaxis().SetTitle(yname)
 		self.histo[name].GetZaxis().SetTitle('entries')
@@ -624,7 +622,7 @@ class TransparentGrid:
 	def DrawPH(self, name, xmin, xmax, deltax, var='clusterChargeN', varname='PH[ADC]', cuts='', transp_ev=True, option='e hist'):
 		ro.TFormula.SetMaxima(100000)
 		# ro.gStyle.SetOptStat('neMmRruo')
-		self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, int(np.floor((xmax - xmin) / deltax + 0.5)), xmin, xmax)
+		self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, RoundInt((xmax - xmin) / deltax), xmin, xmax)
 		self.histo[name].GetXaxis().SetTitle(varname)
 		self.histo[name].GetYaxis().SetTitle('entries')
 		list_cuts = ['transparentEvent'] if transp_ev else []
@@ -776,7 +774,7 @@ class TransparentGrid:
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawProfile2D(name, -0.5, 127.5, self.cell_resolution, 'dia X ch', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=yoff, srp=int(10000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
+		self.DrawProfile2D(name, -0.5, 127.5, self.cell_resolution, 'dia X ch', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
 	def DrawProfile2DDiamondCellOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
 		y0, rowpitch, numrows, xoff, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['x_off'], self.row_info_diamond['y_off']
@@ -790,7 +788,8 @@ class TransparentGrid:
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '((diaChXPred-{ox})*{p})%{p}'.format(ox=xoff, p=self.col_pitch), '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=yoff, srp=int(10000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
+		self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '(((diaChXPred-{ox})*{p})%{p})/10000'.format(ox=xoff, p=self.col_pitch * 10000), '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
+		# self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '((diaChXPred-{ox})*{p})%{p}'.format(ox=xoff, p=self.col_pitch), '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
 	def DrawHisto2DDiamondChannelOverlay(self, name, cells='all', cuts='', transp_ev=True):
 		rowpitch, y0, xoff = self.row_info_diamond['pitch'], self.row_info_diamond['0'], self.row_info_diamond['x_off']
@@ -804,8 +803,8 @@ class TransparentGrid:
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch,
-		                 float(rowpitch) / self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=xoff, p=self.col_pitch), 'diaChYPred', temp_cuts, transp_ev)
+		self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch, float(rowpitch) / self.bins_per_ch_y, 'dia Y [#mum]', '(((diaChXPred-{o})*{p})%{p})/10000'.format(o=xoff, p=self.col_pitch * 10000), 'diaChYPred', temp_cuts, transp_ev)
+		# self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch, float(rowpitch) / self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=xoff, p=self.col_pitch), 'diaChYPred', temp_cuts, transp_ev)
 
 	def DrawHisto2DDiamondRowOverlay(self, name, cells='all', cuts='', transp_ev=True):
 		y0, rowpitch, numrows, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['y_off']
@@ -819,7 +818,7 @@ class TransparentGrid:
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawHisto2D(name, -0.5, 127.5, 1.0 / self.bins_per_ch_x, 'dia X ch', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=yoff, srp=int(10000*rowpitch)), temp_cuts, transp_ev)
+		self.DrawHisto2D(name, -0.5, 127.5, 1.0 / self.bins_per_ch_x, 'dia X ch', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), temp_cuts, transp_ev)
 
 	def DrawHisto2DDiamondCellOverlay(self, name, cells='all', cuts='', transp_ev=True):
 		y0, rowpitch, numrows, xoff, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['x_off'], self.row_info_diamond['y_off']
@@ -834,7 +833,7 @@ class TransparentGrid:
 		# 	list_cuts.append(cuts)
 		# temp_cuts = '&&'.join(list_cuts)
 		temp_cuts = self.ConcatenateDiamondCuts('({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows), cells, cuts)
-		self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '((diaChXPred-{ox})*{p})%{p}'.format(ox=xoff, p=self.col_pitch), '(((diaChYPred-{oy})*10000)%{srp})/10000'.format(oy=yoff, srp=int(10000*rowpitch)), temp_cuts, transp_ev)
+		self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '(((diaChXPred-{ox})*{p})%{p})/10000'.format(ox=xoff, p=self.col_pitch * 10000), '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), temp_cuts, transp_ev)
 
 	def DrawTCutCentersInCellOverlay(self, name):
 		self.canvas[name].cd()

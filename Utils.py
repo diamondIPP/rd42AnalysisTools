@@ -17,8 +17,8 @@ def IsFloat(f):
 	except ValueError:
 		return False
 
-def RoundInt(n):
-	return np.floor(np.add(n, 0.5, dtype='f8'), dtype='f8').astype('int32')
+def RoundInt(n, nptype='int32'):
+	return np.floor(np.add(n, 0.5, dtype='f8'), dtype='f8').astype(nptype)
 
 def IsOnlyInt(f):
 	if IsFloat(f):
