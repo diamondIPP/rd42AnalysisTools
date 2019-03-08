@@ -180,12 +180,23 @@ def Get_From_User_Line(option, old_value='', update=True):
 	if update:
 		print 'The current value(s) for:', option, 'is(are):'
 		print old_value
-		temp = raw_input('Enter the new value(s) for ' + option + ' in the same format as above (Press enter to leave as it is): ')
+		temp = raw_input('Enter the new value(s) for ' + option + ' in the same format as above (Press enter to leave it as it is): ')
 		if temp == '' or temp == '\n':
 			temp = old_value
 	else:
 		temp = raw_input('Enter the value(s) for ' + option + ' in the correct format: ')
 	return temp.replace(' ', '')
+
+def Get_From_User_Value(option, type='float', old_value=0, update=True):
+	if update:
+		print 'The current value for:', option, 'is:'
+		print '', old_value
+		temp = raw_input('Enter the new value for ' + option + ' which should be a ' + type + ' (Press enter to leave it as it is): ')
+		temp = old_value if temp in ['', '\n'] else int(temp) if type.lower().startswith('int') and IsInt(temp) else float(temp) if type.lower().startswith('float') and IsFloat(temp) else 0
+	else:
+		temp = raw_input('Enter the value for ' + option + ' which should be a ' + type + ': ')
+		temp = int(temp) if type.lower().startswith('int') and IsInt(temp) else float(temp) if type.lower().startswith('float') and IsFloat(temp) else 0
+	return temp
 
 def Only_Even_Channels(old_value):
 	channel_str = old_value[old_value.find('{') + 1:old_value.find('}')].split(',')

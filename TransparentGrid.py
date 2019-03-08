@@ -52,7 +52,8 @@ class TransparentGrid:
 		self.col_pitch = cellsize
 		self.cell_resolution = 50.0 / 25 if self.col_pitch == 50 else 100.0 / 51
 		self.delta_offset_threshold = 0.01  # in mum
-		# self.saturated_ADC = 4095
+		self.saturated_ADC = 0
+		self.bias = 0
 		self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5, 'y_off': 48.0, '0': 3136.0, 'up': 4486.0} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.5, 'y_off': 90.0, '0': 3076.0, 'up': 5476.0}
 		# if self.run in [25207, 25208, 25209, 25210]:
 		# 	if self.run in [25207, 25208, 25210]: print 'Using settings for run 25209. Results might not be correctly aligned'
@@ -135,7 +136,6 @@ class TransparentGrid:
 		object_dic['neg_cut'] = self.neg_cut
 		object_dic['col_pitch'] = self.col_pitch
 		object_dic['cell_resolution'] = self.cell_resolution
-		# object_dic['saturated_ADC'] = self.saturated_ADC
 		object_dic['bins_per_ch_x'] = self.bins_per_ch_x
 		object_dic['bins_per_ch_y'] = self.bins_per_ch_y
 		object_dic['length_central_region'] = self.length_central_region
@@ -143,6 +143,8 @@ class TransparentGrid:
 		object_dic['sigma_conv'] = self.sigma_conv
 		object_dic['mpshift'] = self.mpshift
 		object_dic['efficiency_subdiv'] = self.efficiency_subdiv
+		object_dic['saturated_ADC'] = self.saturated_ADC
+		object_dic['bias'] = self.bias
 
 		if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
 			os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
@@ -203,8 +205,8 @@ class TransparentGrid:
 			self.col_pitch = self.pkl['col_pitch']
 		if 'cell_resolution' in self.pkl.keys():
 			self.cell_resolution = self.pkl['cell_resolution']
-		# if 'saturated_ADC' in self.pkl.keys():
-		# 	self.saturated_ADC = self.pkl['saturated_ADC']
+		if 'saturated_ADC' in self.pkl.keys():
+			self.saturated_ADC = self.pkl['saturated_ADC']
 		if 'bins_per_ch_x' in self.pkl.keys():
 			self.bins_per_ch_x = self.pkl['bins_per_ch_x']
 		if 'bins_per_ch_y' in self.pkl.keys():
@@ -219,6 +221,8 @@ class TransparentGrid:
 			self.mpshift = self.pkl['mpshift']
 		if 'efficiency_subdiv' in self.pkl.keys():
 			self.efficiency_subdiv = self.pkl['efficiency_subdiv']
+		if 'bias' in self.pkl.keys():
+			self.bias = self.pkl['bias']
 
 	def SetLines(self, try_align=True):
 		self.LoadPickle()

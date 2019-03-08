@@ -31,18 +31,20 @@ class CompareRuns:
 		self.runs_ta = {}
 		self.canvas = {}
 		self.histo = {}
+		self.sat_adc_dic = {}
+		self.bias_dic = {}
 		self.stuff = []
 		self.LoadRuns()
 		self.run_colors = {run: ro.TColor(color_index + run, ReturnRGB(run, min(self.run_numbers), max(self.run_numbers))[0], ReturnRGB(run, min(self.run_numbers), max(self.run_numbers))[1], ReturnRGB(run, min(self.run_numbers), max(self.run_numbers))[2]) for run in self.run_numbers}
 		self.numruns = len(self.run_numbers)
 		self.run_pairs_comb = [[run1, run2] for run1, run2 in itt.combinations(self.run_numbers, 2)]
-	#self.CompareAllPairs('ph1_{t}'.format(t=self.subdir))
-	#self.CompareAllPairs('ph1_{t}'.format(t=self.subdir), do_norm=True)
-	#self.CompareAllPairs('ph2_{t}'.format(t=self.subdir))
-	#self.CompareAllPairs('ph2_{t}'.format(t=self.subdir), do_norm=True)
-	#self.CompareAllPairs('PH_Saturated_Events')
-	#self.CompareAllPairs('PH_Saturated_Events', do_norm=True)
-	#self.SaveCanvasInList(self.canvas.keys())
+		# self.CompareAllPairs('ph1_{t}'.format(t=self.subdir))
+		# self.CompareAllPairs('ph1_{t}'.format(t=self.subdir), do_norm=True)
+		# self.CompareAllPairs('ph2_{t}'.format(t=self.subdir))
+		# self.CompareAllPairs('ph2_{t}'.format(t=self.subdir), do_norm=True)
+		# self.CompareAllPairs('PH_Saturated_Events')
+		# self.CompareAllPairs('PH_Saturated_Events', do_norm=True)
+		# self.SaveCanvasInList(self.canvas.keys())
 
 	def ReadCompareConfig(self):
 		if os.path.isfile(self.config_file):
@@ -71,22 +73,17 @@ class CompareRuns:
 				if pars.has_option('RUNS', 'testnum'):
 					self.testnum = pars.getint('RUNS', 'testnum')
 			print 'Done'
-	# def ReadRunList(self):
-	# 	with open(self.runlist, 'r') as rl:
-	# 		lines = rl.readlines()
-	# 		self.runs_path = [Correct_Path(line.replace('\n', '')) for line in lines if os.path.isdir(Correct_Path(line.replace('\n', ''))) and ('#' not in line) and (';' not in line) and (len(line) > 2)]
-	# 		self.run_numbers = np.array([int(runpath.split('/')[-1]) for runpath in self.runs_path], 'uint32')
-	# 		self.runs_subidr = [path.split('/' + str(self.run_numbers[it]))[0] for it, path in enumerate(self.runs_path)]
 
 	def LoadRuns(self):
 		for run in self.run_numbers:
 			if os.path.isdir(self.runs_path[run]):
 				# self.runs_ta[run] = TestAreas(self.testnum, self.numstrips, self.runs_subidr[it], run, self.cellsize, self.do_fit)
 				self.runs_ta[run] = TestAreas(self.runs_settings[0], run)
-				self.runs_ta[run].trans_grid.SetLines()
-				self.runs_ta[run].trans_grid.CreateTCutGs()
+				self.runs_ta[run].SetTransparentGrid()
 				self.runs_ta[run].SetTest()
 				self.runs_ta[run].trans_grid.LoadPlotsInSubdir()
+				self.sat_adc_dic[run] = self.runs_ta[run].saturated_ADC
+				self.bias_dic[run] = self.runs_ta[run].bias
 
 	def CompareAllPairs(self, histoname='ph2_test1', do_norm=False, plot_option='e hist'):
 		for it, (run1, run2) in enumerate(self.run_pairs_comb):
@@ -102,20 +99,10 @@ class CompareRuns:
 			if not self.histo.has_key(histo1name):
 				histo1 = tg1.histo[histoname]
 				histo1.SetNameTitle(histo1name, histo1name)
-				# pos1 = np.where(self.run_numbers == run1)[0][0]
-				# histo1.FindObject('stats').SetX1NDC((hspace * (self.numruns - 2.0 * pos1) + pos1) / self.numruns)
-				# histo1.FindObject('stats').SetX2NDC((hspace * (self.numruns - 2.0 * (pos1 + 1)) + pos1 + 1) / self.numruns)
-				# histo1.FindObject('stats').SetY2NDC(1 - vspace)
-				# histo1.FindObject('stats').SetY1NDC(1 - vspace - 0.3)
 				self.histo[histo1name] = histo1
 			if not self.histo.has_key(histo2name):
 				histo2 = tg2.histo[histoname]
 				histo2.SetNameTitle(histo2name, histo2name)
-				# pos2 = np.where(self.run_numbers == run2)[0][0]
-				# histo2.FindObject('stats').SetX1NDC((hspace * (self.numruns - 2.0 * pos2) + pos2) / self.numruns)
-				# histo2.FindObject('stats').SetX2NDC((hspace * (self.numruns - 2.0 * (pos2 + 1)) + pos2 + 1) / self.numruns)
-				# histo2.FindObject('stats').SetY2NDC(1 - vspace)
-				# histo2.FindObject('stats').SetY1NDC(1 - vspace - 0.3)
 				self.histo[histo2name] = histo2
 			histo1 = self.histo[histo1name].Clone(histoname + '_{r1}_not{r2}'.format(r1=run1, r2=run2) + suffix)
 			histo2 = self.histo[histo2name].Clone(histoname + '_{r2}_not{r1}'.format(r1=run1, r2=run2) + suffix)
@@ -154,16 +141,22 @@ class CompareRuns:
 			self.stuff.append(histo1)
 			self.stuff.append(histo2)
 
-	def PlotSaturationEvents(self, histoname=''):
+	def PlotSaturationEvents(self):
 		tg_dic = {run: self.runs_ta[run].trans_grid for run in self.run_numbers}
 		saturated = {}
 		saturated_err = {}
 		not_saturated = {}
 		not_saturated_err = {}
+		all_cells_hits = {}
+		all_cells_hits_err = {}
 		saturated_norm = {}
 		saturated_err_norm = {}
 		not_saturated_norm = {}
 		not_saturated_err_norm = {}
+		saturated_norm_tracks = {}
+		saturated_norm_tracks_err = {}
+		not_saturated_norm_tracks = {}
+		not_saturated_norm_tracks_err = {}
 
 		saturated_cuts = {}
 		not_saturated_cuts = {}
@@ -172,19 +165,29 @@ class CompareRuns:
 			satChs = '(' + '||'.join(['(diaChADC[clusterChannel{i}]==4095)'.format(i=i) for i in xrange(num_strips_tree)]) + ')'
 			notSatChs = '(' + '&&'.join(['(diaChADC[clusterChannel{i}]<4095)'.format(i=i) for i in xrange(num_strips_tree)]) + ')'
 			areaCut = '({c})'.format(c=tg.gridAreas.goodAreasCutNames_simplified_diamond)
+			allCells = '(({c})||({nc}))'.format(c=tg.gridAreas.goodAreasCutNames_simplified_diamond, nc=tg.gridAreas.badAreasCutNames_simplified_diamond)
 			listSat = ['(transparentEvent)', satChs, areaCut]
 			listNoSat = ['(transparentEvent)', notSatChs, areaCut]
+			listAllCells = ['(transparentEvent)', allCells]
 
 			saturated[run] = tg.trans_tree.Draw('clusterChargeN', '(' + '&&'.join(listSat) + ')', 'goff')
 			saturated_err[run] = np.sqrt(saturated[run])
 			not_saturated[run] = tg.trans_tree.Draw('clusterChargeN', '(' + '&&'.join(listNoSat) + ')', 'goff')
 			not_saturated_err[run] = np.sqrt(not_saturated[run])
+			all_cells_hits[run] = tg.trans_tree.Draw('clusterChargeN', '(' + '&&'.join(listAllCells) + ')', 'goff')
+			all_cells_hits_err[run] = np.sqrt(all_cells_hits[run])
 
 			saturated_norm[run] = np.divide(saturated[run], saturated[run] + not_saturated[run], dtype='f8')
-			saturated_err_norm[run] = np.divide(saturated_err[run] * not_saturated[run], np.power(saturated[run] + not_saturated[run], 2, dtype='f8'), dtype='f8')
+			saturated_err_norm[run] = np.divide(np.sqrt(np.power(not_saturated[run] * saturated_err[run], 2, dtype='f8') + np.power(saturated[run] * not_saturated_err[run], 2, dtype='f8'), dtype='f8'), np.power(saturated[run] + not_saturated[run], 2), dtype='f8')
 			not_saturated_norm[run] = np.divide(not_saturated[run], saturated[run] + not_saturated[run], dtype='f8')
-			not_saturated_err_norm[run] = np.divide(not_saturated_err[run] * saturated[run], np.power(saturated[run] + not_saturated[run], 2, dtype='f8'), dtype='f8')
-		xvals = np.array(self.run_numbers, 'f8')
+			not_saturated_err_norm[run] = np.divide(np.sqrt(np.power(not_saturated[run] * saturated_err[run], 2, dtype='f8') + np.power(saturated[run] * not_saturated_err[run], 2, dtype='f8'), dtype='f8'), np.power(saturated[run] + not_saturated[run], 2), dtype='f8')
+
+			saturated_norm_tracks[run] = np.divide(saturated[run], all_cells_hits[run], dtype='f8')
+			saturated_norm_tracks_err[run] = np.divide(np.sqrt(np.power(saturated_err[run], 2, dtype='f8') + np.power(np.divide(saturated[run] * all_cells_hits_err[run], all_cells_hits[run], dtype='f8'), 2, dtype='f8'), dtype='f8'), all_cells_hits[run], dtype='f8')
+			not_saturated_norm_tracks[run] = np.divide(not_saturated[run], all_cells_hits[run], dtype='f8')
+			not_saturated_norm_tracks_err[run] = np.divide(np.sqrt(np.power(not_saturated_err[run], 2, dtype='f8') + np.power(np.divide(not_saturated[run] * all_cells_hits_err[run], all_cells_hits[run], dtype='f8'), 2, dtype='f8'), dtype='f8'), all_cells_hits[run], dtype='f8')
+
+		xvals = np.array([self.bias_dic[run] for run in self.run_numbers], 'f8')
 
 		y_sat_values = np.array([saturated[run] for run in self.run_numbers], 'f8')
 		y_sat_values_err = np.array([saturated_err[run] for run in self.run_numbers], 'f8')
@@ -196,36 +199,75 @@ class CompareRuns:
 		y_not_sat_values_norm = np.array([not_saturated_norm[run] for run in self.run_numbers], 'f8')
 		y_not_sat_values_err_norm = np.array([not_saturated_err_norm[run] for run in self.run_numbers], 'f8')
 
+		y_sat_values_tracks_norm = np.array([saturated_norm_tracks[run] for run in self.run_numbers], 'f8')
+		y_sat_values_err_tracks_norm = np.array([saturated_norm_tracks_err[run] for run in self.run_numbers], 'f8')
+		y_not_sat_values_tracks_norm = np.array([not_saturated_norm_tracks[run] for run in self.run_numbers], 'f8')
+		y_not_sat_values_err_tracks_norm = np.array([not_saturated_norm_tracks_err[run] for run in self.run_numbers], 'f8')
+
+		max0 = np.max([y_sat_values.max() + 2 * y_sat_values_err.max(), y_not_sat_values.max() + 2 * y_not_sat_values_err.max()])
+		min0 = 0
+		# maxn = np.min([1, 2 * np.max([y_sat_values_norm.max() + y_sat_values_err_norm.max(), y_not_sat_values_norm.max() + y_not_sat_values_err_norm.max()])])
+		# minn = np.max([0, 2 * np.min([y_sat_values_norm.min() - y_sat_values_err_norm.max(), y_not_sat_values_norm.min() - y_not_sat_values_err_norm.max()]) - 1])
+		# maxnt = np.min([1, 2 * np.max([y_sat_values_tracks_norm.max() + y_sat_values_err_tracks_norm.max(), y_not_sat_values_tracks_norm.max() + y_not_sat_values_err_tracks_norm.max()])])
+		# minnt = np.max([0, 2 * np.min([y_sat_values_tracks_norm.min() - y_sat_values_err_tracks_norm.max(), y_not_sat_values_tracks_norm.min() - y_not_sat_values_err_tracks_norm.max()]) - 1])
+		maxn = np.min([1, np.max([y_sat_values_norm.max() + 2 * y_sat_values_err_norm.max(), y_not_sat_values_norm.max() + 2 * y_not_sat_values_err_norm.max()])])
+		minn = np.max([0, np.min([y_sat_values_norm.min() - 2 * y_sat_values_err_norm.max(), y_not_sat_values_norm.min() - 2 * y_not_sat_values_err_norm.max()])])
+		maxnt = np.min([1, np.max([y_sat_values_tracks_norm.max() + 2 * y_sat_values_err_tracks_norm.max(), y_not_sat_values_tracks_norm.max() + 2 * y_not_sat_values_err_tracks_norm.max()])])
+		minnt = np.max([0, np.min([y_sat_values_tracks_norm.min() - 2 * y_sat_values_err_tracks_norm.max(), y_not_sat_values_tracks_norm.min() - 2 * y_not_sat_values_err_tracks_norm.max()])])
 		graph_sat = ro.TGraphErrors(len(self.run_numbers), xvals, y_sat_values, np.zeros(len(self.run_numbers), 'f8'), y_sat_values_err)
 		satname = 'SaturatedAfterCuts'
 		graph_sat.SetNameTitle(satname, satname)
-		graph_sat.GetXaxis().SetTitle('run')
+		graph_sat.GetXaxis().SetTitle('bias [V]')
 		graph_sat.GetYaxis().SetTitle('# events')
-		graph_sat.SetMarkerStyle(7)
+		graph_sat.GetYaxis().SetRangeUser(min0, max0)
+		graph_sat.SetMarkerStyle(8)
 		graph_sat.SetMarkerColor(ro.kRed)
+		graph_sat.SetLineColor(ro.kRed)
 		graph_nosat = ro.TGraphErrors(len(self.run_numbers), xvals, y_not_sat_values, np.zeros(len(self.run_numbers), 'f8'), y_not_sat_values_err)
 		notsatname = 'NotSaturatedAfterCuts'
 		graph_nosat.SetNameTitle(notsatname, notsatname)
-		graph_nosat.GetXaxis().SetTitle('run')
+		graph_nosat.GetXaxis().SetTitle('bias [V]')
 		graph_nosat.GetYaxis().SetTitle('# events')
-		graph_nosat.SetMarkerStyle(7)
+		graph_nosat.GetYaxis().SetRangeUser(min0, max0)
+		graph_nosat.SetMarkerStyle(8)
 		graph_nosat.SetMarkerColor(ro.kBlue)
+		graph_nosat.SetLineColor(ro.kBlue)
 		graph_sat_norm = ro.TGraphErrors(len(self.run_numbers), xvals, y_sat_values_norm, np.zeros(len(self.run_numbers), 'f8'), y_sat_values_err_norm)
 		satnamenorm = 'SaturatedAfterCutsNorm'
 		graph_sat_norm.SetNameTitle(satnamenorm, satnamenorm)
-		graph_sat_norm.GetXaxis().SetTitle('run')
+		graph_sat_norm.GetXaxis().SetTitle('bias [V]')
 		graph_sat_norm.GetYaxis().SetTitle('norm')
-		graph_sat_norm.GetYaxis().SetRangeUser(0, 1)
-		graph_sat_norm.SetMarkerStyle(7)
+		graph_sat_norm.GetYaxis().SetRangeUser(minn, maxn)
+		graph_sat_norm.SetMarkerStyle(8)
 		graph_sat_norm.SetMarkerColor(ro.kRed)
+		graph_sat_norm.SetLineColor(ro.kRed)
 		graph_nosat_norm = ro.TGraphErrors(len(self.run_numbers), xvals, y_not_sat_values_norm, np.zeros(len(self.run_numbers), 'f8'), y_not_sat_values_err_norm)
 		notsatnamenorm = 'NotSaturatedAfterCutsNorm'
 		graph_nosat_norm.SetNameTitle(notsatnamenorm, notsatnamenorm)
-		graph_nosat_norm.GetXaxis().SetTitle('run')
+		graph_nosat_norm.GetXaxis().SetTitle('bias [V]')
 		graph_nosat_norm.GetYaxis().SetTitle('norm')
-		graph_nosat_norm.GetYaxis().SetRangeUser(0, 1)
-		graph_nosat_norm.SetMarkerStyle(7)
+		graph_nosat_norm.GetYaxis().SetRangeUser(minn, maxn)
+		graph_nosat_norm.SetMarkerStyle(8)
 		graph_nosat_norm.SetMarkerColor(ro.kBlue)
+		graph_nosat_norm.SetLineColor(ro.kBlue)
+		graph_sat_norm_tracks = ro.TGraphErrors(len(self.run_numbers), xvals, y_sat_values_tracks_norm, np.zeros(len(self.run_numbers), 'f8'), y_sat_values_err_tracks_norm)
+		satnamenormtracks = 'SaturatedAfterCutsDiaTracksNorm'
+		graph_sat_norm_tracks.SetNameTitle(satnamenormtracks, satnamenormtracks)
+		graph_sat_norm_tracks.GetXaxis().SetTitle('bias [V]')
+		graph_sat_norm_tracks.GetYaxis().SetTitle('dia_tracks_norm')
+		graph_sat_norm_tracks.GetYaxis().SetRangeUser(minnt, maxnt)
+		graph_sat_norm_tracks.SetMarkerStyle(8)
+		graph_sat_norm_tracks.SetMarkerColor(ro.kRed)
+		graph_sat_norm_tracks.SetLineColor(ro.kRed)
+		graph_nosat_norm_tracks = ro.TGraphErrors(len(self.run_numbers), xvals, y_not_sat_values_tracks_norm, np.zeros(len(self.run_numbers), 'f8'), y_not_sat_values_err_tracks_norm)
+		notsatnamenormtracks = 'NotSaturatedAfterCutsDiaTracksNorm'
+		graph_nosat_norm_tracks.SetNameTitle(notsatnamenormtracks, notsatnamenormtracks)
+		graph_nosat_norm_tracks.GetXaxis().SetTitle('bias [V]')
+		graph_nosat_norm_tracks.GetYaxis().SetTitle('dia_tracks_norm')
+		graph_nosat_norm_tracks.GetYaxis().SetRangeUser(minnt, maxnt)
+		graph_nosat_norm_tracks.SetMarkerStyle(8)
+		graph_nosat_norm_tracks.SetMarkerColor(ro.kBlue)
+		graph_nosat_norm_tracks.SetLineColor(ro.kBlue)
 
 		self.canvas[satname] = ro.TCanvas('c_' + satname, 'c_' + satname, 1)
 		self.canvas[satname].SetGridx()
@@ -251,10 +293,24 @@ class CompareRuns:
 		self.canvas[notsatnamenorm].SetTicky()
 		graph_nosat_norm.Draw('ALP')
 
+		self.canvas[satnamenormtracks] = ro.TCanvas('c_' + satnamenormtracks, 'c_' + satnamenormtracks, 1)
+		self.canvas[satnamenormtracks].SetGridx()
+		self.canvas[satnamenormtracks].SetGridy()
+		self.canvas[satnamenormtracks].SetTicky()
+		graph_sat_norm_tracks.Draw('ALP')
+
+		self.canvas[notsatnamenormtracks] = ro.TCanvas('c_' + notsatnamenormtracks, 'c_' + notsatnamenormtracks, 1)
+		self.canvas[notsatnamenormtracks].SetGridx()
+		self.canvas[notsatnamenormtracks].SetGridy()
+		self.canvas[notsatnamenormtracks].SetTicky()
+		graph_nosat_norm_tracks.Draw('ALP')
+
 		self.stuff.append(graph_sat)
 		self.stuff.append(graph_nosat)
 		self.stuff.append(graph_sat_norm)
 		self.stuff.append(graph_nosat_norm)
+		self.stuff.append(graph_sat_norm_tracks)
+		self.stuff.append(graph_nosat_norm_tracks)
 
 	def SaveCanvasInList(self, list):
 		if not os.path.isdir('{d}/{sd}'.format(d=self.outdir, sd=self.subdir)):

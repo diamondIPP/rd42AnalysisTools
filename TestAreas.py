@@ -37,6 +37,8 @@ class TestAreas:
 			self.ReadConfigFile()
 		self.trans_grid = TransparentGrid(self.dir, self.run, self.cellsize)
 		self.trans_grid.pkl_sbdir = 'test' + str(self.num)
+		self.bias = self.trans_grid.bias
+		self.saturated_ADC = self.trans_grid.saturated_ADC
 		self.num_strips = self.trans_grid.num_strips if self.trans_grid.num_strips != 0 else 3
 		self.cluster_size = self.trans_grid.num_strips if self.trans_grid.num_strips != 0 else 3
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
@@ -239,16 +241,16 @@ class TestAreas:
 
 	def PlotSaturation(self):
 		for c in xrange(1, self.cluster_size):
-			self.trans_grid.DrawPHGoodAreas('ph{c}_saturated'.format(c=c), 'clusterCharge{c}'.format(c=c), '((transparentEvent)&&((diaChADC[clusterChannel0]==4095)||(diaChADC[clusterChannel1]==4095)||(diaChADC[clusterChannel2]==4095)))')
+			self.trans_grid.DrawPHGoodAreas('ph{c}_saturated'.format(c=c), 'clusterCharge{c}'.format(c=c), '((transparentEvent)&&((diaChADC[clusterChannel0]=={s})||(diaChADC[clusterChannel1]=={s})||(diaChADC[clusterChannel2]=={s})))'.format(s=self.saturated_ADC))
 			self.trans_grid.canvas['ph{c}_saturated'.format(c=c)].SetWindowPosition(self.w, self.w)
 			self.w += self.window_shift
-			self.trans_grid.DrawPHGoodAreas('ph{c}_not_saturated'.format(c=c), 'clusterCharge{c}'.format(c=c), '((transparentEvent)&&((diaChADC[clusterChannel0]!=4095)&&(diaChADC[clusterChannel1]!=4095)&&(diaChADC[clusterChannel2]!=4095)))')
+			self.trans_grid.DrawPHGoodAreas('ph{c}_not_saturated'.format(c=c), 'clusterCharge{c}'.format(c=c), '((transparentEvent)&&((diaChADC[clusterChannel0]<{s})&&(diaChADC[clusterChannel1]<{s})&&(diaChADC[clusterChannel2]<{s})))'.format(s=self.saturated_ADC))
 			self.trans_grid.canvas['ph{c}_not_saturated'.format(c=c)].SetWindowPosition(self.w, self.w)
 			self.w += self.window_shift
-		self.trans_grid.DrawPHGoodAreas('ph{c}_saturated'.format(c='N'), 'clusterCharge{c}'.format(c='N'), '((transparentEvent)&&((diaChADC[clusterChannel0]==4095)||(diaChADC[clusterChannel1]==4095)||(diaChADC[clusterChannel2]==4095)))')
+		self.trans_grid.DrawPHGoodAreas('ph{c}_saturated'.format(c='N'), 'clusterCharge{c}'.format(c='N'), '((transparentEvent)&&((diaChADC[clusterChannel0]=={s})||(diaChADC[clusterChannel1]=={s})||(diaChADC[clusterChannel2]=={s})))'.format(s=self.saturated_ADC))
 		self.trans_grid.canvas['ph{c}_saturated'.format(c='N')].SetWindowPosition(self.w, self.w)
 		self.w += self.window_shift
-		self.trans_grid.DrawPHGoodAreas('ph{c}_not_saturated'.format(c='N'), 'clusterCharge{c}'.format(c='N'), '((transparentEvent)&&((diaChADC[clusterChannel0]!=4095)&&(diaChADC[clusterChannel1]!=4095)&&(diaChADC[clusterChannel2]!=4095)))')
+		self.trans_grid.DrawPHGoodAreas('ph{c}_not_saturated'.format(c='N'), 'clusterCharge{c}'.format(c='N'), '((transparentEvent)&&((diaChADC[clusterChannel0]<{s})&&(diaChADC[clusterChannel1]<{s})&&(diaChADC[clusterChannel2]<{s})))'.format(s=self.saturated_ADC))
 		self.trans_grid.canvas['ph{c}_not_saturated'.format(c='N')].SetWindowPosition(self.w, self.w)
 		self.w += self.window_shift
 
@@ -601,6 +603,22 @@ class TestAreas:
 		if do_save:
 			self.SaveCanvas()
 
+	def SetTransparentGrid(self):
+		self.trans_grid.SetLines()
+		self.trans_grid.CreateTCutGs()
+		if self.trans_grid.saturated_ADC != 0:
+			self.saturated_ADC = self.trans_grid.saturated_ADC
+		else:
+			self.saturated_ADC = Get_From_User_Value('saturation_ADC for run ' + str(self.run), 'int', self.trans_grid.saturated_ADC, True)
+			self.trans_grid.saturated_ADC = self.saturated_ADC
+			self.trans_grid.SavePickle()
+		if self.trans_grid.bias != 0:
+			self.bias = self.trans_grid.bias
+		else:
+			self.bias = Get_From_User_Value('bias for run ' + str(self.run), 'float', self.trans_grid.bias, update=True)
+			self.trans_grid.bias = self.bias
+			self.trans_grid.SavePickle()
+
 if __name__ == '__main__':
 	parser = OptionParser()
 	parser.add_option('-r', '--run', dest='run', type='int', default=0, help='run number to be analysed (e.g. 25209)')
@@ -613,8 +631,7 @@ if __name__ == '__main__':
 	config = str(options.config)
 
 	t = TestAreas(config, run)
-	t.trans_grid.SetLines()
-	t.trans_grid.CreateTCutGs()
+	t.SetTransparentGrid()
 	t.SetTest()
 	if t.trans_grid.loaded_pickle:
 		t.trans_grid.LoadPickle()
