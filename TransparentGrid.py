@@ -311,9 +311,9 @@ class TransparentGrid:
 		delta_x = self.col_pitch
 		# proj_width = self.row_info_diamond['pitch'] / 5.0  # in mum
 		proj_width = self.row_info_diamond['pitch']  # in mum
-		proj_bins = RoundInt(proj_width / self.cell_resolution)
+		proj_bins = RoundInt(float(proj_width) / self.cell_resolution)
 		proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
-		proj_low = int(RoundInt(RoundInt(self.row_info_diamond['pitch'] / self.cell_resolution, 'f8') / 2.0, 'f8') - (RoundInt(proj_bins / 2.0, 'f8') - 1) + 1)
+		proj_low = int(RoundInt(RoundInt(self.row_info_diamond['pitch'] / float(self.cell_resolution), 'f8') / 2.0, 'f8') - (RoundInt(proj_bins / 2.0, 'f8') - 1) + 1)
 		proj_high = proj_low + proj_bins - 1
 		iteration = 0
 		min_delta = self.col_pitch
@@ -341,9 +341,9 @@ class TransparentGrid:
 		self.row_info_diamond['y_off'] += 3.0 * self.row_info_diamond['pitch'] / 2.0
 		delta_y = self.row_info_diamond['pitch']
 		proj_width = self.col_pitch / 5.0  # in mum
-		proj_bins = RoundInt(proj_width / self.cell_resolution)
+		proj_bins = RoundInt(float(proj_width) / self.cell_resolution)
 		proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
-		proj_low = int(RoundInt(RoundInt(self.col_pitch / self.cell_resolution, 'f8') / 2.0, 'f8') - (RoundInt(proj_bins / 2.0, 'f8') - 1) + 1)
+		proj_low = int(RoundInt(RoundInt(float(self.col_pitch) / self.cell_resolution, 'f8') / 2.0, 'f8') - (RoundInt(proj_bins / 2.0, 'f8') - 1) + 1)
 		proj_high = proj_low + proj_bins - 1
 		iteration = 0
 		min_delta = self.row_info_diamond['pitch']
@@ -507,7 +507,7 @@ class TransparentGrid:
 				self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
 
 	def CreateGridText(self):
-		self.gridTextDiamond = ro.TH2F('gridText_diamond', 'gridText_diamond', int(RoundInt(128.0 * self.bins_per_ch_x, 'f8') + 2), -0.5 - 1.0 / self.bins_per_ch_x, 127.5 + 1.0 / self.bins_per_ch_x, int(RoundInt(256 * self.bins_per_ch_y, 'f8') + 2), self.row_info_diamond['0'] - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'] - (float(self.row_info_diamond['pitch']) / self.bins_per_ch_y), self.row_info_diamond['0'] + (256 - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'] + (float(self.row_info_diamond['pitch']) / self.bins_per_ch_y))
+		self.gridTextDiamond = ro.TH2F('gridText_diamond', 'gridText_diamond', int(RoundInt(128.0 * self.bins_per_ch_x, 'f8') + 2), -0.5 - 1.0 / self.bins_per_ch_x, 127.5 + 1.0 / self.bins_per_ch_x, int(RoundInt(256 * self.bins_per_ch_y, 'f8') + 2), self.row_info_diamond['0'] - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'] - (float(self.row_info_diamond['pitch']) / self.bins_per_ch_y), self.row_info_diamond['0'] + (256 - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'] + (float(self.row_info_diamond['pitch']) / self.bins_per_ch_y))
 		x0, x1, y0, y1 = np.zeros(1, 'f8'), np.zeros(1, 'f8'), np.zeros(1, 'f8'), np.zeros(1, 'f8')
 		for col in xrange(0, self.num_cols):
 			self.tcutgs_diamond[col][0].GetPoint(0, x0, y0)
@@ -521,7 +521,7 @@ class TransparentGrid:
 
 	def DrawProfile2DDiamond(self, name, varz='clusterChargeN', cuts='', draw_top_borders=False, transp_ev=True, plot_option='prof colz'):
 		xmin, xmax, deltax, xname = -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch'
-		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
+		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
 		if draw_top_borders:
 			self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
 		else:
@@ -536,7 +536,7 @@ class TransparentGrid:
 
 	def DrawProfile2DDiamondChannel(self, name, varx='clusterChannel0', xname='C0', varz='clusterChargeN', cuts='', draw_top_borders=False, transp_ev=True, plot_option='prof colz'):
 		xmin, xmax, deltax = -0.5, 127.5, 1.0
-		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
+		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
 		if draw_top_borders:
 			self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
 		else:
@@ -548,7 +548,7 @@ class TransparentGrid:
 		if name in self.profile.keys():
 			self.profile[name].Delete()
 
-		self.profile[name] = ro.TProfile2D('h_' + name, 'h_' + name, int(RoundInt((xmax - xmin)/deltax, 'f8') + 2), xmin - deltax, xmax + deltax, int(RoundInt((ymax - ymin)/deltay, 'f8') + 2), ymin - deltay, ymax + deltay)
+		self.profile[name] = ro.TProfile2D('h_' + name, 'h_' + name, int(RoundInt((xmax - xmin)/float(deltax), 'f8') + 2), xmin - deltax, xmax + deltax, int(RoundInt((ymax - ymin)/float(deltay), 'f8') + 2), ymin - deltay, ymax + deltay)
 		self.profile[name].GetXaxis().SetTitle(xname)
 		self.profile[name].GetYaxis().SetTitle(yname)
 		self.profile[name].GetZaxis().SetTitle(zname)
@@ -598,7 +598,7 @@ class TransparentGrid:
 			SetDefault2DStats(self.histo[name_occupancy])
 
 	def Draw2DHistoDiamond(self, name, cuts='', transp_ev=True):
-		self.DrawHisto2D(name, -0.5, 127.5, 1.0 / (self.bins_per_ch_x), 'dia X ch', self.row_info_diamond['0'] - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - RoundInt(self.row_info_diamond['0'] / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'],
+		self.DrawHisto2D(name, -0.5, 127.5, 1.0 / (self.bins_per_ch_x), 'dia X ch', self.row_info_diamond['0'] - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'],
 		                 float(self.row_info_diamond['pitch']) / (self.bins_per_ch_y), 'dia Y [#mum]', 'diaChXPred', 'diaChYPred', cuts, transp_ev)
 
 	def DrawHisto2D(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, cuts='', transp_ev=True):
@@ -622,7 +622,7 @@ class TransparentGrid:
 	def DrawPH(self, name, xmin, xmax, deltax, var='clusterChargeN', varname='PH[ADC]', cuts='', transp_ev=True, option='e hist'):
 		ro.TFormula.SetMaxima(100000)
 		# ro.gStyle.SetOptStat('neMmRruo')
-		self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, RoundInt((xmax - xmin) / deltax), xmin, xmax)
+		self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, RoundInt((xmax - xmin) / float(deltax)), xmin, xmax)
 		self.histo[name].GetXaxis().SetTitle(varname)
 		self.histo[name].GetYaxis().SetTitle('entries')
 		list_cuts = ['transparentEvent'] if transp_ev else []

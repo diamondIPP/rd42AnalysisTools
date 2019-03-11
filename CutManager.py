@@ -10,3 +10,7 @@ class CutManager:
 		self.selected_cells_centers = ''
 		self.not_selected_cells_centers = ''
 		self.no_up_down_borders = '(({l}<=diaChYPred)&&(diaChYPred<={h}))'
+		self.neg_snr_cut = {'ph1'}
+
+	def GetThCut(self, var='clusterChargeN', th=100):
+		return '({v}>={t})'.format(v=var, t=th)
