@@ -18,7 +18,12 @@ def IsFloat(f):
 		return False
 
 def RoundInt(n, nptype='int32'):
-	return np.floor(np.add(n, 0.5, dtype='f8'), dtype='f8').astype(nptype)
+	val = np.floor(np.add(n, 0.5, dtype='f8'), dtype='f8').astype(nptype)
+	if nptype.lower().startswith('i'):
+		return int(val)
+	elif nptype.lower().startswith('f'):
+		return float(val)
+	return val
 
 def IsOnlyInt(f):
 	if IsFloat(f):

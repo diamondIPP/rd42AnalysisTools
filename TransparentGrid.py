@@ -622,7 +622,7 @@ class TransparentGrid:
 	def DrawPH(self, name, xmin, xmax, deltax, var='clusterChargeN', varname='PH[ADC]', cuts='', transp_ev=True, option='e hist'):
 		ro.TFormula.SetMaxima(100000)
 		# ro.gStyle.SetOptStat('neMmRruo')
-		self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, RoundInt((xmax - xmin) / float(deltax)), xmin, xmax)
+		self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, int(RoundInt((xmax - xmin) / float(deltax))), xmin, xmax)
 		self.histo[name].GetXaxis().SetTitle(varname)
 		self.histo[name].GetYaxis().SetTitle('entries')
 		list_cuts = ['transparentEvent'] if transp_ev else []

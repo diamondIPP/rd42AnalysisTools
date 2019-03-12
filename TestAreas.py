@@ -21,8 +21,9 @@ class TestAreas:
 		self.threshold = 800
 		self.do_threshold = False
 		self.window_shift = 5
-		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.125
-		self.min_snr, self.max_snr = -64.25, 64.25
+		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -65, 1, 2
+		# self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.125
+		self.min_snr, self.max_snr = -65, 65
 		self.neg_cut_lines = {}
 		self.trash = []
 		self.w = 0
@@ -134,7 +135,7 @@ class TestAreas:
 			list_cuts_noise_snr.append(self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
 		temp_cut_noise_snr = '&&'.join(list_cuts_noise_snr)
 		temp_cut_noise_adc = '&&'.join(list_cuts_noise_adc)
-		lastbin = int(np.floor((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr) + 0.5))
+		lastbin = RoundInt((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr))
 		tempmin, tempmax, tempbins = self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins
 		temph = ro.TH1F('temph0', 'temph0', 100, -32, 32)
 		self.trans_grid.trans_tree.Draw('diaChSignal>>temph0', temp_cut_noise_adc, 'goff')
@@ -159,16 +160,16 @@ class TestAreas:
 			list_cuts_noise_snr_ci.append(self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
 		temp_cut_clusters = {i: '&&'.join(list_cut) for i, list_cut in list_cuts_clusters_snr_ci.iteritems()}
 		temp_cut_noise = '&&'.join(list_cuts_noise_snr_ci)
-		lastbin = int(np.floor((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr) + 0.5))
+		lastbin = RoundInt((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr))
 		tempmin, tempmax, tempbins = self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins
 		suffix = self.suffix[cells]
 		if cells == 'all':
 			temp = [self.trans_grid.DrawPH('ph_c{n}_{c}'.format(n=i, c=suffix), self.min_snr, self.max_snr, self.delta_snr, var='diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='PH closestStrip{n} (SNR)'.format(n=i), cuts=temp_cut_clusters[i]) for i in xrange(self.cluster_size)]
 		elif cells == 'good':
-			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr, self.max_snr, int(np.floor((self.max_snr - self.min_snr) / float(self.delta_snr) + 0.5))
+			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr, self.max_snr, RoundInt((self.max_snr - self.min_snr) / float(self.delta_snr))
 			temp = [self.trans_grid.DrawPHGoodAreas('ph_c{n}_{c}'.format(n=i, c=suffix), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond', varname='PH closestStrip{n} (SNR)'.format(n=i)) for i in xrange(self.cluster_size)]
 		elif cells == 'bad':
-			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr, self.max_snr, int(np.floor((self.max_snr - self.min_snr) / float(self.delta_snr) + 0.5))
+			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr, self.max_snr, RoundInt((self.max_snr - self.min_snr) / float(self.delta_snr))
 			temp = [self.trans_grid.DrawPHBadAreas('ph_c{n}_{c}'.format(n=i, c=suffix), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond', varname='PH closestStrip{n} (SNR)'.format(n=i)) for i in xrange(self.cluster_size)]
 		self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = tempmin, tempmax, tempbins
 		temp = [self.trans_grid.DrawPH('signal_noise_c{n}_{c}'.format(n=i, c=suffix), self.min_snr, self.max_snr, self.delta_snr, 'diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='goff') for i in xrange(self.cluster_size)]
@@ -264,16 +265,16 @@ class TestAreas:
 			list_cuts_noise.append(self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
 		temp_cut_clusters = {i: '&&'.join(list_cut) for i, list_cut in list_cuts_clusters.iteritems()}
 		temp_cut_noise = '&&'.join(list_cuts_noise)
-		lastbin = int(np.floor((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr) + 0.5))
+		lastbin = RoundInt((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr))
 		tempmin, tempmax, tempbins = self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins
 		suffix = 'not_selection' if cells == 'bad' else 'selection' if cells == 'good' else 'all'
 		if cells == 'all':
 			temp = [self.trans_grid.DrawPH('ph_neg_c{n}_{c}'.format(n=i, c=suffix), self.min_snr_neg, self.max_snr_neg, self.delta_snr, var='diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='PH closestStrip{n} (SNR)'.format(n=i), cuts=temp_cut_clusters[i]) for i in xrange(self.cluster_size)]
 		elif cells == 'good':
-			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr_neg, self.max_snr_neg, int(np.floor((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr) + 0.5))
+			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr_neg, self.max_snr_neg, RoundInt((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr))
 			temp = [self.trans_grid.DrawPHGoodAreas('ph_neg_c{n}_{c}'.format(n=i, c=suffix), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond', varname='PH closestStrip{n} (SNR)'.format(n=i)) for i in xrange(self.cluster_size)]
 		elif cells == 'bad':
-			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr_neg, self.max_snr_neg, int(np.floor((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr) + 0.5))
+			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr_neg, self.max_snr_neg, RoundInt((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr))
 			temp = [self.trans_grid.DrawPHBadAreas('ph_neg_c{n}_{c}'.format(n=i, c=suffix), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond', varname='PH closestStrip{n} (SNR)'.format(n=i)) for i in xrange(self.cluster_size)]
 		self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = tempmin, tempmax, tempbins
 		temp = [self.trans_grid.DrawPH('signal_noise_c{n}_{c}'.format(n=i, c=suffix), self.min_snr_neg, self.max_snr_neg, self.delta_snr, 'diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='goff') for i in xrange(self.cluster_size)]
@@ -351,8 +352,8 @@ class TestAreas:
 			self.trans_grid.DrawTCutGs('ph_neg_map_c{n}'.format(n=c, c=suffix), 'diamond')
 			self.trans_grid.DrawGoodAreasDiamondCenters('ph_neg_map_c{n}'.format(n=c, c=suffix))
 			self.w += self.window_shift
-			self.trans_grid.DrawProfile2DNoTopBottomBorders('signal_neg_map_c{n}'.format(n=c, c=suffix), -0.5, 127.5, 1, 'dia X ch', self.trans_grid.row_info_diamond['0']-np.floor(self.trans_grid.row_info_diamond['0'] / self.trans_grid.row_info_diamond['pitch'] + 0.5) * self.trans_grid.row_info_diamond['pitch'],
-			                                                self.trans_grid.row_info_diamond['0'] + (256 - np.floor(self.trans_grid.row_info_diamond['0'] / self.trans_grid.row_info_diamond['pitch'] + 0.5)) * self.trans_grid.row_info_diamond['pitch'], float(self.trans_grid.row_info_diamond['pitch'])/self.trans_grid.bins_per_ch_y,
+			self.trans_grid.DrawProfile2DNoTopBottomBorders('signal_neg_map_c{n}'.format(n=c, c=suffix), -0.5, 127.5, 1, 'dia X ch', self.trans_grid.row_info_diamond['0']-RoundInt(self.trans_grid.row_info_diamond['0'] / self.trans_grid.row_info_diamond['pitch'], 'f8') * self.trans_grid.row_info_diamond['pitch'],
+			                                                self.trans_grid.row_info_diamond['0'] + (256 - RoundInt(self.trans_grid.row_info_diamond['0'] / self.trans_grid.row_info_diamond['pitch'], 'f8')) * self.trans_grid.row_info_diamond['pitch'], float(self.trans_grid.row_info_diamond['pitch'])/self.trans_grid.bins_per_ch_y,
 			                                                'sil pred Y [#mum]', 'diaChannels', 'diaChYPred', 'diaChSignal', 'Ch Signal [ADC]', '(diaChannels==clusterChannel{i})&&(diaChSignal/diaChPedSigmaCmc<=-{c})'.format(i=c, c=self.trans_grid.neg_cut))
 			self.trans_grid.canvas['signal_neg_map_c{n}'.format(n=c, c=suffix)].SetWindowPosition(self.w, self.w)
 			self.trans_grid.profile['signal_neg_map_c{n}'.format(n=c, c=suffix)].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)

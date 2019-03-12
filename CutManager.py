@@ -14,3 +14,4 @@ class CutManager:
 
 	def GetThCut(self, var='clusterChargeN', th=100):
 		return '({v}>={t})'.format(v=var, t=th)
+
