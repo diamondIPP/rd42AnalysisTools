@@ -68,20 +68,21 @@ class CutManager:
 				if 'PH_Ch{i}'.format(i=chi) in self.not_neg_snr_ph_ch.keys():
 					list_not_neg_snr_phN_ch.append(self.not_neg_snr_ph_ch['PH_Ch{i}'.format(i=chi)])
 					list_not_neg_adc_phN_ch.append(self.not_neg_adc_ph_ch['PH_Ch{i}'.format(i=chi)])
-				if 'PH_Ch{i}'.format(i=chi) in self.neg_snr_ph_h.keys():
-					list_neg_snr_phN_h.append(self.neg_snr_ph_h['PH_Ch{i}'.format(i=chi)])
-					list_neg_adc_phN_h.append(self.neg_adc_ph_h['PH_Ch{i}'.format(i=chi)])
-				if 'PH_Ch{i}'.format(i=chi) in self.not_neg_snr_ph_h.keys():
-					list_not_neg_snr_phN_h.append(self.not_neg_snr_ph_h['PH_Ch{i}'.format(i=chi)])
-					list_not_neg_adc_phN_h.append(self.not_neg_adc_ph_h['PH_Ch{i}'.format(i=chi)])
-		self.neg_snr_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_neg_snr_phN_ch) + ')' if len(list_neg_snr_phN_ch) > 0 else ''
-		self.neg_adc_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_neg_adc_phN_ch) + ')' if len(list_neg_adc_phN_ch) > 0 else ''
-		self.not_neg_snr_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_snr_phN_ch) + ')' if len(list_not_neg_snr_phN_ch) > 0 else ''
-		self.not_neg_adc_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_adc_phN_ch) + ')' if len(list_not_neg_adc_phN_ch) > 0 else ''
-		self.neg_snr_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_neg_snr_phN_h) + ')' if len(list_neg_snr_phN_h) > 0 else ''
-		self.neg_adc_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_neg_adc_phN_h) + ')' if len(list_neg_adc_phN_h) > 0 else ''
-		self.not_neg_snr_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_snr_phN_h) + ')' if len(list_not_neg_snr_phN_h) > 0 else ''
-		self.not_neg_adc_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_adc_phN_h) + ')' if len(list_not_neg_adc_phN_h) > 0 else ''
+				if 'PH_H{i}'.format(i=chi+1) in self.neg_snr_ph_h.keys():
+					list_neg_snr_phN_h.append(self.neg_snr_ph_h['PH_H{i}'.format(i=chi+1)])
+					list_neg_adc_phN_h.append(self.neg_adc_ph_h['PH_H{i}'.format(i=chi+1)])
+				if 'PH_H{i}'.format(i=chi+1) in self.not_neg_snr_ph_h.keys():
+					list_not_neg_snr_phN_h.append(self.not_neg_snr_ph_h['PH_Ch{i}'.format(i=chi+1)])
+					list_not_neg_adc_phN_h.append(self.not_neg_adc_ph_h['PH_Ch{i}'.format(i=chi+1)])
+                        ipdb.set_trace()
+		        self.neg_snr_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '||'.join(list_neg_snr_phN_ch) + ')' if len(list_neg_snr_phN_ch) > 0 else ''
+        		self.neg_adc_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '||'.join(list_neg_adc_phN_ch) + ')' if len(list_neg_adc_phN_ch) > 0 else ''
+		        self.not_neg_snr_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_snr_phN_ch) + ')' if len(list_not_neg_snr_phN_ch) > 0 else ''
+		        self.not_neg_adc_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_adc_phN_ch) + ')' if len(list_not_neg_adc_phN_ch) > 0 else ''
+		        self.neg_snr_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '||'.join(list_neg_snr_phN_h) + ')' if len(list_neg_snr_phN_h) > 0 else ''
+		        self.neg_adc_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '||'.join(list_neg_adc_phN_h) + ')' if len(list_neg_adc_phN_h) > 0 else ''
+		        self.not_neg_snr_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_snr_phN_h) + ')' if len(list_not_neg_snr_phN_h) > 0 else ''
+		        self.not_neg_adc_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_adc_phN_h) + ')' if len(list_not_neg_adc_phN_h) > 0 else ''
 
 
 	def GetThCut(self, var='clusterChargeN', th=100):
