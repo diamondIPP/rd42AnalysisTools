@@ -3,3 +3,5 @@ CrossTalkCorrections/FeedThroughCorrection
 -
 .idea
 .idea*
+*.png
+*.root
