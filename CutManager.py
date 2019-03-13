@@ -1,4 +1,5 @@
 import numpy as np
+import ipdb
 from Utils import *
 
 class CutManager:
@@ -73,14 +74,14 @@ class CutManager:
 				if 'PH_Ch{i}'.format(i=chi) in self.not_neg_snr_ph_h.keys():
 					list_not_neg_snr_phN_h.append(self.not_neg_snr_ph_h['PH_Ch{i}'.format(i=chi)])
 					list_not_neg_adc_phN_h.append(self.not_neg_adc_ph_h['PH_Ch{i}'.format(i=chi)])
-			self.neg_snr_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_neg_snr_phN_ch) + ')'
-			self.neg_adc_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_neg_adc_phN_ch) + ')'
-			self.not_neg_snr_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_snr_phN_ch) + ')'
-			self.not_neg_adc_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_adc_phN_ch) + ')'
-			self.neg_snr_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_neg_snr_phN_h) + ')'
-			self.neg_adc_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_neg_adc_phN_h) + ')'
-			self.not_neg_snr_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_snr_phN_h) + ')'
-			self.not_neg_adc_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_adc_phN_h) + ')'
+		self.neg_snr_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_neg_snr_phN_ch) + ')' if len(list_neg_snr_phN_ch) > 0 else ''
+		self.neg_adc_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_neg_adc_phN_ch) + ')' if len(list_neg_adc_phN_ch) > 0 else ''
+		self.not_neg_snr_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_snr_phN_ch) + ')' if len(list_not_neg_snr_phN_ch) > 0 else ''
+		self.not_neg_adc_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_adc_phN_ch) + ')' if len(list_not_neg_adc_phN_ch) > 0 else ''
+		self.neg_snr_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_neg_snr_phN_h) + ')' if len(list_neg_snr_phN_h) > 0 else ''
+		self.neg_adc_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_neg_adc_phN_h) + ')' if len(list_neg_adc_phN_h) > 0 else ''
+		self.not_neg_snr_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_snr_phN_h) + ')' if len(list_not_neg_snr_phN_h) > 0 else ''
+		self.not_neg_adc_phN_h['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_adc_phN_h) + ')' if len(list_not_neg_adc_phN_h) > 0 else ''
 
 
 	def GetThCut(self, var='clusterChargeN', th=100):

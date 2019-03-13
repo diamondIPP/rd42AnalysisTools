@@ -1,0 +1,9 @@
+0: 4.07%	 in 90 Steps
+1: 2.99%	 in 69 Steps
+2: -3.45%	 in 79 Steps
+3: 2.53%	 in 58 Steps
+4: 3.70%	 in 71 Steps
+5: 2.86%	 in 67 Steps
+6: -3.98%	 in 60 Steps
+7: 4.61%	 in 81 Steps
+8: 1.03%	 in 19 Steps
