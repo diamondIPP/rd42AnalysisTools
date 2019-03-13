@@ -467,6 +467,11 @@ def SetDefault1DStats(histo):
 		histo.FindObject('stats').SetY2NDC(0.9)
 		ro.gPad.Update()
 
+def FindLeafInTree(tree, leaf):
+	if tree.FindLeaf(leaf):
+		return True
+	return False
+
 def ExitMessage(txt, code=os.EX_SOFTWARE):
     print '##########'
     print txt

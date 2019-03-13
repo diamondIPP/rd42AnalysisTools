@@ -13,6 +13,7 @@ from Utils import *
 import cPickle as pickle
 from Langaus import LanGaus
 from GridAreas import GridAreas
+from CutManager import CutManager
 from array import array
 
 # ph_bins_options = np.array((1, 2, 4, 5, 10, 16, 20, 25, 32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000), 'uint16')
@@ -20,7 +21,7 @@ from array import array
 ph_bins_options = np.array((32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500), 'uint16')
 
 class TransparentGrid:
-	def __init__(self, dir='', run=25209, cellsize=50.0):
+	def __init__(self, dir='', run=25209, col_pitch=50.0):
 		ro.gStyle.SetPalette(55)
 		ro.gStyle.SetNumberContours(99)
 		ro.gStyle.SetOptStat(11)
@@ -39,7 +40,7 @@ class TransparentGrid:
 		self.loaded_default_pickle = False
 		self.align_info = {'xoff': float(0), 'phi': float(0)}
 		self.cluster_size, self.num_strips = 0, 0
-		self.num_cols = 19 if cellsize == 50 else 13
+		self.num_cols = 19 if col_pitch == 50 else 13
 		self.ch_ini = 0
 		self.ch_end = 84
 		self.phbins = 200
@@ -49,21 +50,15 @@ class TransparentGrid:
 		self.phmin_neg = -2000
 		self.phmax_neg = 2000
 		self.neg_cut = 5
-		self.col_pitch = cellsize
+		self.col_pitch = col_pitch
 		self.cell_resolution = 50.0 / 25 if self.col_pitch == 50 else 100.0 / 51
 		self.delta_offset_threshold = 0.01  # in mum
 		self.saturated_ADC = 0
 		self.bias = 0
-		self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5, 'y_off': 48.0, '0': 3136.0, 'up': 4486.0} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.5, 'y_off': 90.0, '0': 3076.0, 'up': 5476.0}
-		# if self.run in [25207, 25208, 25209, 25210]:
-		# 	if self.run in [25207, 25208, 25210]: print 'Using settings for run 25209. Results might not be correctly aligned'
-		# 	self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5065, 'y_off': 18.95, '0': 3117.70005, 'up': 4467.70005} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.4976, 'y_off': 52.6, '0': 3049.6, 'up': 5449.6}
-		# elif self.run in [25202, 25203, 25204, 25205, 25206]:
-		# 	if self.run in [25202, 25203, 25206]: print 'Using settings for run 25205. Results might not be correctly aligned'
-		# 	self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.4922, 'y_off': 47.978033, '0': 3148.785, 'up': 4498.785} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.4976, 'y_off': 79.803, '0': 3076.115, 'up': 5476.115}
-		self.bins_per_ch_x = 3 if self.col_pitch == 50 else 5
-		self.bins_per_ch_y = 3 if self.col_pitch == 50 else 5
-		self.length_central_region = 30 if self.col_pitch == 50 else 40
+		self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5, 'y_off': 48.0, '0': 3136.0, 'up': 4486.0} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.5, 'y_off': 90.0, '0': 3076.0, 'up': 5476.0} if self.col_pitch == 100 else {'num': 12, 'pitch': 150.0, 'x_off': 0.5, 'y_off': 130.0, '0': 3076.0, 'up': 5476.0}
+		self.bins_per_ch_x = 3 if self.col_pitch == 50 else 5 if self.col_pitch == 100 else 7
+		self.bins_per_ch_y = 3 if self.col_pitch == 50 else 5 if self.col_pitch == 100 else 7
+		self.length_central_region = 30 if self.col_pitch == 50 else 40 if self.col_pitch == 100 else 50
 		self.conv_steps = 1000
 		self.sigma_conv = 5
 		self.efficiency_subdiv = 50
@@ -82,6 +77,7 @@ class TransparentGrid:
 		self.tcutg_diamond_center = None
 		self.tcutgs_diamond_center = {}
 		self.gridAreas = None
+		self.cuts = None
 		self.temph = None
 		self.langaus = {}
 		self.gridTextDiamond = None
@@ -449,6 +445,7 @@ class TransparentGrid:
 		self.CreateTCutGsDiamond()
 		self.CreateTCutGsDiamondCenter()
 		self.CreateGridText()
+		self.cuts = CutManager(self.trans_tree, self.num_strips, self.cluster_size, self.saturated_ADC)
 
 	def CreateTCutGsDiamond(self):
 		def GetNumpyArraysX(coli):
@@ -1180,7 +1177,7 @@ if __name__ == '__main__':
 	parser = OptionParser()
 	parser.add_option('-d', '--dir', dest='dir', type='string', help='Path to the subdirectory that contains the output of different runs')
 	parser.add_option('-r', '--run', dest='run', type='int', help='run number to be analysed (e.g. 25209)')
-	parser.add_option('-c', '--cellsize', dest='cellsize', type='int', default=50, help='cell size of the square 3D device')
+	parser.add_option('-c', '--colpitch', dest='colpitch', type='int', default=50, help='column pitch of the device')
 	parser.add_option('-n', '--numstrips', dest='numstrips', type='int', default=2, help='Number of strips to use')
 
 	(options, args) = parser.parse_args()
@@ -1188,6 +1185,6 @@ if __name__ == '__main__':
 	dir = str(options.dir)
 	# testnum = int(options.testnumber)
 	numstrips = int(options.numstrips)
-	cellsize = int(options.cellsize)
+	colpitch = int(options.colpitch)
 
-	tg = TransparentGrid(dir=dir, run=run, cellsize=cellsize)
+	tg = TransparentGrid(dir=dir, run=run, col_pitch=colpitch)
