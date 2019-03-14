@@ -105,6 +105,7 @@ class TestAreas:
 			self.trans_grid.AddRemainingToBadAreas()
 			print 'Marked the remaining cells as bad'
 			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
+			self.SetCutsInCutManager()
 		elif len(self.rows) + len(self.cols) + len(self.cells) > 0:
 			self.trans_grid.ResetAreas()
 			for row in self.rows:
@@ -121,9 +122,13 @@ class TestAreas:
 				print 'Removed cell with column {c} and row {r} from selection'.format(c=rcell[0], r=rcell[1])
 			self.trans_grid.AddRemainingToBadAreas()
 			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
+			self.SetCutsInCutManager()
 			print 'Marked the remaining cells as bad'
 		else:
 			print 'Enter a correct settings file for the test area in variable config_file and re run ReadConfigFile before setting the test...'
+
+	def SetCutsInCutManager(self):
+		self.trans_grid.cuts.SetCells(selection=self.trans_grid.gridAreas.goodAreasCutNames_simplified_diamond, not_selection=self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
 
 	def PlotNoiseNotInCluster(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
@@ -618,6 +623,11 @@ class TestAreas:
 		else:
 			self.bias = Get_From_User_Value('bias for run ' + str(self.run), 'float', self.trans_grid.bias, update=True)
 			self.trans_grid.bias = self.bias
+			self.trans_grid.SavePickle()
+		if self.trans_grid.neg_cut_adc == 4100:
+			self.trans_grid.DrawPH('NoiseAllCells', -32.25, 32.25, 0.5, 'diaChSignal', 'signal not in cluster cmc [ADC]', self.trans_grid.cuts.not_in_transp_cluster, option='goff')
+			self.trans_grid.neg_cut_adc = self.trans_grid.neg_cut * self.trans_grid.histo['NoiseAllCells'].GetRMS()
+			print 'Setting neg_cut_adc to', self.trans_grid.neg_cut_adc, '. If you wish to change it, do it and save the pickle again in transparent grid object'
 			self.trans_grid.SavePickle()
 
 if __name__ == '__main__':

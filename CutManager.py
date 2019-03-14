@@ -7,14 +7,14 @@ class CutManager:
 		self.tree = tree
 		self.numstrips = numstrips
 		self.clust_size = clust_size
-		self.sat_adc = 4095
+		self.sat_adc = sat_adc
 		self.transp_ev = '(transparentEvent)'
 		self.tcutg_cell = {}
-		self.selected_cells = ''
-		self.not_selected_cells = ''
-		self.all_cells = '(({s})||({ns}))'
-		self.selected_cells_centers = ''
-		self.not_selected_cells_centers = ''
+		self.selected_cells = '{s}'
+		self.not_selected_cells = '{ns}'
+		self.all_cells = '({s}||{ns})'
+		self.selected_cells_centers = '{s}'
+		self.not_selected_cells_centers = '{ns}'
 		self.no_up_down_borders = '(({l}<=diaChYPred)&&(diaChYPred<={h}))'
 
 		self.neg_snr_ph_ch = {}
@@ -37,20 +37,38 @@ class CutManager:
 		self.not_neg_adc_phN_ch = {}
 		self.not_neg_adc_phN_h = {}
 
-		self.InitializeNegCuts()
+		self.not_in_transp_cluster = '((!diaChSeed)&&(!diaChHits)&&(!diaChsNoisy)&&(!diaChsScreened)&&(!diaChsNC))'
+		self.any_saturated = '(diaChSignal=={s})'.format(s=self.sat_adc)
+		self.non_saturated = '(diaChSignal!={s})'.format(s=self.sat_adc)
 
-	def InitializeNegCuts(self):
+		self.sat_adc_ch = {}
+		self.sat_adc_h = {}
+		self.not_sat_adc_ch = {}
+		self.not_sat_adc_h = {}
+
+		self.sat_adc_N_ch = {}
+		self.sat_adc_N_h = {}
+		self.not_sat_adc_N_ch = {}
+		self.not_sat_adc_N_h = {}
+
+	def SetNegAndSatCuts(self, neg_cut_snr, neg_cut_adc):
 		for i in xrange(self.clust_size):
 			if FindLeafInTree(self.tree, 'clusterChannel{i}'.format(i=i)):
-				self.neg_snr_ph_ch['PH_Ch{i}'.format(i=i)] = '((diaChPedSigmaCmc[clusterChannel{i}]>0)&&(diaChSignal[clusterChannel{i}]/diaChPedSigmaCmc[clusterChannel{i}]<-{th}))'.format(i=i, th='{th}')
-				self.not_neg_snr_ph_ch['PH_Ch{i}'.format(i=i)] = '((diaChPedSigmaCmc[clusterChannel{i}]>0)&&(diaChSignal[clusterChannel{i}]/diaChPedSigmaCmc[clusterChannel{i}]>=-{th}))'.format(i=i, th='{th}')
-				self.neg_adc_ph_ch['PH_Ch{i}'.format(i=i)] = '(diaChSignal[clusterChannel{i}]<-{th})'.format(i=i, th='{th}')
-				self.not_neg_adc_ph_ch['PH_Ch{i}'.format(i=i)] = '(diaChSignal[clusterChannel{i}]>=-{th})'.format(i=i, th='{th}')
+				self.neg_snr_ph_ch['PH_Ch{i}'.format(i=i)] = '((diaChPedSigmaCmc[clusterChannel{i}]>0)&&(diaChSignal[clusterChannel{i}]/diaChPedSigmaCmc[clusterChannel{i}]<-{th}))'.format(i=i, th=neg_cut_snr)
+				self.not_neg_snr_ph_ch['PH_Ch{i}'.format(i=i)] = '((diaChPedSigmaCmc[clusterChannel{i}]>0)&&(diaChSignal[clusterChannel{i}]/diaChPedSigmaCmc[clusterChannel{i}]>=-{th}))'.format(i=i, th=neg_cut_snr)
+				self.neg_adc_ph_ch['PH_Ch{i}'.format(i=i)] = '(diaChSignal[clusterChannel{i}]<-{th})'.format(i=i, th=neg_cut_adc)
+				self.not_neg_adc_ph_ch['PH_Ch{i}'.format(i=i)] = '(diaChSignal[clusterChannel{i}]>=-{th})'.format(i=i, th=neg_cut_adc)
+
+				self.sat_adc_ch['Ch{i}'.format(i=i)] = '(diaChADC[clusterChannel{i}]>={s})'.format(i=i, s=self.sat_adc)
+				self.not_sat_adc_ch['Ch{i}'.format(i=i)] = '(diaChADC[clusterChannel{i}]<{s})'.format(i=i, s=self.sat_adc)
 			if FindLeafInTree(self.tree, 'clusterChannelHighest{i}'.format(i=i+1)):
-				self.neg_snr_ph_h['PH_H{i}'.format(i=i+1)] = '((diaChPedSigmaCmc[clusterChannelHighest{i}]>0)&&(diaChSignal[clusterChannelHighest{i}]/diaChPedSigmaCmc[clusterChannelHighest{i}]<-{th}))'.format(i=i+1, th='{th}')
-				self.not_neg_snr_ph_h['PH_H{i}'.format(i=i+1)] = '((diaChPedSigmaCmc[clusterChannelHighest{i}]>0)&&(diaChSignal[clusterChannelHighest{i}]/diaChPedSigmaCmc[clusterChannelHighest{i}]>=-{th}))'.format(i=i+1, th='{th}')
-				self.neg_adc_ph_h['PH_H{i}'.format(i=i+1)] = '(diaChSignal[clusterChannelHighest{i}]<-{th})'.format(i=i+1, th='{th}')
-				self.not_neg_adc_ph_h['PH_H{i}'.format(i=i+1)] = '(diaChSignal[clusterChannelHighest{i}]>=-{th})'.format(i=i+1, th='{th}')
+				self.neg_snr_ph_h['PH_H{i}'.format(i=i+1)] = '((diaChPedSigmaCmc[clusterChannelHighest{i}]>0)&&(diaChSignal[clusterChannelHighest{i}]/diaChPedSigmaCmc[clusterChannelHighest{i}]<-{th}))'.format(i=i+1, th=neg_cut_snr)
+				self.not_neg_snr_ph_h['PH_H{i}'.format(i=i+1)] = '((diaChPedSigmaCmc[clusterChannelHighest{i}]>0)&&(diaChSignal[clusterChannelHighest{i}]/diaChPedSigmaCmc[clusterChannelHighest{i}]>=-{th}))'.format(i=i+1, th=neg_cut_snr)
+				self.neg_adc_ph_h['PH_H{i}'.format(i=i+1)] = '(diaChSignal[clusterChannelHighest{i}]<-{th})'.format(i=i+1, th=neg_cut_adc)
+				self.not_neg_adc_ph_h['PH_H{i}'.format(i=i+1)] = '(diaChSignal[clusterChannelHighest{i}]>=-{th})'.format(i=i+1, th=neg_cut_adc)
+
+				self.sat_adc_h['H{i}'.format(i=i+1)] = '(diaChADC[clusterChannelHighest{i}]>={s})'.format(i=i+1, s=self.sat_adc)
+				self.not_sat_adc_h['H{i}'.format(i=i+1)] = '(diaChADC[clusterChannelHighest{i}]<{s})'.format(i=i+1, s=self.sat_adc)
 
 		for ch in xrange(self.numstrips):
 			list_neg_snr_phN_ch = []
@@ -61,6 +79,11 @@ class CutManager:
 			list_not_neg_snr_phN_h = []
 			list_neg_adc_phN_h = []
 			list_not_neg_adc_phN_h = []
+
+			list_sat_N_ch = []
+			list_not_sat_N_ch = []
+			list_sat_N_h = []
+			list_not_sat_N_h = []
 			for chi in xrange(ch + 1):
 				if 'PH_Ch{i}'.format(i=chi) in self.neg_snr_ph_ch.keys():
 					list_neg_snr_phN_ch.append(self.neg_snr_ph_ch['PH_Ch{i}'.format(i=chi)])
@@ -72,8 +95,16 @@ class CutManager:
 					list_neg_snr_phN_h.append(self.neg_snr_ph_h['PH_H{i}'.format(i=chi+1)])
 					list_neg_adc_phN_h.append(self.neg_adc_ph_h['PH_H{i}'.format(i=chi+1)])
 				if 'PH_H{i}'.format(i=chi+1) in self.not_neg_snr_ph_h.keys():
-					list_not_neg_snr_phN_h.append(self.not_neg_snr_ph_h['PH_Ch{i}'.format(i=chi+1)])
-					list_not_neg_adc_phN_h.append(self.not_neg_adc_ph_h['PH_Ch{i}'.format(i=chi+1)])
+					list_not_neg_snr_phN_h.append(self.not_neg_snr_ph_h['PH_H{i}'.format(i=chi+1)])
+					list_not_neg_adc_phN_h.append(self.not_neg_adc_ph_h['PH_H{i}'.format(i=chi+1)])
+
+				if 'Ch{i}'.format(i=chi) in self.sat_adc_ch.keys():
+					list_sat_N_ch.append(self.sat_adc_ch['Ch{i}'.format(i=chi)])
+					list_not_sat_N_ch.append(self.not_sat_adc_ch['Ch{i}'.format(i=chi)])
+				if 'H{i}'.format(i=chi+1) in self.sat_adc_ch.keys():
+					list_sat_N_h.append(self.sat_adc_h['H{i}'.format(i=chi+1)])
+					list_not_sat_N_h.append(self.not_sat_adc_h['H{i}'.format(i=chi+1)])
+
 				self.neg_snr_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '||'.join(list_neg_snr_phN_ch) + ')' if len(list_neg_snr_phN_ch) > 0 else ''
 				self.neg_adc_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '||'.join(list_neg_adc_phN_ch) + ')' if len(list_neg_adc_phN_ch) > 0 else ''
 				self.not_neg_snr_phN_ch['PH{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_snr_phN_ch) + ')' if len(list_not_neg_snr_phN_ch) > 0 else ''
@@ -83,7 +114,28 @@ class CutManager:
 				self.not_neg_snr_phN_h['PH{i}_H'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_snr_phN_h) + ')' if len(list_not_neg_snr_phN_h) > 0 else ''
 				self.not_neg_adc_phN_h['PH{i}_H'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_adc_phN_h) + ')' if len(list_not_neg_adc_phN_h) > 0 else ''
 
+				self.sat_adc_N_ch['{i}_Ch'.format(i=ch + 1)] = '(' + '||'.join(list_sat_N_ch) + ')' if len(list_sat_N_ch) > 0 else ''
+				self.not_sat_adc_N_ch['{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_sat_N_ch) + ')' if len(list_not_sat_N_ch) > 0 else ''
+				self.sat_adc_N_h['{i}_H'.format(i=ch + 1)] = '(' + '||'.join(list_sat_N_h) + ')' if len(list_sat_N_h) > 0 else ''
+				self.not_sat_adc_N_h['{i}_H'.format(i=ch + 1)] = '(' + '&&'.join(list_sat_N_h) + ')' if len(list_not_sat_N_h) > 0 else ''
+
+	def SetCells(self, selection, not_selection):
+		self.selected_cells = self.selected_cells.format(s=selection)
+		self.not_selected_cells = self.not_selected_cells.format(ns=not_selection)
+		self.all_cells = self.all_cells.format(s=selection, ns=not_selection)
+
+	def SetCellsCenters(self, selection, not_selection):
+		self.selected_cells_centers = self.selected_cells_centers.format(s=selection)
+		self.not_selected_cells_centers = self.not_selected_cells_centers.format(ns=not_selection)
+
+	def SetUpDownBorderCuts(self, lower, upper):
+		self.no_up_down_borders = self.no_up_down_borders.format(l=lower, h=upper)
 
 	def GetThCut(self, var='clusterChargeN', th=100):
 		return '({v}>={t})'.format(v=var, t=th)
 
+	def ConcatenateCuts(self, cut1, cut2, operator='&&'):
+		return '(' + operator.join([cut1, cut2]) + ')'
+
+if __name__ == '__main__':
+	cm = CutManager(None)

@@ -49,7 +49,8 @@ class TransparentGrid:
 		self.phbins_neg = 200
 		self.phmin_neg = -2000
 		self.phmax_neg = 2000
-		self.neg_cut = 5
+		self.neg_cut = 15
+		self.neg_cut_adc = 4100
 		self.col_pitch = col_pitch
 		self.cell_resolution = 50.0 / 25 if self.col_pitch == 50 else 100.0 / 51
 		self.delta_offset_threshold = 0.01  # in mum
@@ -128,6 +129,7 @@ class TransparentGrid:
 		object_dic['phmin_neg'] = self.phmin_neg
 		object_dic['phmax_neg'] = self.phmax_neg
 		object_dic['neg_cut'] = self.neg_cut
+		object_dic['neg_cut_adc'] = self.neg_cut
 		object_dic['col_pitch'] = self.col_pitch
 		object_dic['cell_resolution'] = self.cell_resolution
 		object_dic['bins_per_ch_x'] = self.bins_per_ch_x
@@ -195,6 +197,8 @@ class TransparentGrid:
 			self.phmax_neg = self.pkl['phmax_neg']
 		if 'neg_cut' in self.pkl.keys():
 			self.neg_cut = self.pkl['neg_cut']
+		if 'neg_cut_adc' in self.pkl.keys():
+			self.neg_cut_adc = self.pkl['neg_cut_adc']
 		if 'col_pitch' in self.pkl.keys():
 			self.col_pitch = self.pkl['col_pitch']
 		if 'cell_resolution' in self.pkl.keys():
@@ -228,6 +232,8 @@ class TransparentGrid:
 			self.AskUserLowerYLines()
 			self.CreateLines()
 		self.gridAreas = GridAreas(self.num_cols, self.row_info_diamond['num'], self.run)
+		self.cuts.SetNegAndSatCuts(neg_cut_snr=self.neg_cut, neg_cut_adc=self.neg_cut_adc)
+		self.cuts.SetUpDownBorderCuts(lower=self.row_info_diamond['0'], upper=self.row_info_diamond['up'])
 
 	def FindHorizontalParametersThroughAlignment(self):
 		self.LoadAlignmentParameters()
@@ -525,7 +531,8 @@ class TransparentGrid:
 			self.DrawProfile2DNoTopBottomBorders(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
 
 	def DrawProfile2DNoTopBottomBorders(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True, plot_option='colz prof'):
-		list_cuts =['(({l}<=diaChYPred)&&(diaChYPred<={h}))'.format(l=self.row_info_diamond['0'], h=self.row_info_diamond['up'])]
+		list_cuts = [self.cuts.no_up_down_borders]
+		# list_cuts = ['(({l}<=diaChYPred)&&(diaChYPred<={h}))'.format(l=self.row_info_diamond['0'], h=self.row_info_diamond['up'])]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
@@ -727,15 +734,15 @@ class TransparentGrid:
 		self.gridAreas.ResetAreas()
 
 	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]'):
-		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
-		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond if type == 'diamond' else '')]
+		list_cuts = [self.cuts.selected_cells]
+		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
 		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cut, transp_ev)
 
 	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]'):
-		list_cuts = ['{n}'.format(n=self.gridAreas.badAreasCutNames_simplified_diamond if type == 'diamond' else '')]
+		list_cuts = [self.cuts.not_selected_cells]
 		# list_cuts = ['{n}'.format(n=self.gridAreas.badAreasCutNames_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
@@ -750,8 +757,8 @@ class TransparentGrid:
 		self.DrawPH(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cuts, transp_ev)
 
 	def DrawProfile2DDiamondChannelOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
-		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_diamond) if cells == 'bad' else '(1)']
-		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_simplified_diamond) if cells == 'bad' else '(1)']
+		list_cuts = [self.cuts.selected_cells if cells == 'good' else self.cuts.not_selected_cells if cells == 'bad' else self.cuts.all_cells]
+		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_simplified_diamond) if cells == 'bad' else '(1)']
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
@@ -761,13 +768,7 @@ class TransparentGrid:
 
 	def DrawProfile2DDiamondRowOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
 		y0, rowpitch, numrows, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['y_off']
-		list_cuts = ['({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows)]
-		if cells == 'good':
-			# list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
-			list_cuts.append(self.gridAreas.goodAreasCutNames_simplified_diamond)
-		elif cells == 'bad':
-			# list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
-			list_cuts.append(self.gridAreas.badAreasCutNames_simplified_diamond)
+		list_cuts = [self.cuts.selected_cells if cells == 'good' else self.cuts.not_selected_cells if cells == 'bad' else self.cuts.all_cells]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
@@ -775,13 +776,7 @@ class TransparentGrid:
 
 	def DrawProfile2DDiamondCellOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
 		y0, rowpitch, numrows, xoff, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['x_off'], self.row_info_diamond['y_off']
-		list_cuts = ['({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows)]
-		if cells == 'good':
-			# list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
-			list_cuts.append(self.gridAreas.goodAreasCutNames_simplified_diamond)
-		elif cells == 'bad':
-			# list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
-			list_cuts.append(self.gridAreas.badAreasCutNames_simplified_diamond)
+		list_cuts = [self.cuts.selected_cells if cells == 'good' else self.cuts.not_selected_cells if cells == 'bad' else self.cuts.all_cells]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
@@ -790,13 +785,7 @@ class TransparentGrid:
 
 	def DrawHisto2DDiamondChannelOverlay(self, name, cells='all', cuts='', transp_ev=True):
 		rowpitch, y0, xoff = self.row_info_diamond['pitch'], self.row_info_diamond['0'], self.row_info_diamond['x_off']
-		list_cuts = []
-		if cells == 'good':
-			# list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
-			list_cuts.append(self.gridAreas.goodAreasCutNames_simplified_diamond)
-		elif cells == 'bad':
-			# list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
-			list_cuts.append(self.gridAreas.badAreasCutNames_simplified_diamond)
+		list_cuts = [self.cuts.selected_cells if cells == 'good' else self.cuts.not_selected_cells if cells == 'bad' else self.cuts.all_cells]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
@@ -805,13 +794,7 @@ class TransparentGrid:
 
 	def DrawHisto2DDiamondRowOverlay(self, name, cells='all', cuts='', transp_ev=True):
 		y0, rowpitch, numrows, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['y_off']
-		list_cuts = ['({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows)]
-		if cells == 'good':
-			# list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
-			list_cuts.append(self.gridAreas.goodAreasCutNames_simplified_diamond)
-		elif cells == 'bad':
-			# list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
-			list_cuts.append(self.gridAreas.badAreasCutNames_simplified_diamond)
+		list_cuts = [self.cuts.selected_cells if cells == 'good' else self.cuts.not_selected_cells if cells == 'bad' else self.cuts.all_cells]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
@@ -819,16 +802,6 @@ class TransparentGrid:
 
 	def DrawHisto2DDiamondCellOverlay(self, name, cells='all', cuts='', transp_ev=True):
 		y0, rowpitch, numrows, xoff, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['x_off'], self.row_info_diamond['y_off']
-		# list_cuts = ['({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows)]
-		# if cells == 'good':
-		# # 	list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
-		# 	list_cuts.append(self.gridAreas.goodAreasCutNames_simplified_diamond)
-		# elif cells == 'bad':
-		# # 	list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
-		# 	list_cuts.append(self.gridAreas.badAreasCutNames_simplified_diamond)
-		# if cuts != '':
-		# 	list_cuts.append(cuts)
-		# temp_cuts = '&&'.join(list_cuts)
 		temp_cuts = self.ConcatenateDiamondCuts('({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows), cells, cuts)
 		self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '(((diaChXPred-{ox})*{p})%{p})/10000'.format(ox=xoff, p=self.col_pitch * 10000), '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), temp_cuts, transp_ev)
 
@@ -1136,11 +1109,6 @@ class TransparentGrid:
 			if self.canvas.has_key(canvas):
 				self.canvas[canvas].SaveAs('{d}/{r}/{sd}/{c}.png'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir, c=canvas))
 				self.canvas[canvas].SaveAs('{d}/{r}/{sd}/{c}.root'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir, c=canvas))
-
-	def SetNegativeCuts(self, max_snr=5):
-		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['x_off'], self.row_info_diamond['y_off'], self.col_pitch, self.num_cols, self.row_info_diamond['up']
-		self.list_neg_cuts_clusters = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=max_snr, n=i)] for i in xrange(self.num_strips)}
-		self.list_neg_cuts_noise = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=max_snr)]
 
 	def LoadPlotsInSubdir(self):
 		if not os.path.isdir('{d}/{r}/{sd}'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir)):
