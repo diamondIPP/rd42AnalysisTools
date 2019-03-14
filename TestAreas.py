@@ -135,16 +135,16 @@ class TestAreas:
 			print 'Enter a correct settings file for the test area in variable config_file and re run ReadConfigFile before setting the test...'
 
 	def SetCutsInCutManager(self):
-		self.trans_grid.cuts.SetCells(selection=self.trans_grid.gridAreas.goodAreasCutNames_simplified_diamond, not_selection=self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
+		self.trans_grid.cuts_man.SetCells(selection=self.trans_grid.gridAreas.goodAreasCutNames_simplified_diamond, not_selection=self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
 
-		self.noise_cuts = self.trans_grid.cuts.ConcatenateCuts(cut1=self.trans_grid.cuts.not_in_transp_cluster, cut2=self.trans_grid.cuts.valid_ped_sigma)
+		self.noise_cuts = self.trans_grid.cuts_man.ConcatenateCuts(cut1=self.trans_grid.cuts_man.not_in_transp_cluster, cut2=self.trans_grid.cuts_man.valid_ped_sigma)
 
 	def SetVarz(self):
 		self.noise_varz = {'adc': 'diaChSignal', 'snr': 'diaChSignal/diaChPedSigmaCmc'}
 
 	def PlotNoiseNotInCluster(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
-		temp_cut_noise = self.trans_grid.cuts.ConcatenateCutWithCells(cut1=self.noise_cuts, cells=cells, operator='&&')
+		temp_cut_noise = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut1=self.noise_cuts, cells=cells, operator='&&')
 		lastbin = RoundInt((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr))
 		tempmin, tempmax, tempbins = self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins
 		temph = ro.TH1F('temph0', 'temph0', int(RoundInt((self.max_adc_noise - self.min_adc_noise) / float(self.delta_adc_noise))), self.min_adc_noise, self.max_adc_noise)
@@ -631,7 +631,7 @@ class TestAreas:
 			self.trans_grid.bias = self.bias
 			self.trans_grid.SavePickle()
 		if self.trans_grid.neg_cut_adc == 4100:
-			self.trans_grid.DrawPH('NoiseAllCells', -32.25, 32.25, 0.5, 'diaChSignal', 'signal not in cluster cmc [ADC]', self.trans_grid.cuts.not_in_transp_cluster, option='goff')
+			self.trans_grid.DrawPH('NoiseAllCells', -32.25, 32.25, 0.5, 'diaChSignal', 'signal not in cluster cmc [ADC]', self.trans_grid.cuts_man.not_in_transp_cluster, option='goff')
 			self.trans_grid.neg_cut_adc = self.trans_grid.neg_cut * self.trans_grid.histo['NoiseAllCells'].GetRMS()
 			print 'Setting neg_cut_adc to', self.trans_grid.neg_cut_adc, '. If you wish to change it, do it and save the pickle again in transparent grid object'
 			self.trans_grid.SavePickle()
