@@ -144,7 +144,7 @@ class TestAreas:
 
 	def PlotNoiseNotInCluster(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
-		temp_cut_noise = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut1=self.noise_cuts, cells=cells, operator='&&')
+		temp_cut_noise = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.noise_cuts, cells=cells, operator='&&')
 		lastbin = RoundInt((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr))
 		tempmin, tempmax, tempbins = self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins
 		temph = ro.TH1F('temph0', 'temph0', int(RoundInt((self.max_adc_noise - self.min_adc_noise) / float(self.delta_adc_noise))), self.min_adc_noise, self.max_adc_noise)

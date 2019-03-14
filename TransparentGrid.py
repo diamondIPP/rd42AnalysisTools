@@ -232,8 +232,6 @@ class TransparentGrid:
 			self.AskUserLowerYLines()
 			self.CreateLines()
 		self.gridAreas = GridAreas(self.num_cols, self.row_info_diamond['num'], self.run)
-		self.cuts_man.SetNegAndSatCuts(neg_cut_snr=self.neg_cut, neg_cut_adc=self.neg_cut_adc)
-		self.cuts_man.SetUpDownBorderCuts(lower=self.row_info_diamond['0'], upper=self.row_info_diamond['up'])
 
 	def FindHorizontalParametersThroughAlignment(self):
 		self.LoadAlignmentParameters()
@@ -452,6 +450,9 @@ class TransparentGrid:
 		self.CreateTCutGsDiamondCenter()
 		self.CreateGridText()
 		self.cuts_man = CutManager(self.trans_tree, self.num_strips, self.cluster_size, self.saturated_ADC)
+		self.cuts_man.SetNegAndSatCuts(neg_cut_snr=self.neg_cut, neg_cut_adc=self.neg_cut_adc)
+		self.cuts_man.SetUpDownBorderCuts(lower=self.row_info_diamond['0'], upper=self.row_info_diamond['up'])
+
 
 	def CreateTCutGsDiamond(self):
 		def GetNumpyArraysX(coli):
