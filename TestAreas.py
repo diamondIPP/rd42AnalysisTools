@@ -111,6 +111,7 @@ class TestAreas:
 			print 'Marked the remaining cells as bad'
 			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
 			self.SetCutsInCutManager()
+			self.SetVarz()
 		elif len(self.rows) + len(self.cols) + len(self.cells) > 0:
 			self.trans_grid.ResetAreas()
 			for row in self.rows:
@@ -128,6 +129,7 @@ class TestAreas:
 			self.trans_grid.AddRemainingToBadAreas()
 			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
 			self.SetCutsInCutManager()
+			self.SetVarz()
 			print 'Marked the remaining cells as bad'
 		else:
 			print 'Enter a correct settings file for the test area in variable config_file and re run ReadConfigFile before setting the test...'
