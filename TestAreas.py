@@ -24,6 +24,8 @@ class TestAreas:
 		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -65, 1, 2
 		# self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.125
 		self.min_snr, self.max_snr = -65, 65
+		self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -32.25, 32.25, 0.5
+		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = -3.225, 3.225, 0.05
 		self.neg_cut_lines = {}
 		self.trash = []
 		self.w = 0
@@ -45,6 +47,9 @@ class TestAreas:
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 		if self.num_rows != 0:
 			self.trans_grid.row_info_diamond['num'] = self.num_rows
+
+		self.noise_cuts = ''
+		self.noise_varz = {}
 
 	def ReadConfigFile(self):
 		def unpack_row_col(string):
@@ -130,25 +135,24 @@ class TestAreas:
 	def SetCutsInCutManager(self):
 		self.trans_grid.cuts.SetCells(selection=self.trans_grid.gridAreas.goodAreasCutNames_simplified_diamond, not_selection=self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
 
+		self.noise_cuts = self.trans_grid.cuts.ConcatenateCuts(cut1=self.trans_grid.cuts.not_in_transp_cluster, cut2=self.trans_grid.cuts.valid_ped_sigma)
+
+	def SetVarz(self):
+		self.noise_varz = {'adc': 'diaChSignal', 'snr': 'diaChSignal/diaChPedSigmaCmc'}
+
 	def PlotNoiseNotInCluster(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
-		list_cuts_noise_snr = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(transparentEvent)&&(diaChHits==0)&&(diaChSeed==0)&&(diaChsScreened==0)&&(diaChsNoisy==0)&&(diaChsNC==0)&&(TMath::Abs(diaChSignal)/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
-		list_cuts_noise_adc = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(transparentEvent)&&(diaChHits==0)&&(diaChSeed==0)&&(diaChsScreened==0)&&(diaChsNoisy==0)&&(diaChsNC==0)&&(TMath::Abs(diaChSignal)<{m}*diaChPedSigmaCmc)&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
-		if cells == 'good':
-			list_cuts_noise_snr.append(self.trans_grid.gridAreas.goodAreasCutNames_simplified_diamond)
-		elif cells == 'bad':
-			list_cuts_noise_snr.append(self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
-		temp_cut_noise_snr = '&&'.join(list_cuts_noise_snr)
-		temp_cut_noise_adc = '&&'.join(list_cuts_noise_adc)
+		temp_cut_noise = self.trans_grid.cuts.ConcatenateCutWithCells(cut1=self.noise_cuts, cells=cells, operator='&&')
 		lastbin = RoundInt((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr))
 		tempmin, tempmax, tempbins = self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins
-		temph = ro.TH1F('temph0', 'temph0', 100, -32, 32)
-		self.trans_grid.trans_tree.Draw('diaChSignal>>temph0', temp_cut_noise_adc, 'goff')
+		temph = ro.TH1F('temph0', 'temph0', int(RoundInt((self.max_adc_noise - self.min_adc_noise) / float(self.delta_adc_noise))), self.min_adc_noise, self.max_adc_noise)
+		self.trans_grid.trans_tree.Draw('diaChSignal>>temph0', temp_cut_noise, 'goff')
 		mean, sigma = temph.GetMean(), temph.GetRMS()
 		temph.Delete()
+		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = (ni / float(sigma)  for ni in [self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise])
 		suffix = self.suffix[cells]
-		self.trans_grid.DrawPH('signal_noise_{c}_snr'.format(c=suffix), self.min_snr, self.max_snr, self.delta_snr, 'diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='Signal not in cluster (SNR)', cuts=temp_cut_noise_snr, option='goff')
-		self.trans_grid.DrawPH('signal_noise_{c}_adc'.format(c=suffix), self.min_snr * sigma, self.max_snr * sigma, self.delta_snr * sigma, 'diaChSignal', varname='Signal not in cluster (ADC)', cuts=temp_cut_noise_snr, option='goff')
+		self.trans_grid.DrawPH('signal_noise_{c}_snr'.format(c=suffix), self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, self.noise_varz['snr'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
+		self.trans_grid.DrawPH('signal_noise_{c}_adc'.format(c=suffix), self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, self.noise_varz['adc'], varname='Signal not in cluster (ADC)', cuts=temp_cut_noise, option='e hist')
 
 	def PlotTestClusterStudies(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']

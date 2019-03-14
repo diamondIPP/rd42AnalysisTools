@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import numpy as np
 import ipdb
 from Utils import *
@@ -40,6 +41,7 @@ class CutManager:
 		self.not_in_transp_cluster = '((!diaChSeed)&&(!diaChHits)&&(!diaChsNoisy)&&(!diaChsScreened)&&(!diaChsNC))'
 		self.any_saturated = '(diaChSignal=={s})'.format(s=self.sat_adc)
 		self.non_saturated = '(diaChSignal!={s})'.format(s=self.sat_adc)
+		self.valid_ped_sigma = '(diaChPedSigmaCmc>0)'
 
 		self.sat_adc_ch = {}
 		self.sat_adc_h = {}
@@ -136,6 +138,10 @@ class CutManager:
 
 	def ConcatenateCuts(self, cut1, cut2, operator='&&'):
 		return '(' + operator.join([cut1, cut2]) + ')'
+
+	def ConcatenateCutWithCells(self, cut, cells='all', operator='&&'):
+		return self.ConcatenateCuts(cut, self.selected_cells, operator) if cells == 'good' else self.ConcatenateCuts(cut, self.not_selected_cells, operator) if cells == 'bad' else self.ConcatenateCuts(cut, self.all_cells, operator)
+
 
 if __name__ == '__main__':
 	cm = CutManager(None)
