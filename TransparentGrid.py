@@ -19,6 +19,7 @@ from array import array
 # ph_bins_options = np.array((1, 2, 4, 5, 10, 16, 20, 25, 32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000), 'uint16')
 # ph_bins_options = np.array((32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000, 4000), 'uint16')
 ph_bins_options = np.array((32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500), 'uint16')
+eff_delta_options = np.array((8.2, 10, 10.25, 12.5, 16.4, 20, 20.5, 25, 32.8, 41, 50, 51.25, 82), 'float64')
 
 class TransparentGrid:
 	def __init__(self, dir='', run=25209, col_pitch=50.0):
@@ -839,7 +840,7 @@ class TransparentGrid:
 					yinf = ymin_plot - lim_one_side
 					break
 		yvalues = np.array([efficiencyDic[xval] for xval in xvalues], 'float64')
-		self.efficiency_subdiv = int(np.round(40000.0 / denominator))
+		self.efficiency_subdiv = int(max(RoundInt(40000.0 / denominator), 1))
 		# ySigmas = {xval: self.FindUpperLowerUncertaintiesWithMinuit(numerator[xval], denominator, sigma_errbar, maxit, tol, minimizer=minimizer) for xval in xvalues}
 		print 'Calculating sigmas for efficiency plot... the step is {d} ...'.format(d=1.0 / (self.efficiency_subdiv * denominator))
 		ySigmas = {}

@@ -19,6 +19,11 @@ class TestAreas:
 		self.run = run
 		self.cellsize = 50
 		self.cell_resolution = 0
+		self.phdelta = 0
+		self.phmin = 10000
+		self.phmax = -10000
+		self.binsperx = 0
+		self.binspery = 0
 		self.threshold = 800
 		self.do_threshold = False
 		self.window_shift = 5
@@ -84,6 +89,18 @@ class TestAreas:
 					self.do_threshold = pars.getboolean('SETTINGS', 'do_threshold')
 				if pars.has_option('SETTINGS', 'cell_resolution'):
 					self.cell_resolution = pars.getfloat('SETTINGS', 'cell_resolution')
+				if pars.has_option('SETTINGS', 'phdelta'):
+					self.phdelta = pars.getfloat('SETTINGS', 'phdelta')
+				if pars.has_option('SETTINGS', 'phmin'):
+					self.phmin = pars.getfloat('SETTINGS', 'phmin')
+				if pars.has_option('SETTINGS', 'phmax'):
+					self.phmax = pars.getfloat('SETTINGS', 'phmax')
+				if pars.has_option('SETTINGS', 'binsperx'):
+					self.binsperx = pars.getfloat('SETTINGS', 'binsperx')
+				if pars.has_option('SETTINGS', 'binspery'):
+					self.binspery = pars.getfloat('SETTINGS', 'binspery')
+				if pars.has_option('SETTINGS', 'efficiency_subdiv'):
+					self.binspery = pars.getfloat('SETTINGS', 'efficiency_subdiv')
 			if pars.has_section('ROWS'):
 				if pars.has_option('ROWS', 'rows'):
 					rows = pars.get('ROWS', 'rows')
@@ -259,7 +276,7 @@ class TestAreas:
 			self.w += self.window_shift
 
 	def DoSaturationPlots(self, cells='all'):
-
+		pass
 		
 
 	def PlotSaturation(self):

@@ -140,7 +140,7 @@ class CutManager:
 		return '(' + operator.join([cut1, cut2]) + ')'
 
 	def ConcatenateCutWithCells(self, cut, cells='all', operator='&&'):
-		return self.ConcatenateCuts(cut, self.selected_cells, operator) if cells == 'good' else self.ConcatenateCuts(cut, self.not_selected_cells, operator) if cells == 'bad' else self.ConcatenateCuts(cut, self.all_cells, operator)
+		return self.ConcatenateCuts(self.selected_cells, cut, operator) if cells == 'good' else self.ConcatenateCuts(self.not_selected_cells, cut, operator) if cells == 'bad' else self.ConcatenateCuts(self.all_cells, cut, operator)
 
 
 if __name__ == '__main__':
