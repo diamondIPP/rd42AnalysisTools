@@ -18,6 +18,7 @@ class TestAreas:
 		self.dir = '.'
 		self.run = run
 		self.cellsize = 50
+		self.cell_resolution = 0
 		self.threshold = 800
 		self.do_threshold = False
 		self.window_shift = 5
@@ -81,6 +82,8 @@ class TestAreas:
 					self.threshold = pars.getfloat('SETTINGS', 'threshold')
 				if pars.has_option('SETTINGS', 'do_threshold'):
 					self.do_threshold = pars.getboolean('SETTINGS', 'do_threshold')
+				if pars.has_option('SETTINGS', 'cell_resolution'):
+					self.cell_resolution = pars.getfloat('SETTINGS', 'cell_resolution')
 			if pars.has_section('ROWS'):
 				if pars.has_option('ROWS', 'rows'):
 					rows = pars.get('ROWS', 'rows')
