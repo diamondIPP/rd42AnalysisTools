@@ -27,6 +27,8 @@ class CompareRuns:
 		self.ReadCompareConfig()
 		self.subdir = 'test' + str(self.testnum)
 		self.do_fit = False
+		self.min_sat_ev, self.min_not_sat_ev, self.min_sat_norm, self.min_not_sat_norm, self.min_sat_tnorm, self.min_not_sat_tnorm = -1, -1, -1, -1, -1, -1
+		self.max_sat_ev, self.max_not_sat_ev, self.max_sat_norm, self.max_not_sat_norm, self.max_sat_tnorm, self.max_not_sat_tnorm = -1, -1, -1, -1, -1, -1
 		# self.ReadRunList()
 		self.runs_ta = {}
 		self.canvas = {}
@@ -72,6 +74,31 @@ class CompareRuns:
 					self.do_fit = pars.getboolean('RUNS', 'do_fit')
 				if pars.has_option('RUNS', 'testnum'):
 					self.testnum = pars.getint('RUNS', 'testnum')
+			if pars.has_section('SATURATION'):
+				if pars.has_option('SATURATION', 'min_sat_ev'):
+					self.min_sat_ev = pars.getfloat('SATURATION', 'min_sat_ev')
+				if pars.has_option('SATURATION', 'min_not_sat_ev'):
+					self.min_not_sat_ev = pars.getfloat('SATURATION', 'min_not_sat_ev')
+				if pars.has_option('SATURATION', 'min_sat_norm'):
+					self.min_sat_norm = pars.getfloat('SATURATION', 'min_sat_norm')
+				if pars.has_option('SATURATION', 'min_not_sat_norm'):
+					self.min_not_sat_norm = pars.getfloat('SATURATION', 'min_not_sat_norm')
+				if pars.has_option('SATURATION', 'min_sat_tnorm'):
+					self.min_sat_tnorm = pars.getfloat('SATURATION', 'min_sat_tnorm')
+				if pars.has_option('SATURATION', 'min_not_sat_tnorm'):
+					self.min_not_sat_tnorm = pars.getfloat('SATURATION', 'min_not_sat_tnorm')
+				if pars.has_option('SATURATION', 'max_sat_ev'):
+					self.max_sat_ev = pars.getfloat('SATURATION', 'max_sat_ev')
+				if pars.has_option('SATURATION', 'max_not_sat_ev'):
+					self.max_not_sat_ev = pars.getfloat('SATURATION', 'max_not_sat_ev')
+				if pars.has_option('SATURATION', 'max_sat_norm'):
+					self.max_sat_norm = pars.getfloat('SATURATION', 'max_sat_norm')
+				if pars.has_option('SATURATION', 'max_not_sat_norm'):
+					self.max_not_sat_norm = pars.getfloat('SATURATION', 'max_not_sat_norm')
+				if pars.has_option('SATURATION', 'max_sat_tnorm'):
+					self.max_sat_tnorm = pars.getfloat('SATURATION', 'max_sat_tnorm')
+				if pars.has_option('SATURATION', 'max_not_sat_tnorm'):
+					self.max_not_sat_tnorm = pars.getfloat('SATURATION', 'max_not_sat_tnorm')
 			print 'Done'
 
 	def LoadRuns(self):
@@ -219,7 +246,9 @@ class CompareRuns:
 		graph_sat.SetNameTitle(satname, satname)
 		graph_sat.GetXaxis().SetTitle('bias [V]')
 		graph_sat.GetYaxis().SetTitle('# events')
-		graph_sat.GetYaxis().SetRangeUser(min0, max0)
+		min0sat = min0 if self.min_sat_ev == -1 else self.min_sat_ev
+		max0sat = max0 if self.max_sat_ev == -1 else self.max_sat_ev
+		graph_sat.GetYaxis().SetRangeUser(min0sat, max0sat)
 		graph_sat.SetMarkerStyle(8)
 		graph_sat.SetMarkerColor(ro.kRed)
 		graph_sat.SetLineColor(ro.kRed)
@@ -228,7 +257,9 @@ class CompareRuns:
 		graph_nosat.SetNameTitle(notsatname, notsatname)
 		graph_nosat.GetXaxis().SetTitle('bias [V]')
 		graph_nosat.GetYaxis().SetTitle('# events')
-		graph_nosat.GetYaxis().SetRangeUser(min0, max0)
+		min0notsat = min0 if self.min_not_sat_ev == -1 else self.min_not_sat_ev
+		max0notsat = max0 if self.max_not_sat_ev == -1 else self.max_not_sat_ev
+		graph_nosat.GetYaxis().SetRangeUser(min0notsat, max0notsat)
 		graph_nosat.SetMarkerStyle(8)
 		graph_nosat.SetMarkerColor(ro.kBlue)
 		graph_nosat.SetLineColor(ro.kBlue)
@@ -237,7 +268,9 @@ class CompareRuns:
 		graph_sat_norm.SetNameTitle(satnamenorm, satnamenorm)
 		graph_sat_norm.GetXaxis().SetTitle('bias [V]')
 		graph_sat_norm.GetYaxis().SetTitle('norm')
-		graph_sat_norm.GetYaxis().SetRangeUser(minn, maxn)
+		minnsat = minn if self.min_sat_norm == -1 else self.min_sat_norm
+		maxnsat = maxn if self.max_sat_norm == -1 else self.max_sat_norm
+		graph_sat_norm.GetYaxis().SetRangeUser(minnsat, maxnsat)
 		graph_sat_norm.SetMarkerStyle(8)
 		graph_sat_norm.SetMarkerColor(ro.kRed)
 		graph_sat_norm.SetLineColor(ro.kRed)
@@ -246,7 +279,9 @@ class CompareRuns:
 		graph_nosat_norm.SetNameTitle(notsatnamenorm, notsatnamenorm)
 		graph_nosat_norm.GetXaxis().SetTitle('bias [V]')
 		graph_nosat_norm.GetYaxis().SetTitle('norm')
-		graph_nosat_norm.GetYaxis().SetRangeUser(minn, maxn)
+		minnnotsat = minn if self.min_not_sat_norm == -1 else self.min_not_sat_norm
+		maxnnotsat = maxn if self.max_not_sat_norm == -1 else self.max_not_sat_norm
+		graph_nosat_norm.GetYaxis().SetRangeUser(minnnotsat, maxnnotsat)
 		graph_nosat_norm.SetMarkerStyle(8)
 		graph_nosat_norm.SetMarkerColor(ro.kBlue)
 		graph_nosat_norm.SetLineColor(ro.kBlue)
@@ -255,7 +290,9 @@ class CompareRuns:
 		graph_sat_norm_tracks.SetNameTitle(satnamenormtracks, satnamenormtracks)
 		graph_sat_norm_tracks.GetXaxis().SetTitle('bias [V]')
 		graph_sat_norm_tracks.GetYaxis().SetTitle('dia_tracks_norm')
-		graph_sat_norm_tracks.GetYaxis().SetRangeUser(minnt, maxnt)
+		minntsat = minn if self.min_sat_tnorm == -1 else self.min_sat_tnorm
+		maxntsat = maxn if self.max_sat_tnorm == -1 else self.max_sat_tnorm
+		graph_sat_norm_tracks.GetYaxis().SetRangeUser(minntsat, maxntsat)
 		graph_sat_norm_tracks.SetMarkerStyle(8)
 		graph_sat_norm_tracks.SetMarkerColor(ro.kRed)
 		graph_sat_norm_tracks.SetLineColor(ro.kRed)
@@ -264,7 +301,9 @@ class CompareRuns:
 		graph_nosat_norm_tracks.SetNameTitle(notsatnamenormtracks, notsatnamenormtracks)
 		graph_nosat_norm_tracks.GetXaxis().SetTitle('bias [V]')
 		graph_nosat_norm_tracks.GetYaxis().SetTitle('dia_tracks_norm')
-		graph_nosat_norm_tracks.GetYaxis().SetRangeUser(minnt, maxnt)
+		minntnotsat = minn if self.min_not_sat_tnorm == -1 else self.min_not_sat_tnorm
+		maxntnotsat = maxn if self.max_not_sat_tnorm == -1 else self.max_not_sat_tnorm
+		graph_nosat_norm_tracks.GetYaxis().SetRangeUser(minntnotsat, maxntnotsat)
 		graph_nosat_norm_tracks.SetMarkerStyle(8)
 		graph_nosat_norm_tracks.SetMarkerColor(ro.kBlue)
 		graph_nosat_norm_tracks.SetLineColor(ro.kBlue)
@@ -317,8 +356,9 @@ class CompareRuns:
 			os.makedirs('{d}/{sd}'.format(d=self.outdir, sd=self.subdir))
 		for canvas in list:
 			if self.canvas.has_key(canvas):
-				self.canvas[canvas].SaveAs('{d}/{sd}/{c}.png'.format(d=self.outdir, sd=self.subdir, c=canvas))
-				self.canvas[canvas].SaveAs('{d}/{sd}/{c}.root'.format(d=self.outdir, sd=self.subdir, c=canvas))
+				if self.canvas[canvas]:
+					self.canvas[canvas].SaveAs('{d}/{sd}/{c}.png'.format(d=self.outdir, sd=self.subdir, c=canvas))
+					self.canvas[canvas].SaveAs('{d}/{sd}/{c}.root'.format(d=self.outdir, sd=self.subdir, c=canvas))
 
 if __name__ == '__main__':
 	parser = OptionParser()
