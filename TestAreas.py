@@ -25,6 +25,8 @@ class TestAreas:
 		self.binsperx = 0
 		self.binspery = 0
 		self.threshold = 800
+		self.skip_before_sat = 0
+		self.skip_after_sat = 1
 		self.do_threshold = False
 		self.window_shift = 5
 		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -65, 1, 2
@@ -81,6 +83,10 @@ class TestAreas:
 					self.do_fit = pars.getboolean('SETTINGS', 'do_fit')
 				if pars.has_option('SETTINGS', 'do_saturation'):
 					self.do_saturation = pars.getboolean('SETTINGS', 'do_saturation')
+				if pars.has_option('SETTINGS', 'skip_before_sat'):
+					self.skip_before_sat = pars.getint('SETTINGS', 'skip_before_sat')
+				if pars.has_option('SETTINGS', 'skip_after_sat'):
+					self.skip_after_sat = pars.getint('SETTINGS', 'skip_after_sat')
 				if pars.has_option('SETTINGS', 'test_number'):
 					self.num = pars.getint('SETTINGS', 'test_number')
 				if pars.has_option('SETTINGS', 'threshold'):
@@ -276,8 +282,7 @@ class TestAreas:
 			self.w += self.window_shift
 
 	def DoSaturationPlots(self, cells='all'):
-		pass
-		
+		self.trans_grid.AddFriendWithSaturationRegions(self.skip_after_sat, self.skip_before_sat)
 
 	def PlotSaturation(self):
 		for c in xrange(1, self.cluster_size):

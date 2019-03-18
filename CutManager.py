@@ -39,8 +39,8 @@ class CutManager:
 		self.not_neg_adc_phN_h = {}
 
 		self.not_in_transp_cluster = '((!diaChSeed)&&(!diaChHits)&&(!diaChsNoisy)&&(!diaChsScreened)&&(!diaChsNC))'
-		self.any_saturated = '(diaChSignal=={s})'.format(s=self.sat_adc)
-		self.non_saturated = '(diaChSignal!={s})'.format(s=self.sat_adc)
+		self.any_saturated = '(diaChADC=={s})'.format(s=self.sat_adc)
+		self.non_saturated = '(diaChADC!={s})'.format(s=self.sat_adc)
 		self.valid_ped_sigma = '(diaChPedSigmaCmc>0)'
 
 		self.sat_adc_ch = {}
@@ -52,6 +52,10 @@ class CutManager:
 		self.sat_adc_N_h = {}
 		self.not_sat_adc_N_ch = {}
 		self.not_sat_adc_N_h = {}
+
+		self.sat_evts = None
+		self.sat_evts_region = '(satRegion)'
+		self.not_sat_evts_region = '(!satRegion)'
 
 	def SetNegAndSatCuts(self, neg_cut_snr, neg_cut_adc):
 		for i in xrange(self.clust_size):
@@ -135,6 +139,23 @@ class CutManager:
 
 	def GetThCut(self, var='clusterChargeN', th=100):
 		return '({v}>={t})'.format(v=var, t=th)
+
+	def FindSaturationEvents(self):
+		tempsat = self.ConcatenateCuts(self.transp_ev, self.any_saturated)
+		leng = self.tree.Draw('event', tempsat, 'goff')
+		if leng == -1:
+			print 'Error, could not get the branch event. Check tree structure.'
+		while leng > self.tree.GetEstimate():
+			self.tree.SetEstimate(leng)
+			leng = self.tree.Draw('event', tempsat, 'goff')
+		buffev = self.tree.GetVal(0)
+		self.sat_evts = [int(buffev[ev]) for ev in xrange(leng)]
+
+	def IsEventInSaturationRegion(self, ev, skipAfter=0, skipBefore=0):
+		for satev in self.sat_evts:
+			if satev - skipBefore <= ev < satev + skipAfter:
+				return True
+		return False
 
 	def ConcatenateCuts(self, cut1, cut2, operator='&&'):
 		return '(' + operator.join([cut1, cut2]) + ')'

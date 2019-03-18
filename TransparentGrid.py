@@ -52,6 +52,8 @@ class TransparentGrid:
 		self.phmax_neg = 2000
 		self.neg_cut = 15
 		self.neg_cut_adc = 4100
+		self.evs_before_sat_cut = 0
+		self.evs_after_sat_cut = 0
 		self.col_pitch = col_pitch
 		self.cell_resolution = 50.0 / 25 if self.col_pitch == 50 else 100.0 / 51
 		self.delta_offset_threshold = 0.01  # in mum
@@ -99,8 +101,9 @@ class TransparentGrid:
 		if not os.path.isfile('{d}/{r}/transparent.{r}.root'.format(d=self.dir, r=self.run)):
 			ExitMessage('There is no transparent root file "transparent.{r}.root" in the directory "{d}/{r}". Exiting...'.format(r=self.run, d=self.dir), code=os.EX_NOINPUT)
 
-	def OpenFileAndGetTree(self):
-		self.trans_file = ro.TFile('{d}/{r}/transparent.{r}.root'.format(d=self.dir, r=self.run), 'r')
+	def OpenFileAndGetTree(self, mode='READ'):
+		mode = mode if mode in ['READ', 'UPDATE'] else 'READ'
+		self.trans_file = ro.TFile('{d}/{r}/transparent.{r}.root'.format(d=self.dir, r=self.run), mode)
 		self.trans_tree = self.trans_file.Get('transparentTree')
 		if self.trans_tree.FindLeaf('numStrips'):
 			self.num_strips = self.trans_tree.GetMaximum('numStrips')
@@ -142,6 +145,8 @@ class TransparentGrid:
 		object_dic['efficiency_subdiv'] = self.efficiency_subdiv
 		object_dic['saturated_ADC'] = self.saturated_ADC
 		object_dic['bias'] = self.bias
+		object_dic['events_after_saturation_cut'] = self.evs_after_sat_cut
+		object_dic['events_before_saturation_cut'] = self.evs_before_sat_cut
 
 		if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
 			os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
@@ -222,6 +227,10 @@ class TransparentGrid:
 			self.efficiency_subdiv = self.pkl['efficiency_subdiv']
 		if 'bias' in self.pkl.keys():
 			self.bias = self.pkl['bias']
+		if 'events_before_saturation_cut' in self.pkl.keys():
+			self.evs_before_sat_cut = self.pkl['events_before_saturation_cut']
+		if 'events_after_saturation_cut' in self.pkl.keys():
+			self.evs_after_sat_cut = self.pkl['events_after_saturation_cut']
 
 	def SetLines(self, try_align=True):
 		self.LoadPickle()
@@ -1144,6 +1153,49 @@ class TransparentGrid:
 			if obj.InheritsFrom(ro.TProfile2D.Class().GetName()):
 				return True
 		return False
+
+	def CreateFriendWithSaturationRegions(self, suffix='', skipAfter=0, skipBefore=0):
+		if not self.cuts_man.sat_evts:
+			self.cuts_man.FindSaturationEvents()
+		satFile = ro.TFile('{d}/{r}/satRegions{s}.{r}.root'.format(d=self.dir, s=suffix, r=self.run), 'RECREATE')
+		satTree = ro.TTree('satRegions', 'satRegions')
+		satRegEv = np.zeros(1, '?')
+		satTree.Branch('satRegion', satRegEv, 'satRegion/O')
+		ev0 = int(self.trans_tree.GetMinimum('event'))
+		evMax = int(self.trans_tree.GetMaximum('event') + 1)
+		nevents = evMax - ev0
+		bar = CreateProgressBarUtils(nevents)
+		bar.start()
+		for ev in xrange(ev0, evMax):
+			satRegEv.fill(0)
+			if self.cuts_man.IsEventInSaturationRegion(ev, skipAfter=skipAfter, skipBefore=skipBefore):
+				satRegEv.fill(1)
+			satTree.Fill()
+			bar.update(ev - ev0 + 1)
+		satFile.Write()
+		satFile.Close()
+		bar.finish()
+		# self.CloseInputROOTFiles()
+		# self.OpenFileAndGetTree('UPDATE')
+		if not self.trans_tree.GetFriend('satRegions'):
+			self.trans_tree.AddFriend('satRegions', '{d}/{r}/satRegions{s}.{r}.root'.format(d=self.dir, s=suffix, r=self.run))
+
+	def AddFriendWithSaturationRegions(self, skipAfter=100, skipBefore=0):
+		suffix = '{sb}b{sa}a'.format(sb=skipBefore, sa=skipAfter)
+		if not self.trans_tree.GetFriend('satRegions'):
+			if os.path.isfile('{d}/{r}/satRegions{s}.{r}.root'.format(d=self.dir, s=suffix, r=self.run)):
+				self.trans_tree.AddFriend('satRegions', '{d}/{r}/satRegions{s}.{r}.root'.format(d=self.dir, s=suffix, r=self.run))
+			else:
+				self.CreateFriendWithSaturationRegions(suffix, skipAfter, skipBefore)
+
+	def CloseInputROOTFiles(self):
+		if self.trans_file:
+			if self.trans_file.IsOpen():
+				self.trans_file.Close()
+			if self.trans_tree:
+				del self.trans_tree
+		# self.trans_file = None
+		# self.trans_tree = None
 
 if __name__ == '__main__':
 	parser = OptionParser()
