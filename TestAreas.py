@@ -178,7 +178,7 @@ class TestAreas:
 		self.trans_grid.DrawHisto1D('signal_noise_{c}_snr'.format(c=suffix), self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, self.noise_varz['snr'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
 		self.PositionCanvas('signal_noise_{c}_snr'.format(c=suffix))
 		self.trans_grid.DrawHisto1D('signal_noise_{c}_adc'.format(c=suffix), self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, self.noise_varz['adc'], varname='Signal not in cluster (ADC)', cuts=temp_cut_noise, option='e hist')
-		self.PositionCanvas('signal_noise_{c}_snr'.format(c=suffix))
+		self.PositionCanvas('signal_noise_{c}_adc'.format(c=suffix))
 
 	def PlotTestClusterStudies(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']

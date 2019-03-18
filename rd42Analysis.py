@@ -36,6 +36,7 @@ class RD42Analysis:
 		self.total_events = 0
 		self.run1, self.run2, self.total_events1, self.total_events2, self.merged_run_number, self.num_events_merged, self.do_merged = 0, 0, 0, 0, 0, 0, False
 		self.dia_input = 0
+		self.ped_buffer = 500
 		self.dut_name = 'default'
 		self.dut_volt = 0
 		self.dia_saturation = 4095
@@ -169,6 +170,8 @@ class RD42Analysis:
 						self.symlinks = pars.getboolean('RUN', 'symlinks')
 					if pars.has_option('RUN', 'delete_old'):
 						self.delete_old = pars.getboolean('RUN', 'delete_old')
+					if pars.has_option('RUN', 'ped_buffer'):
+						self.ped_buffer = pars.getint('RUN', 'ped_buffer')
 
 				if pars.has_section('ANALYSIS'):
 					if pars.has_option('ANALYSIS', 'first_event'):
@@ -327,6 +330,8 @@ class RD42Analysis:
 						ftemp.write('dia_saturation = {d}\n'.format(d=self.dia_saturation))
 					if 'eta_corr_limit' not in lines_params:
 						ftemp.write('eta_corr_limit = {v}\n'.format(v=self.eta_corr_limit))
+					if 'Iter_Size' not in lines_params:
+						ftemp.write('Iter_Size = {v}\n'.format(v=self.ped_buffer))
 					if 'dia_input' not in lines_params:
 						ftemp.write('dia_input = {d}\n'.format(d=self.dia_input))
 					if 'diamondName' not in lines_params:
@@ -372,6 +377,8 @@ class RD42Analysis:
 							ftemp.write('max_transparent_cluster_size = {d}\n'.format(d=self.max_transparent_cluster_size))
 						elif line.startswith('dia_saturat'):
 							ftemp.write('dia_saturation = {d}\n'.format(d=self.dia_saturation))
+						elif line.startswith('Iter_Size'):
+							ftemp.write('Iter_Size = {v}\n'.format(v=self.ped_buffer))
 						elif line.startswith('dia_inp'):
 							ftemp.write('dia_input = {d}\n'.format(d=self.dia_input))
 						elif line.startswith('num_highest_trans'):
