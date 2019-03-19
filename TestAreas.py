@@ -321,6 +321,30 @@ class TestAreas:
 				SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
 				self.PositionCanvas('PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix))
 
+		for ch in xrange(1, self.cluster_size + 1):
+			if 'PH_H' + str(ch) in self.ph_snr_h_varz.keys():
+				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_h['H{i}'.format(i=ch)]), cells=cells, operator='&&')
+				self.trans_grid.DrawHisto1D('PH_H{i}_snr_{s}'.format(i=ch, s=suffix), self.min_snr, self.max_snr, self.delta_snr, var=self.ph_snr_h_varz['PH_H{i}'.format(i=ch)], varname='PH H{i} (SNR)'.format(i=ch), cuts=tempcuts)
+				SetX1X2NDC(self.trans_grid.histo['PH_H{i}_snr_{s}'.format(i=ch, s=suffix)], 0.15, 0.45, 'stats')
+				self.OverlayNoiseDistribution(self.trans_grid.histo['PH_H{i}_snr_{s}'.format(i=ch, s=suffix)], cells)
+				legend = self.trans_grid.canvas['PH_H{i}_snr_{s}'.format(i=ch, s=suffix)].BuildLegend()
+				ro.gPad.Update()
+				SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
+				self.PositionCanvas('PH_H{i}_snr_{s}'.format(i=ch, s=suffix))
+
+				sigma = self.trans_grid.histo['signal_noise_{s}_{t}'.format(s=suffix, t='adc')].GetRMS() if 'signal_noise_{s}_{t}'.format(s=suffix, t='adc') in self.trans_grid.histo.keys() and self.trans_grid.histo['signal_noise_{s}_{t}'.format(s=suffix, t='adc')] else 10
+				self.min_adc, self.max_adc, self.delta_adc = self.min_snr * sigma, self.max_snr * sigma, self.delta_snr * sigma
+
+			if 'PH_H' + str(ch) in self.ph_adc_h_varz.keys():
+				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.transp_ev, cells=cells, operator='&&')
+				self.trans_grid.DrawHisto1D('PH_H{i}_adc_{s}'.format(i=ch, s=suffix), self.min_adc, self.max_adc, self.delta_adc, var=self.ph_adc_h_varz['PH_H{i}'.format(i=ch)], varname='PH H{i} [adc]'.format(i=ch), cuts=tempcuts)
+				SetX1X2NDC(self.trans_grid.histo['PH_H{i}_adc_{s}'.format(i=ch, s=suffix)], 0.15, 0.45, 'stats')
+				self.OverlayNoiseDistribution(self.trans_grid.histo['PH_H{i}_adc_{s}'.format(i=ch, s=suffix)], cells)
+				legend = self.trans_grid.canvas['PH_H{i}_adc_{s}'.format(i=ch, s=suffix)].BuildLegend()
+				ro.gPad.Update()
+				SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
+				self.PositionCanvas('PH_H{i}_adc_{s}'.format(i=ch, s=suffix))
+
 	def PlotTestClusterStudies(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
 		list_cuts_clusters_snr_ci = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=self.max_snr, n=i)] for i in xrange(self.cluster_size)}

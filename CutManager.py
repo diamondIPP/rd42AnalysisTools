@@ -82,7 +82,7 @@ class CutManager:
 				self.sat_adc_h['H{i}'.format(i=i+1)] = '(diaChADC[clusterChannelHighest{i}]>={s})'.format(i=i+1, s=self.sat_adc)
 				self.not_sat_adc_h['H{i}'.format(i=i+1)] = '(diaChADC[clusterChannelHighest{i}]<{s})'.format(i=i+1, s=self.sat_adc)
 
-				self.valid_ped_sigma_ch['H{i}'.format(i=i+1)] = '(diaChPedSigmaCmc[clusterChannelHighest{i}]>0)'.format(i=i+1)
+				self.valid_ped_sigma_h['H{i}'.format(i=i+1)] = '(diaChPedSigmaCmc[clusterChannelHighest{i}]>0)'.format(i=i+1)
 
 		for ch in xrange(self.numstrips):
 			list_neg_snr_phN_ch = []
