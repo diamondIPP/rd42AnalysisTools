@@ -76,6 +76,7 @@ class TransparentGrid:
 		self.profile = {}
 		self.histo = {}
 		self.graph = {}
+		self.fits = {}
 		self.names = []
 		self.tcutgs_diamond = {}
 		self.tcutg_diamond_center = None
@@ -264,21 +265,21 @@ class TransparentGrid:
 	def FindUpperAndLowerLines(self):
 		self.DrawProfile2DDiamond('vertical_limits_profile', 'clusterChargeN', '', True)
 		xbinmin, xbinmax = self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5), self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5) + self.num_cols * self.bins_per_ch_x - 1
-		prof_proj_y = self.profile['vertical_limits_profile'].ProjectionY('vertical_limits_profile_py', xbinmin, xbinmax, 'e hist')
 		self.canvas['vertical_limits_profile_py'] = ro.TCanvas('c_vertical_limits_profile_py', 'c_vertical_limits_profile_py', 1)
 		self.canvas['vertical_limits_profile_py'].cd()
-		minbiny, maxbiny = prof_proj_y.FindFirstBinAbove(), prof_proj_y.FindLastBinAbove()
-		for biny in xrange(maxbiny, int(prof_proj_y.GetXaxis().GetNbins())):
-			if prof_proj_y.GetBinContent(biny) != 0:
+		self.histo['vertical_limits_profile_py'] = self.profile['vertical_limits_profile'].ProjectionY('h_vertical_limits_profile_py', xbinmin, xbinmax, 'e hist')
+		minbiny, maxbiny = self.histo['vertical_limits_profile_py'].FindFirstBinAbove(), self.histo['vertical_limits_profile_py'].FindLastBinAbove()
+		for biny in xrange(maxbiny, int(self.histo['vertical_limits_profile_py'].GetXaxis().GetNbins())):
+			if self.histo['vertical_limits_profile_py'].GetBinContent(biny) != 0:
 				maxbiny = biny
-		miny, maxy = prof_proj_y.GetXaxis().GetBinLowEdge(minbiny), prof_proj_y.GetXaxis().GetBinLowEdge(maxbiny + 1)
-		prof_proj_y.GetXaxis().SetRangeUser(miny, maxy)
+		miny, maxy = self.histo['vertical_limits_profile_py'].GetXaxis().GetBinLowEdge(minbiny), self.histo['vertical_limits_profile_py'].GetXaxis().GetBinLowEdge(maxbiny + 1)
+		self.histo['vertical_limits_profile_py'].GetXaxis().SetRangeUser(miny, maxy)
 		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-([3]-{p}))/[1])+1)/2-[2]*(TMath::Erf((x-[3])/[4])+1)/2+[5]'.format(p=self.row_info_diamond['num'] * self.row_info_diamond['pitch']), miny, maxy)
 		func.SetNpx(int(self.row_info_diamond['num'] * self.bins_per_ch_y * 10))
-		zmin, zmax = prof_proj_y.GetMinimum(), prof_proj_y.GetMaximum()
-		y1bin, y2bin = prof_proj_y.FindFirstBinAbove((zmin + zmax) / 2.0), prof_proj_y.FindLastBinAbove((zmin + zmax) / 2.0) + 1
-		y1, y2 = prof_proj_y.GetXaxis().GetBinCenter(y1bin), prof_proj_y.GetXaxis().GetBinCenter(y2bin)
-		z0, z1, z2 = prof_proj_y.GetBinContent(int((minbiny))), prof_proj_y.GetBinContent(int((y1bin + y2bin) / 2.0)), prof_proj_y.GetBinContent(int((maxbiny)))
+		zmin, zmax = self.histo['vertical_limits_profile_py'].GetMinimum(), self.histo['vertical_limits_profile_py'].GetMaximum()
+		y1bin, y2bin = self.histo['vertical_limits_profile_py'].FindFirstBinAbove((zmin + zmax) / 2.0), self.histo['vertical_limits_profile_py'].FindLastBinAbove((zmin + zmax) / 2.0) + 1
+		y1, y2 = self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y1bin), self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y2bin)
+		z0, z1, z2 = self.histo['vertical_limits_profile_py'].GetBinContent(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinContent(int((y1bin + y2bin) / 2.0)), self.histo['vertical_limits_profile_py'].GetBinContent(int((maxbiny)))
 		func.SetParLimits(0, abs(z1 - z0) / 10.0, 2.0 * abs(z1 - z0))
 		func.SetParLimits(1, 0.1, 50)
 		func.SetParLimits(2, abs(z1 - z2) / 10.0, 2.0 * abs(z1 - z2))
@@ -287,10 +288,10 @@ class TransparentGrid:
 		func.SetParLimits(5, -2.0 * abs(z0), 10 * abs(z0))
 		params = np.array((abs(z1 - z0), 20, abs(z1 - z2), y2, 20, z0), 'float64')
 		func.SetParameters(params)
-		fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', prof_proj_y.GetBinLowEdge(int((minbiny))), prof_proj_y.GetBinLowEdge(int((maxbiny))))
+		fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMS', 'goff', self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((maxbiny))))
 		params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5)), 'float64')
 		func.SetParameters(params)
-		fit_prof_proj_y = prof_proj_y.Fit('box_fcn', 'QEBMS', 'goff', (miny), (maxy))
+		fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMS', 'goff', (miny), (maxy))
 		self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(3) - self.row_info_diamond['pitch'] * self.row_info_diamond['num']
 		self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(3)
 
@@ -460,7 +461,7 @@ class TransparentGrid:
 		self.CreateTCutGsDiamondCenter()
 		self.CreateGridText()
 		self.cuts_man = CutManager(self.trans_tree, self.num_strips, self.cluster_size, self.saturated_ADC)
-		self.cuts_man.SetNegAndSatCuts(neg_cut_snr=self.neg_cut, neg_cut_adc=self.neg_cut_adc)
+		self.cuts_man.SetNegAndSatAndPedSigmaCuts(neg_cut_snr=self.neg_cut, neg_cut_adc=self.neg_cut_adc)
 		self.cuts_man.SetUpDownBorderCuts(lower=self.row_info_diamond['0'], upper=self.row_info_diamond['up'])
 
 
@@ -856,7 +857,7 @@ class TransparentGrid:
 		temp_bar = CreateProgressBarUtils(len(xvalues))
 		temp_bar.start()
 		for it, xval in enumerate(xvalues):
-			ySigmas[xval] = self.FindUpperLowerUncertaintiesWithDiscrete(numerator[xval], denominator, sigma_errbar)
+			ySigmas[xval] = self.FindAsymmetricUncertaintiesWithDiscrete(numerator[xval], denominator, sigma_errbar)
 			temp_bar.update(it + 1)
 		temp_bar.finish()
 		# ySigmas = {xval: self.FindUpperLowerUncertaintiesWithDiscrete(numerator[xval], denominator, sigma_errbar) for xval in xvalues}
@@ -931,7 +932,7 @@ class TransparentGrid:
 		"""
 		f[0] = self.LagrangeFcn(npar, apar)
 
-	def FindUpperLowerUncertaintiesWithMinuit(self, k, n, sigm, max_iter=100000, tolerance=0.1, minimizer='SIMPLEX', a0=0, b0=0, is_last=True):
+	def FindAsymmetricUncertaintiesWithMinuit(self, k, n, sigm, max_iter=100000, tolerance=0.1, minimizer='SIMPLEX', a0=0, b0=0, is_last=True):
 		myMinuit = ro.TMinuit(6)  # 6 parameters: a, b, lambd, k, n, sigma
 		myMinuit.SetFCN(self.MinuitFcn)
 		ro.gMinuit.Command('SET PRINT -1')
@@ -1014,9 +1015,9 @@ class TransparentGrid:
 			up = 0 if k == n else up
 			return {'lower': low, 'upper': up, 'lambda': lambd, 'lower_err': lowerr, 'upper_err': uperr}
 		else:
-			return self.FindUpperLowerUncertaintiesWithMinuit(k, n, sigm, max_iter, tolerance, low, up, is_last=True)
+			return self.FindAsymmetricUncertaintiesWithMinuit(k, n, sigm, max_iter, tolerance, low, up, is_last=True)
 
-	def FindUpperLowerUncertaintiesWithDiscrete(self, k, n, sigm):
+	def FindAsymmetricUncertaintiesWithDiscrete(self, k, n, sigm):
 		subdiv = self.efficiency_subdiv
 		if k == 0 or k == n:
 			edge_value = np.subtract(1, np.power(np.subtract(1, sigm, dtype='float64'), np.divide(1, n + 1, dtype='float64'), dtype='float64'), dtype='float64')
@@ -1037,7 +1038,6 @@ class TransparentGrid:
 		return {'lower': low, 'upper': up}
 
 	def FitLanGaus(self, name, conv_steps=100, color=ro.kRed, xmin=-10000000, xmax=-10000000):
-
 		self.canvas[name].cd()
 		self.langaus[name] = LanGaus(self.histo[name])
 		self.langaus[name].LanGausFit(conv_steps, xmin=xmin, xmax=xmax)
@@ -1113,6 +1113,27 @@ class TransparentGrid:
 			sums1 += fland1 * ro.TMath.Gaus(x[0], xx1, params[3])
 			sums2 += fland2 * ro.TMath.Gaus(x[0], xx2, params[7])
 		return params[2] * step1 * sums1 / (np.sqrt(2 * np.pi, dtype='f8') * params[3]) + params[6] * step2 * sums2 / (np.sqrt(2 * np.pi, dtype='f8') * params[7])
+
+	def FitGaus(self, name):
+		if name in self.histo.keys():
+			if name in self.canvas.keys():
+				self.canvas[name].cd()
+			# histo = self.histo[name]
+			xmean, xrms = self.histo[name].GetMean(), self.histo[name].GetRMS()
+			xmin, xmax = xmean - 2 * xrms, xmean + 2 * xrms
+			func = ro.TF1('f_gaus_' + name, 'gaus', xmean - 3 * xrms, xmean + 3 * xrms)
+			func.SetNpx(1000)
+			func.SetLineStyle(1)
+			func.SetLineColor(ro.kRed)
+			func.SetLineWidth(2)
+			params = np.array((self.histo[name].GetBinContent(self.histo[name].GetXaxis().FindBin(0)), xmean, xrms), 'float64')
+			func.SetParameters(params)
+			temp = self.histo[name].Fit('f_gaus_' + name, 'QIEBMSN', 'goff', xmin, xmax)
+			params = np.array((temp.Parameter(0), temp.Parameter(1), temp.Parameter(2)), 'float64')
+			func.SetParameters(params)
+			self.fits[name] = self.histo[name].Fit('f_gaus_' + name, 'QIEBMS', 'goff', params[1] - 2 * params[2], params[1] + 2 * params[2])
+			self.histo[name].GetFunction('f_gaus_' + name).Draw('same')
+			ro.gPad.Update()
 
 	def SaveCanvasInlist(self, list):
 		if not os.path.isdir('{d}/{r}/{sd}'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir)):

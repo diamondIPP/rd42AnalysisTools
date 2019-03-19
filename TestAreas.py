@@ -51,13 +51,51 @@ class TestAreas:
 		self.bias = self.trans_grid.bias
 		self.saturated_ADC = self.trans_grid.saturated_ADC
 		self.num_strips = self.trans_grid.num_strips if self.trans_grid.num_strips != 0 else 3
-		self.cluster_size = self.trans_grid.num_strips if self.trans_grid.num_strips != 0 else 3
+		self.cluster_size = self.trans_grid.cluster_size if self.trans_grid.cluster_size != 0 else 3
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 		if self.num_rows != 0:
 			self.trans_grid.row_info_diamond['num'] = self.num_rows
 
 		self.noise_cuts = ''
 		self.noise_varz = {}
+
+		self.ph_adc_h_varz = {}
+		self.ph_adc_ch_varz = {}
+		self.ph_snr_h_varz = {}
+		self.ph_snr_ch_varz = {}
+
+		self.phN_adc_h_varz = {}
+		self.phN_adc_ch_varz = {}
+		self.phN_snr_h_varz = {}
+		self.phN_snr_ch_varz = {}
+
+	def SetPHVarz(self):
+		for chi in xrange(self.cluster_size):
+			if FindLeafInTree(self.trans_grid.trans_tree, 'clusterChannel{i}'.format(i=chi)):
+				self.ph_adc_ch_varz['PH_Ch{i}'.format(i=chi)] = '(diaChSignal[clusterChannel{i}])'.format(i=chi)
+				self.ph_snr_ch_varz['PH_Ch{i}'.format(i=chi)] = '(diaChSignal[clusterChannel{i}]/diaChPedSigmaCmc[clusterChannel{i}])'.format(i=chi)
+			if FindLeafInTree(self.trans_grid.trans_tree, 'clusterChannelHighest{i}'.format(i=chi+1)):
+				self.ph_adc_h_varz['PH_H{i}'.format(i=chi + 1)] = '(diaChSignal[clusterChannelHighest{i}])'.format(i=chi + 1)
+				self.ph_snr_h_varz['PH_H{i}'.format(i=chi + 1)] = '(diaChSignal[clusterChannelHighest{i}]/diaChPedSigmaCmc[clusterChannelHighest{i}])'.format(i=chi + 1)
+
+		for ch in xrange(self.num_strips):
+			list_adc_phN_ch = []
+			list_snr_phN_ch = []
+			list_adc_phN_h = []
+			list_snr_phN_h = []
+
+			for chi in xrange(ch + 1):
+				if 'PH_Ch{i}'.format(i=chi) in self.ph_adc_ch_varz.keys():
+					list_adc_phN_ch.append(self.ph_adc_ch_varz['PH_Ch{i}'.format(i=chi)])
+					list_snr_phN_ch.append(self.ph_snr_ch_varz['PH_Ch{i}'.format(i=chi)])
+				if 'PH_H{i}'.format(i=chi+1) in self.ph_adc_h_varz.keys():
+					list_adc_phN_h.append(self.ph_adc_h_varz['PH_H{i}'.format(i=chi+1)])
+					list_snr_phN_h.append(self.ph_snr_h_varz['PH_H{i}'.format(i=chi+1)])
+
+			self.phN_adc_ch_varz['PH{i}_Ch'.format(i=ch + 1)] = '(' + '+'.join(list_adc_phN_ch) + ')' if len(list_adc_phN_ch) > 0 else ''
+			self.phN_snr_ch_varz['PH{i}_Ch'.format(i=ch + 1)] = '(' + '+'.join(list_snr_phN_ch) + ')' if len(list_snr_phN_ch) > 0 else ''
+			self.phN_adc_h_varz['PH{i}_H'.format(i=ch + 1)] = '(' + '+'.join(list_adc_phN_h) + ')' if len(list_adc_phN_h) > 0 else ''
+			self.phN_snr_h_varz['PH{i}_H'.format(i=ch + 1)] = '(' + '+'.join(list_snr_phN_h) + ')' if len(list_snr_phN_h) > 0 else ''
 
 	def ReadConfigFile(self):
 		def unpack_row_col(string):
@@ -166,11 +204,46 @@ class TestAreas:
 
 	def SetVarz(self):
 		self.noise_varz = {'adc': 'diaChSignal', 'snr': 'diaChSignal/diaChPedSigmaCmc'}
+		self.SetPHVarz()
 
 	def PositionCanvas(self, canvas_name):
 		if canvas_name in self.trans_grid.canvas.keys():
 			self.trans_grid.canvas[canvas_name].SetWindowPosition(self.w, self.w)
 			self.w += self.window_shift
+
+	def DoBorderPlots(self):
+		self.trans_grid.DrawProfile2DDiamond('PH2_H_map_with_borders', self.phN_adc_h_varz['PH2_H'], draw_top_borders=True)
+		self.trans_grid.DrawGoodAreasDiamond('PH2_H_map_with_borders')
+		self.trans_grid.DrawBadAreasDiamond('PH2_H_map_with_borders')
+		xbinmin, xbinmax = self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5), self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5) + self.trans_grid.num_cols * self.trans_grid.bins_per_ch_x - 1
+		self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().SetRange(xbinmin - 1, xbinmax + 1)
+		self.PositionCanvas('PH2_H_map_with_borders')
+		self.trans_grid.canvas['PH2_H_map_with_borders_py'] = ro.TCanvas('c_PH2_H_map_with_borders_py', 'c_PH2_H_map_with_borders_py', 1)
+		self.trans_grid.canvas['PH2_H_map_with_borders_py'].cd()
+		self.trans_grid.histo['PH2_H_map_with_borders_py'] = self.trans_grid.profile['PH2_H_map_with_borders'].ProjectionY('h_PH2_H_map_with_borders_py', xbinmin, xbinmax, 'e hist')
+		minbiny, maxbiny = self.trans_grid.histo['PH2_H_map_with_borders_py'].FindFirstBinAbove(), self.trans_grid.histo['PH2_H_map_with_borders_py'].FindLastBinAbove()
+		for biny in xrange(maxbiny, int(self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetNbins())):
+			if self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinContent(biny) != 0:
+				maxbiny = biny
+		miny, maxy = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinLowEdge(minbiny), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinLowEdge(maxbiny + 1)
+		self.trans_grid.profile['PH2_H_map_with_borders'].GetYaxis().SetRangeUser(miny, maxy)
+		ro.gPad.Update()
+		self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().SetRangeUser(miny, maxy)
+		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-({l}))/[1])+1)/2-[2]*(TMath::Erf((x-{u})/[3])+1)/2+[4]'.format(l=self.trans_grid.row_info_diamond['0'], u=self.trans_grid.row_info_diamond['up']), miny, maxy)
+		func.SetNpx(int(self.trans_grid.row_info_diamond['num'] * self.trans_grid.bins_per_ch_y * 10))
+		zmin, zmax = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetMinimum(), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetMaximum()
+		y1bin, y2bin = self.trans_grid.histo['PH2_H_map_with_borders_py'].FindFirstBinAbove((zmin + zmax) / 2.0), self.trans_grid.histo['PH2_H_map_with_borders_py'].FindLastBinAbove((zmin + zmax) / 2.0) + 1
+		y1, y2 = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinCenter(y1bin), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinCenter(y2bin)
+		z0, z1, z2 = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinContent(int((minbiny))), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinContent(int((y1bin + y2bin) / 2.0)), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinContent(int((maxbiny)))
+		func.SetParLimits(0, abs(z1 - z0) / 10.0, 2.0 * abs(z1 - z0))
+		func.SetParLimits(1, 0.1, 50)
+		func.SetParLimits(2, abs(z1 - z2) / 10.0, 2.0 * abs(z1 - z2))
+		func.SetParLimits(3, 0.1, 50)
+		func.SetParLimits(4, -2.0 * abs(z0), 10 * abs(z0))
+		params = np.array((abs(z1 - z0), 20, abs(z1 - z2), 20, z0), 'float64')
+		func.SetParameters(params)
+		self.trans_grid.fits['PH2_H_map_with_borders_py'] = self.trans_grid.histo['PH2_H_map_with_borders_py'].Fit('box_fcn', 'QIEBMS', 'goff', self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((minbiny))), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((maxbiny))))
+		self.PositionCanvas('PH2_H_map_with_borders_py')
 
 	def PlotNoiseNotInCluster(self, cells='all'):
 		# y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
@@ -182,9 +255,14 @@ class TestAreas:
 		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = (ni / float(sigma) for ni in [self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise])
 		suffix = self.suffix[cells]
 		self.trans_grid.DrawHisto1D('signal_noise_{c}_snr'.format(c=suffix), self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, self.noise_varz['snr'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
+		self.trans_grid.FitGaus('signal_noise_{c}_snr'.format(c=suffix))
 		self.PositionCanvas('signal_noise_{c}_snr'.format(c=suffix))
 		self.trans_grid.DrawHisto1D('signal_noise_{c}_adc'.format(c=suffix), self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, self.noise_varz['adc'], varname='Signal not in cluster (ADC)', cuts=temp_cut_noise, option='e hist')
+		self.trans_grid.FitGaus('signal_noise_{c}_adc'.format(c=suffix))
 		self.PositionCanvas('signal_noise_{c}_adc'.format(c=suffix))
+
+	def DoSaturationStudies(self, cells='all'):
+		pass
 
 	def PlotTestClusterStudies(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
