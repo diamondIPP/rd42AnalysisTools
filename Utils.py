@@ -1,7 +1,7 @@
 import os, shutil, sys, progressbar
 import numpy as np
 import ROOT as ro
-# import ipdb
+import ipdb
 
 def IsInt(i):
 	try:
@@ -431,6 +431,19 @@ def AddLineToStats(canvas, key, value=0, samplelinekey='Mean'):
 		line.SetTextSize(sampleline.GetTextSize())
 		lol.Add(line)
 		canvas.Modified()
+
+def SetX1X2NDC(histo, x1, x2, statsname='stats'):
+	if histo.FindObject(statsname):
+		histo.FindObject(statsname).SetX1NDC(x1)
+		histo.FindObject(statsname).SetX2NDC(x2)
+		ro.gPad.Update()
+
+def SetLegendX1X2Y1Y2(legend, x1, x2, y1, y2):
+	legend.SetX1NDC(x1)
+	legend.SetX2NDC(x2)
+	legend.SetY1NDC(y1)
+	legend.SetY2NDC(y2)
+	ro.gPad.Update()
 
 def CreateProgressBarUtils(maxVal=1):
 	widgets = [

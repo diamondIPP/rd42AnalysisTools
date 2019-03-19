@@ -32,6 +32,8 @@ class TestAreas:
 		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -65, 1, 2
 		# self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.125
 		self.min_snr, self.max_snr = -65, 65
+		self.min_adc, self.max_adc = -650, 650
+		self.delta_adc = 20
 		self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -32.25, 32.25, 0.5
 		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = -3.225, 3.225, 0.05
 		self.neg_cut_lines = {}
@@ -209,6 +211,7 @@ class TestAreas:
 	def PositionCanvas(self, canvas_name):
 		if canvas_name in self.trans_grid.canvas.keys():
 			self.trans_grid.canvas[canvas_name].SetWindowPosition(self.w, self.w)
+			ro.gPad.Update()
 			self.w += self.window_shift
 
 	def DoBorderPlots(self):
@@ -263,6 +266,60 @@ class TestAreas:
 
 	def DoSaturationStudies(self, cells='all'):
 		pass
+
+	def OverlayNoiseDistribution(self, histo, cells='all'):
+		suffix = self.suffix[cells]
+		hname = histo.GetName().split('h_')[1]
+		typ = 'adc' if 'adc' in hname.lower() else 'snr'
+		noise_name0 = 'signal_noise_{s}_{t}'.format(s=suffix, t=typ)
+		if not noise_name0 in self.trans_grid.histo.keys():
+			self.PlotNoiseNotInCluster(cells)
+		elif not self.trans_grid.histo[noise_name0]:
+			del self.trans_grid.histo[noise_name0]
+			self.PlotNoiseNotInCluster(cells)
+
+		noise_name_new = noise_name0 + '_' + hname
+		nbins = histo.GetNbinsX()
+		xbins = np.zeros(nbins, 'float64')
+		histo.GetXaxis().GetLowEdge(xbins)
+		xbins = np.append(xbins, 2 * xbins[-1] - xbins[-2])
+		self.trans_grid.histo[noise_name_new] = self.trans_grid.histo[noise_name0].Rebin(nbins, 'h_' + noise_name_new, xbins)
+		self.trans_grid.histo[noise_name_new].SetTitle(noise_name0 + '(scaled)')
+		scale = histo.GetMaximum() / self.trans_grid.histo[noise_name_new].GetMaximum()
+		self.trans_grid.histo[noise_name_new].Scale(scale)
+		self.trans_grid.histo[noise_name_new].SetLineColor(ro.kGray + 1)
+		self.trans_grid.histo[noise_name_new].SetStats(0)
+		self.trans_grid.canvas[hname].cd()
+		if self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0):
+			self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0).SetBit(ro.TF1.kNotDraw)
+		self.trans_grid.histo[noise_name_new].Draw('same')
+		ro.gPad.Update()
+
+	def DoClusterStudies(self, cells='all'):
+		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
+		for ch in xrange(self.cluster_size):
+			if 'PH_Ch' + str(ch) in self.ph_snr_ch_varz.keys():
+				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_ch['Ch{i}'.format(i=ch)]), cells=cells, operator='&&')
+				self.trans_grid.DrawHisto1D('PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix), self.min_snr, self.max_snr, self.delta_snr, var=self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch)], varname='PH Ch{i} (SNR)'.format(i=ch), cuts=tempcuts)
+				SetX1X2NDC(self.trans_grid.histo['PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix)], 0.15, 0.45, 'stats')
+				self.OverlayNoiseDistribution(self.trans_grid.histo['PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix)], cells)
+				legend = self.trans_grid.canvas['PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix)].BuildLegend()
+				ro.gPad.Update()
+				SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
+				self.PositionCanvas('PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix))
+
+				sigma = self.trans_grid.histo['signal_noise_{s}_{t}'.format(s=suffix, t='adc')].GetRMS() if 'signal_noise_{s}_{t}'.format(s=suffix, t='adc') in self.trans_grid.histo.keys() and self.trans_grid.histo['signal_noise_{s}_{t}'.format(s=suffix, t='adc')] else 10
+				self.min_adc, self.max_adc, self.delta_adc = self.min_snr * sigma, self.max_snr * sigma, self.delta_snr * sigma
+
+			if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
+				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.transp_ev, cells=cells, operator='&&')
+				self.trans_grid.DrawHisto1D('PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix), self.min_adc, self.max_adc, self.delta_adc, var=self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch)], varname='PH Ch{i} [adc]'.format(i=ch), cuts=tempcuts)
+				SetX1X2NDC(self.trans_grid.histo['PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix)], 0.15, 0.45, 'stats')
+				self.OverlayNoiseDistribution(self.trans_grid.histo['PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix)], cells)
+				legend = self.trans_grid.canvas['PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix)].BuildLegend()
+				ro.gPad.Update()
+				SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
+				self.PositionCanvas('PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix))
 
 	def PlotTestClusterStudies(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
