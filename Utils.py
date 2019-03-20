@@ -485,6 +485,22 @@ def FindLeafInTree(tree, leaf):
 		return True
 	return False
 
+def Get1DVectorFromTree(tree, var, cut):
+	leng = tree.Draw(var, cut, 'goff')
+	while leng > tree.GetEstimate():
+		tree.SetEstimate(leng)
+		leng = tree.Draw(var, cut, 'goff')
+	temp = tree.GetVal(0)
+	return np.array([temp[i] for i in xrange(leng)])
+
+def GetMaximumFromTree(tree, var, cut):
+	temp = Get1DVectorFromTree(tree, var, cut)
+	return temp.max()
+
+def GetMinimumFromTree(tree, var, cut):
+	temp = Get1DVectorFromTree(tree, var, cut)
+	return temp.min()
+
 def ExitMessage(txt, code=os.EX_SOFTWARE):
     print '##########'
     print txt

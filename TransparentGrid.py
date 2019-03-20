@@ -551,8 +551,8 @@ class TransparentGrid:
 		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz, zname, temp_cuts, transp_ev, plot_option)
 
 	def DrawProfile2DDiamondChannel(self, name, varx='clusterChannel0', xname='C0', varz='clusterChargeN', cuts='', draw_top_borders=False, transp_ev=True, plot_option='prof colz'):
-		xmin, xmax, deltax = -0.5, 127.5, 1.0
-		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
+		xmin, xmax, deltax = self.ch_ini - 1.5, self.ch_end + 1.5, 1.0
+		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - 2.5 * self.row_info_diamond['pitch'], self.row_info_diamond['up'] + 2.5 * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
 		if draw_top_borders:
 			self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
 		else:

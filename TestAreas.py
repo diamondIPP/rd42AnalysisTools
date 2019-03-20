@@ -31,11 +31,15 @@ class TestAreas:
 		self.window_shift = 5
 		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -65, 1, 2
 		# self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.125
-		self.min_snr, self.max_snr = -65, 65
-		self.min_adc, self.max_adc = -650, 650
+		self.min_snr, self.max_snr = -650, 650
+		self.min_adc, self.max_adc = -6500, 6500
 		self.delta_adc = 20
-		self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -32.25, 32.25, 0.5
-		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = -3.225, 3.225, 0.05
+		self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -322.5, 322.5, 0.5
+		# self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -32.25, 32.25, 0.5
+		# self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = -3.225, 3.225, 0.05
+		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = -32.25, 32.25, 0.05
+		self.minz = {t: {} for t in ['all', 'good', 'bad']}
+		self.maxz = {t: {} for t in ['all', 'good', 'bad']}
 		self.neg_cut_lines = {}
 		self.trash = []
 		self.w = 0
@@ -58,11 +62,15 @@ class TestAreas:
 		if self.num_rows != 0:
 			self.trans_grid.row_info_diamond['num'] = self.num_rows
 
-		self.noise_cuts = ''
-		self.ph_adc_ch_cuts = {}
-		self.ph_snr_ch_cuts = {}
-		self.ph_adc_h_cuts = {}
-		self.ph_snr_h_cuts = {}
+		self.noise_cuts = {t: '' for t in ['all', 'good', 'bad']}
+		self.ph_adc_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.ph_snr_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.ph_adc_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.ph_snr_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.phN_adc_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.phN_adc_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.phN_snr_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.phN_snr_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
 
 		self.noise_varz = {}
 		self.ph_adc_h_varz = {}
@@ -84,7 +92,7 @@ class TestAreas:
 				self.ph_adc_h_varz['PH_H{i}'.format(i=chi + 1)] = '(diaChSignal[clusterChannelHighest{i}])'.format(i=chi + 1)
 				self.ph_snr_h_varz['PH_H{i}'.format(i=chi + 1)] = '(diaChSignal[clusterChannelHighest{i}]/diaChPedSigmaCmc[clusterChannelHighest{i}])'.format(i=chi + 1)
 
-		for ch in xrange(self.num_strips):
+		for ch in xrange(self.cluster_size):
 			list_adc_phN_ch = []
 			list_snr_phN_ch = []
 			list_adc_phN_h = []
@@ -102,6 +110,22 @@ class TestAreas:
 			self.phN_snr_ch_varz['PH{i}_Ch'.format(i=ch + 1)] = '(' + '+'.join(list_snr_phN_ch) + ')' if len(list_snr_phN_ch) > 0 else ''
 			self.phN_adc_h_varz['PH{i}_H'.format(i=ch + 1)] = '(' + '+'.join(list_adc_phN_h) + ')' if len(list_adc_phN_h) > 0 else ''
 			self.phN_snr_h_varz['PH{i}_H'.format(i=ch + 1)] = '(' + '+'.join(list_snr_phN_h) + ')' if len(list_snr_phN_h) > 0 else ''
+
+	def FindMaxMinVarz(self):
+		for cells in self.suffix.keys():
+			for ch in xrange(self.cluster_size):
+				if 'PH_Ch{i}'.format(i=ch) in self.ph_adc_ch_varz.keys() and 'PH_Ch{i}'.format(i=ch) in self.ph_adc_ch_cuts.keys():
+					self.minz[cells]['PH_Ch{i}_adc'.format(i=ch)] = GetMinimumFromTree(self.trans_grid.trans_tree, self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch)], self.ph_adc_ch_cuts['PH_Ch{i}'.format(i=ch)])
+					self.maxz[cells]['PH_Ch{i}_adc'.format(i=ch)] = GetMaximumFromTree(self.trans_grid.trans_tree, self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch)], self.ph_adc_ch_cuts['PH_Ch{i}'.format(i=ch)])
+				if 'PH_H{i}'.format(i=ch+1) in self.ph_adc_h_varz.keys() and 'PH_H{i}'.format(i=ch+1) in self.ph_adc_h_cuts.keys():
+					self.minz[cells]['PH_H{i}_adc'.format(i=ch+1)] = GetMinimumFromTree(self.trans_grid.trans_tree, self.ph_adc_h_varz['PH_H{i}'.format(i=ch+1)], self.ph_adc_h_cuts['PH_H{i}'.format(i=ch+1)])
+					self.maxz[cells]['PH_H{i}_adc'.format(i=ch+1)] = GetMaximumFromTree(self.trans_grid.trans_tree, self.ph_adc_h_varz['PH_H{i}'.format(i=ch+1)], self.ph_adc_h_cuts['PH_H{i}'.format(i=ch+1)])
+				if 'PH_Ch{i}'.format(i=ch) in self.ph_snr_ch_varz.keys() and 'PH_Ch{i}'.format(i=ch) in self.ph_snr_ch_cuts.keys():
+					self.minz[cells]['PH_Ch{i}_snr'.format(i=ch)] = GetMinimumFromTree(self.trans_grid.trans_tree, self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch)], self.ph_snr_ch_cuts['PH_Ch{i}'.format(i=ch)])
+					self.maxz[cells]['PH_Ch{i}_snr'.format(i=ch)] = GetMaximumFromTree(self.trans_grid.trans_tree, self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch)], self.ph_snr_ch_cuts['PH_Ch{i}'.format(i=ch)])
+				if 'PH_H{i}'.format(i=ch+1) in self.ph_snr_h_varz.keys() and 'PH_H{i}'.format(i=ch+1) in self.ph_snr_h_cuts.keys():
+					self.minz[cells]['PH_H{i}_snr'.format(i=ch+1)] = GetMinimumFromTree(self.trans_grid.trans_tree, self.ph_snr_h_varz['PH_H{i}'.format(i=ch+1)], self.ph_snr_h_cuts['PH_H{i}'.format(i=ch+1)])
+					self.maxz[cells]['PH_H{i}_snr'.format(i=ch+1)] = GetMaximumFromTree(self.trans_grid.trans_tree, self.ph_snr_h_varz['PH_H{i}'.format(i=ch+1)], self.ph_snr_h_cuts['PH_H{i}'.format(i=ch+1)])
 
 	def ReadConfigFile(self):
 		def unpack_row_col(string):
@@ -180,8 +204,7 @@ class TestAreas:
 			self.trans_grid.AddRemainingToBadAreas()
 			print 'Marked the remaining cells as bad'
 			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
-			self.SetCutsInCutManager()
-			self.SetVarz()
+			self.SetVarzCutsAndMinMax()
 		elif len(self.rows) + len(self.cols) + len(self.cells) > 0:
 			self.trans_grid.ResetAreas()
 			for row in self.rows:
@@ -197,23 +220,28 @@ class TestAreas:
 				self.trans_grid.RemoveFromGoodArea(rcell[0], rcell[1])
 				print 'Removed cell with column {c} and row {r} from selection'.format(c=rcell[0], r=rcell[1])
 			self.trans_grid.AddRemainingToBadAreas()
-			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
-			self.SetVarz()
-			self.SetCutsInCutManager()
 			print 'Marked the remaining cells as bad'
+			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
+			self.SetVarzCutsAndMinMax()
 		else:
 			print 'Enter a correct settings file for the test area in variable config_file and re run ReadConfigFile before setting the test...'
 
+	def SetVarzCutsAndMinMax(self):
+		self.SetVarz()
+		self.SetCutsInCutManager()
+		self.FindMaxMinVarz()
+
 	def SetCutsInCutManager(self):
 		self.trans_grid.cuts_man.SetCells(selection=self.trans_grid.gridAreas.goodAreasCutNames_simplified_diamond, not_selection=self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
-		self.noise_cuts = self.trans_grid.cuts_man.ConcatenateCuts(cut1=self.trans_grid.cuts_man.not_in_transp_cluster, cut2=self.trans_grid.cuts_man.valid_ped_sigma)
-		for ch in xrange(self.cluster_size):
-			if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
-				self.ph_adc_ch_cuts['Ch{c}'.format(c=ch)] = self.trans_grid.cuts_man.transp_ev
-				self.ph_snr_ch_cuts['Ch{c}'.format(c=ch)] = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_ch['Ch{c}'.format(c=ch)])
-			if 'PH_H' + str(ch + 1) in self.ph_adc_h_varz.keys():
-				self.ph_adc_h_cuts['H{c}'.format(c=ch+1)] = self.trans_grid.cuts_man.transp_ev
-				self.ph_snr_h_cuts['H{c}'.format(c=ch+1)] = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_h['H{c}'.format(c=ch+1)])
+		self.noise_cuts = {cells: self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.ConcatenateCuts(cut1=self.trans_grid.cuts_man.not_in_transp_cluster, cut2=self.trans_grid.cuts_man.valid_ped_sigma), cells=cells) for cells in self.suffix.keys()}
+		for cells in self.suffix.keys():
+			for ch in xrange(self.cluster_size):
+				if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
+					self.ph_adc_ch_cuts[cells]['PH_Ch{c}'.format(c=ch)] = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.transp_ev, cells=cells)
+					self.ph_snr_ch_cuts[cells]['PH_Ch{c}'.format(c=ch)] = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_ch['Ch{c}'.format(c=ch)]), cells=cells)
+				if 'PH_H' + str(ch + 1) in self.ph_adc_h_varz.keys():
+					self.ph_adc_h_cuts[cells]['PH_H{c}'.format(c=ch+1)] = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.transp_ev, cells=cells)
+					self.ph_snr_h_cuts[cells]['PH_H{c}'.format(c=ch+1)] = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_h['H{c}'.format(c=ch+1)]), cells=cells)
 
 	def SetVarz(self):
 		self.noise_varz = {'adc': 'diaChSignal', 'snr': 'diaChSignal/diaChPedSigmaCmc'}
@@ -260,8 +288,7 @@ class TestAreas:
 		self.PositionCanvas('PH2_H_map_with_borders_py')
 
 	def PlotNoiseNotInCluster(self, cells='all'):
-		# y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
-		temp_cut_noise = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.noise_cuts, cells=cells, operator='&&')
+		temp_cut_noise = self.noise_cuts[cells]
 		temph = ro.TH1F('temph0', 'temph0', int(RoundInt((self.max_adc_noise - self.min_adc_noise) / float(self.delta_adc_noise))), self.min_adc_noise, self.max_adc_noise)
 		self.trans_grid.trans_tree.Draw('diaChSignal>>temph0', temp_cut_noise, 'goff')
 		mean, sigma = temph.GetMean(), temph.GetRMS()
@@ -270,9 +297,11 @@ class TestAreas:
 		suffix = self.suffix[cells]
 		self.trans_grid.DrawHisto1D('signal_noise_{c}_snr'.format(c=suffix), self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, self.noise_varz['snr'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
 		self.trans_grid.FitGaus('signal_noise_{c}_snr'.format(c=suffix))
+		self.trans_grid.histo['signal_noise_{c}_snr'.format(c=suffix)].GetXaxis().SetRangeUser(-3.2, 3.2)
 		self.PositionCanvas('signal_noise_{c}_snr'.format(c=suffix))
 		self.trans_grid.DrawHisto1D('signal_noise_{c}_adc'.format(c=suffix), self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, self.noise_varz['adc'], varname='Signal not in cluster (ADC)', cuts=temp_cut_noise, option='e hist')
 		self.trans_grid.FitGaus('signal_noise_{c}_adc'.format(c=suffix))
+		self.trans_grid.histo['signal_noise_{c}_adc'.format(c=suffix)].GetXaxis().SetRangeUser(-32, 32)
 		self.PositionCanvas('signal_noise_{c}_adc'.format(c=suffix))
 
 	def DoSaturationStudies(self, cells='all'):
@@ -295,26 +324,43 @@ class TestAreas:
 		histo.GetXaxis().GetLowEdge(xbins)
 		xbins = np.append(xbins, 2 * xbins[-1] - xbins[-2])
 		self.trans_grid.histo[noise_name_new] = self.trans_grid.histo[noise_name0].Rebin(nbins, 'h_' + noise_name_new, xbins)
-		self.trans_grid.histo[noise_name_new].SetTitle(noise_name0 + '(scaled)')
-		scale = histo.GetMaximum() / self.trans_grid.histo[noise_name_new].GetMaximum()
-		self.trans_grid.histo[noise_name_new].Scale(scale)
-		self.trans_grid.histo[noise_name_new].SetLineColor(ro.kGray + 1)
-		self.trans_grid.histo[noise_name_new].SetStats(0)
-		self.trans_grid.canvas[hname].cd()
-		if self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0):
-			self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0).SetBit(ro.TF1.kNotDraw)
-		self.trans_grid.histo[noise_name_new].Draw('same')
-		ro.gPad.Update()
+		if self.trans_grid.histo[noise_name_new]:
+			self.trans_grid.histo[noise_name_new].SetTitle(noise_name0 + '(scaled)')
+			scale = histo.GetMaximum() / self.trans_grid.histo[noise_name_new].GetMaximum()
+			self.trans_grid.histo[noise_name_new].Scale(scale)
+			self.trans_grid.histo[noise_name_new].SetLineColor(ro.kGray + 1)
+			self.trans_grid.histo[noise_name_new].SetStats(0)
+			self.trans_grid.canvas[hname].cd()
+			if self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0):
+				self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0).SetBit(ro.TF1.kNotDraw)
+			self.trans_grid.histo[noise_name_new].Draw('same')
+			ro.gPad.Update()
 
-	def DoClusterStudies(self, cells='all'):
+	def DoClusterStudies(self, cells='all', doLog=False):
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
-		
+		suffix = suffix + '_logScale' if doLog else suffix
 		
 		for ch in xrange(self.cluster_size):
 			#  2D Maps
 			if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
-				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cells=cells, cut=self.ph_adc_ch_cuts['Ch'+str(ch)])
-				self.trans_grid.DrawProfile2DDiamondChannel('PH_Ch{c}_map_{s}'.format(c=ch, s=suffix), 'clusterChannel{c}'.format(c=ch), 'Ch{c}'.format(c=ch), 'diaChSignal[clusterChannel{c}]'.format(c=ch), tempcuts)
+				tempcuts = self.ph_adc_ch_cuts[cells]['PH_Ch{i}'.format(i=ch)]
+				minz, maxz = self.minz[cells]['Ph_Ch{i}_adc'.format(i=ch)], self.maxz[cells]['Ph_Ch{i}_adc'.format(i=ch)]
+				# self.minz, self.maxz = (0, 2640) if ch == 0 else (-528, 1320) if ch == 1 else (-176, 1320)
+				self.trans_grid.DrawProfile2DDiamondChannel('PH_Ch{c}_map_{s}'.format(c=ch, s=suffix), 'clusterChannel{c}'.format(c=ch), 'C_ch{c}'.format(c=ch), self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch)], tempcuts)
+				self.trans_grid.profile['PH_Ch{c}_map_{s}'.format(c=ch, s=suffix)].SetMaximum(maxz)
+				self.trans_grid.profile['PH_Ch{c}_map_{s}'.format(c=ch, s=suffix)].SetMinimum(minz)
+				self.PositionCanvas('PH_Ch{c}_map_{s}'.format(c=ch, s=suffix))
+				# print 'PH_Ch' + str(ch) + ': ', self.trans_grid.profile['PH_Ch{c}_map_{s}'.format(c=ch, s=suffix)].GetMaximum(), ' -> ', self.trans_grid.profile['PH_Ch{c}_map_{s}'.format(c=ch, s=suffix)].GetMinimum()
+
+			if 'PH_H' + str(ch + 1) in self.ph_adc_h_varz.keys():
+				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cells=cells, cut=self.ph_adc_h_cuts['H'+str(ch + 1)])
+				minz, maxz = self.minz[cells]['Ph_H{i}_adc'.format(i=ch+1)], self.maxz[cells]['Ph_H{i}_adc'.format(i=ch+1)]
+				# self.minz, self.maxz = (0, 2640) if ch == 0 else (-220, 3120) if ch == 1 else (-528, 220)
+				self.trans_grid.DrawProfile2DDiamondChannel('PH_H{c}_map_{s}'.format(c=ch+1, s=suffix), 'clusterChannelHighest{c}'.format(c=ch+1), 'H_ch{c}'.format(c=ch+1), self.ph_adc_h_varz['PH_H{i}'.format(i=ch+1)], tempcuts)
+				self.trans_grid.profile['PH_H{c}_map_{s}'.format(c=ch+1, s=suffix)].SetMaximum(maxz)
+				self.trans_grid.profile['PH_H{c}_map_{s}'.format(c=ch+1, s=suffix)].SetMinimum(minz)
+				self.PositionCanvas('PH_H{c}_map_{s}'.format(c=ch+1, s=suffix))
+				# print 'PH_H' + str(ch+1) + ': ', self.trans_grid.profile['PH_H{c}_map_{s}'.format(c=ch+1, s=suffix)].GetMaximum(), ' -> ', self.trans_grid.profile['PH_H{c}_map_{s}'.format(c=ch+1, s=suffix)].GetMinimum()
 
 			#  2D Histos
 
@@ -322,22 +368,27 @@ class TestAreas:
 			#  1D distributions
 			if 'PH_Ch' + str(ch) in self.ph_snr_ch_varz.keys():
 				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_ch['Ch{i}'.format(i=ch)]), cells=cells, operator='&&')
-				self.trans_grid.DrawHisto1D('PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix), self.min_snr, self.max_snr, self.delta_snr, var=self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch)], varname='PH Ch{i} (SNR)'.format(i=ch), cuts=tempcuts)
+				minz, maxz = self.minz[cells]['Ph_Ch{i}_snr'.format(i=ch)], self.maxz[cells]['Ph_Ch{i}_snr'.format(i=ch)]
+				self.trans_grid.DrawHisto1D('PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix), -2 * , max(self.maxz['PH_Ch' + str(ch) + '_snr'] * 2, 0), self.delta_snr, var=self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch)], varname='PH Ch{i} (SNR)'.format(i=ch), cuts=tempcuts)
+				# self.trans_grid.DrawHisto1D('PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix), self.min_snr, self.max_snr, self.delta_snr, var=self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch)], varname='PH Ch{i} (SNR)'.format(i=ch), cuts=tempcuts)
 				SetX1X2NDC(self.trans_grid.histo['PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix)], 0.15, 0.45, 'stats')
 				self.OverlayNoiseDistribution(self.trans_grid.histo['PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix)], cells)
+				if doLog: self.trans_grid.canvas['PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix)].SetLogy()
 				legend = self.trans_grid.canvas['PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix)].BuildLegend()
 				ro.gPad.Update()
 				SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
 				self.PositionCanvas('PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix))
 
 				sigma = self.trans_grid.histo['signal_noise_{s}_{t}'.format(s=suffix, t='adc')].GetRMS() if 'signal_noise_{s}_{t}'.format(s=suffix, t='adc') in self.trans_grid.histo.keys() and self.trans_grid.histo['signal_noise_{s}_{t}'.format(s=suffix, t='adc')] else 10
-				self.min_adc, self.max_adc, self.delta_adc = self.min_snr * sigma, self.max_snr * sigma, self.delta_snr * sigma
+				self.min_adc, self.max_adc, self.delta_adc = self.min_snr * sigma, self.max_snr * sigma, 20
 
 			if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
 				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.transp_ev, cells=cells, operator='&&')
-				self.trans_grid.DrawHisto1D('PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix), self.min_adc, self.max_adc, self.delta_adc, var=self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch)], varname='PH Ch{i} [adc]'.format(i=ch), cuts=tempcuts)
+				self.trans_grid.DrawHisto1D('PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix), min(self.minz['PH_Ch' + str(ch) + '_adc'] * 2, 0), max(self.maxz['PH_Ch' + str(ch) + '_adc'] * 2, 0), self.delta_adc, var=self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch)], varname='PH Ch{i} [adc]'.format(i=ch), cuts=tempcuts)
+				# self.trans_grid.DrawHisto1D('PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix), self.min_adc, self.max_adc, self.delta_adc, var=self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch)], varname='PH Ch{i} [adc]'.format(i=ch), cuts=tempcuts)
 				SetX1X2NDC(self.trans_grid.histo['PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix)], 0.15, 0.45, 'stats')
 				self.OverlayNoiseDistribution(self.trans_grid.histo['PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix)], cells)
+				if doLog: self.trans_grid.canvas['PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix)].SetLogy()
 				legend = self.trans_grid.canvas['PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix)].BuildLegend()
 				ro.gPad.Update()
 				SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
@@ -345,9 +396,12 @@ class TestAreas:
 
 			if 'PH_H' + str(ch + 1) in self.ph_snr_h_varz.keys():
 				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_h['H{i}'.format(i=ch + 1)]), cells=cells, operator='&&')
-				self.trans_grid.DrawHisto1D('PH_H{i}_snr_{s}'.format(i=ch + 1, s=suffix), self.min_snr, self.max_snr, self.delta_snr, var=self.ph_snr_h_varz['PH_H{i}'.format(i=ch + 1)], varname='PH H{i} (SNR)'.format(i=ch + 1), cuts=tempcuts)
+				self.minz['PH_H' + str(ch+1) + '_snr'], self.maxz['PH_H' + str(ch+1) + '_snr'] = GetMinimumFromTree(self.trans_grid.trans_tree, self.ph_snr_h_varz['PH_H{i}'.format(i=ch + 1)], tempcuts),GetMaximumFromTree(self.trans_grid.trans_tree, self.ph_snr_h_varz['PH_H{i}'.format(i=ch + 1)], tempcuts)
+				self.trans_grid.DrawHisto1D('PH_H{i}_snr_{s}'.format(i=ch + 1, s=suffix), min(self.minz['PH_H' + str(ch+1) + '_snr'] * 2, 0), max(self.maxz['PH_H' + str(ch+1) + '_snr'] * 2, 0), self.delta_snr, var=self.ph_snr_h_varz['PH_H{i}'.format(i=ch + 1)], varname='PH H{i} (SNR)'.format(i=ch + 1), cuts=tempcuts)
+				# self.trans_grid.DrawHisto1D('PH_H{i}_snr_{s}'.format(i=ch + 1, s=suffix), self.min_snr, self.max_snr, self.delta_snr, var=self.ph_snr_h_varz['PH_H{i}'.format(i=ch + 1)], varname='PH H{i} (SNR)'.format(i=ch + 1), cuts=tempcuts)
 				SetX1X2NDC(self.trans_grid.histo['PH_H{i}_snr_{s}'.format(i=ch + 1, s=suffix)], 0.15, 0.45, 'stats')
 				self.OverlayNoiseDistribution(self.trans_grid.histo['PH_H{i}_snr_{s}'.format(i=ch + 1, s=suffix)], cells)
+				if doLog: self.trans_grid.canvas['PH_H{i}_snr_{s}'.format(i=ch + 1, s=suffix)].SetLogy()
 				legend = self.trans_grid.canvas['PH_H{i}_snr_{s}'.format(i=ch + 1, s=suffix)].BuildLegend()
 				ro.gPad.Update()
 				SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
@@ -358,9 +412,11 @@ class TestAreas:
 
 			if 'PH_H' + str(ch + 1) in self.ph_adc_h_varz.keys():
 				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.transp_ev, cells=cells, operator='&&')
-				self.trans_grid.DrawHisto1D('PH_H{i}_adc_{s}'.format(i=ch + 1, s=suffix), self.min_adc, self.max_adc, self.delta_adc, var=self.ph_adc_h_varz['PH_H{i}'.format(i=ch + 1)], varname='PH H{i} [adc]'.format(i=ch + 1), cuts=tempcuts)
+				self.trans_grid.DrawHisto1D('PH_H{i}_adc_{s}'.format(i=ch + 1, s=suffix), min(self.minz['PH_H' + str(ch+1) + '_adc'] * 2, 0), max(self.maxz['PH_H' + str(ch+1) + '_adc'] * 2, 0), self.delta_adc, var=self.ph_adc_h_varz['PH_H{i}'.format(i=ch + 1)], varname='PH H{i} [adc]'.format(i=ch + 1), cuts=tempcuts)
+				# self.trans_grid.DrawHisto1D('PH_H{i}_adc_{s}'.format(i=ch + 1, s=suffix), self.min_adc, self.max_adc, self.delta_adc, var=self.ph_adc_h_varz['PH_H{i}'.format(i=ch + 1)], varname='PH H{i} [adc]'.format(i=ch + 1), cuts=tempcuts)
 				SetX1X2NDC(self.trans_grid.histo['PH_H{i}_adc_{s}'.format(i=ch + 1, s=suffix)], 0.15, 0.45, 'stats')
 				self.OverlayNoiseDistribution(self.trans_grid.histo['PH_H{i}_adc_{s}'.format(i=ch + 1, s=suffix)], cells)
+				if doLog: self.trans_grid.canvas['PH_H{i}_adc_{s}'.format(i=ch + 1, s=suffix)].SetLogys()
 				legend = self.trans_grid.canvas['PH_H{i}_adc_{s}'.format(i=ch + 1, s=suffix)].BuildLegend()
 				ro.gPad.Update()
 				SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
