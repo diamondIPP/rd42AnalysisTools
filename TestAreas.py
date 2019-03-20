@@ -59,8 +59,12 @@ class TestAreas:
 			self.trans_grid.row_info_diamond['num'] = self.num_rows
 
 		self.noise_cuts = ''
-		self.noise_varz = {}
+		self.ph_adc_ch_cuts = {}
+		self.ph_snr_ch_cuts = {}
+		self.ph_adc_h_cuts = {}
+		self.ph_snr_h_cuts = {}
 
+		self.noise_varz = {}
 		self.ph_adc_h_varz = {}
 		self.ph_adc_ch_varz = {}
 		self.ph_snr_h_varz = {}
@@ -194,8 +198,8 @@ class TestAreas:
 				print 'Removed cell with column {c} and row {r} from selection'.format(c=rcell[0], r=rcell[1])
 			self.trans_grid.AddRemainingToBadAreas()
 			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
-			self.SetCutsInCutManager()
 			self.SetVarz()
+			self.SetCutsInCutManager()
 			print 'Marked the remaining cells as bad'
 		else:
 			print 'Enter a correct settings file for the test area in variable config_file and re run ReadConfigFile before setting the test...'
@@ -203,6 +207,13 @@ class TestAreas:
 	def SetCutsInCutManager(self):
 		self.trans_grid.cuts_man.SetCells(selection=self.trans_grid.gridAreas.goodAreasCutNames_simplified_diamond, not_selection=self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
 		self.noise_cuts = self.trans_grid.cuts_man.ConcatenateCuts(cut1=self.trans_grid.cuts_man.not_in_transp_cluster, cut2=self.trans_grid.cuts_man.valid_ped_sigma)
+		for ch in xrange(self.cluster_size):
+			if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
+				self.ph_adc_ch_cuts['Ch{c}'.format(c=ch)] = self.trans_grid.cuts_man.transp_ev
+				self.ph_snr_ch_cuts['Ch{c}'.format(c=ch)] = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_ch['Ch{c}'.format(c=ch)])
+			if 'PH_H' + str(ch + 1) in self.ph_adc_h_varz.keys():
+				self.ph_adc_h_cuts['H{c}'.format(c=ch+1)] = self.trans_grid.cuts_man.transp_ev
+				self.ph_snr_h_cuts['H{c}'.format(c=ch+1)] = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_h['H{c}'.format(c=ch+1)])
 
 	def SetVarz(self):
 		self.noise_varz = {'adc': 'diaChSignal', 'snr': 'diaChSignal/diaChPedSigmaCmc'}
@@ -297,7 +308,18 @@ class TestAreas:
 
 	def DoClusterStudies(self, cells='all'):
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
+		
+		
 		for ch in xrange(self.cluster_size):
+			#  2D Maps
+			if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
+				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cells=cells, cut=self.ph_adc_ch_cuts['Ch'+str(ch)])
+				self.trans_grid.DrawProfile2DDiamondChannel('PH_Ch{c}_map_{s}'.format(c=ch, s=suffix), 'clusterChannel{c}'.format(c=ch), 'Ch{c}'.format(c=ch), 'diaChSignal[clusterChannel{c}]'.format(c=ch), tempcuts)
+
+			#  2D Histos
+
+
+			#  1D distributions
 			if 'PH_Ch' + str(ch) in self.ph_snr_ch_varz.keys():
 				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_ch['Ch{i}'.format(i=ch)]), cells=cells, operator='&&')
 				self.trans_grid.DrawHisto1D('PH_Ch{i}_snr_{s}'.format(i=ch, s=suffix), self.min_snr, self.max_snr, self.delta_snr, var=self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch)], varname='PH Ch{i} (SNR)'.format(i=ch), cuts=tempcuts)
@@ -321,29 +343,28 @@ class TestAreas:
 				SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
 				self.PositionCanvas('PH_Ch{i}_adc_{s}'.format(i=ch, s=suffix))
 
-		for ch in xrange(1, self.cluster_size + 1):
-			if 'PH_H' + str(ch) in self.ph_snr_h_varz.keys():
-				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_h['H{i}'.format(i=ch)]), cells=cells, operator='&&')
-				self.trans_grid.DrawHisto1D('PH_H{i}_snr_{s}'.format(i=ch, s=suffix), self.min_snr, self.max_snr, self.delta_snr, var=self.ph_snr_h_varz['PH_H{i}'.format(i=ch)], varname='PH H{i} (SNR)'.format(i=ch), cuts=tempcuts)
-				SetX1X2NDC(self.trans_grid.histo['PH_H{i}_snr_{s}'.format(i=ch, s=suffix)], 0.15, 0.45, 'stats')
-				self.OverlayNoiseDistribution(self.trans_grid.histo['PH_H{i}_snr_{s}'.format(i=ch, s=suffix)], cells)
-				legend = self.trans_grid.canvas['PH_H{i}_snr_{s}'.format(i=ch, s=suffix)].BuildLegend()
+			if 'PH_H' + str(ch + 1) in self.ph_snr_h_varz.keys():
+				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.valid_ped_sigma_h['H{i}'.format(i=ch + 1)]), cells=cells, operator='&&')
+				self.trans_grid.DrawHisto1D('PH_H{i}_snr_{s}'.format(i=ch + 1, s=suffix), self.min_snr, self.max_snr, self.delta_snr, var=self.ph_snr_h_varz['PH_H{i}'.format(i=ch + 1)], varname='PH H{i} (SNR)'.format(i=ch + 1), cuts=tempcuts)
+				SetX1X2NDC(self.trans_grid.histo['PH_H{i}_snr_{s}'.format(i=ch + 1, s=suffix)], 0.15, 0.45, 'stats')
+				self.OverlayNoiseDistribution(self.trans_grid.histo['PH_H{i}_snr_{s}'.format(i=ch + 1, s=suffix)], cells)
+				legend = self.trans_grid.canvas['PH_H{i}_snr_{s}'.format(i=ch + 1, s=suffix)].BuildLegend()
 				ro.gPad.Update()
 				SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
-				self.PositionCanvas('PH_H{i}_snr_{s}'.format(i=ch, s=suffix))
+				self.PositionCanvas('PH_H{i}_snr_{s}'.format(i=ch + 1, s=suffix))
 
 				sigma = self.trans_grid.histo['signal_noise_{s}_{t}'.format(s=suffix, t='adc')].GetRMS() if 'signal_noise_{s}_{t}'.format(s=suffix, t='adc') in self.trans_grid.histo.keys() and self.trans_grid.histo['signal_noise_{s}_{t}'.format(s=suffix, t='adc')] else 10
 				self.min_adc, self.max_adc, self.delta_adc = self.min_snr * sigma, self.max_snr * sigma, self.delta_snr * sigma
 
-			if 'PH_H' + str(ch) in self.ph_adc_h_varz.keys():
+			if 'PH_H' + str(ch + 1) in self.ph_adc_h_varz.keys():
 				tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.transp_ev, cells=cells, operator='&&')
-				self.trans_grid.DrawHisto1D('PH_H{i}_adc_{s}'.format(i=ch, s=suffix), self.min_adc, self.max_adc, self.delta_adc, var=self.ph_adc_h_varz['PH_H{i}'.format(i=ch)], varname='PH H{i} [adc]'.format(i=ch), cuts=tempcuts)
-				SetX1X2NDC(self.trans_grid.histo['PH_H{i}_adc_{s}'.format(i=ch, s=suffix)], 0.15, 0.45, 'stats')
-				self.OverlayNoiseDistribution(self.trans_grid.histo['PH_H{i}_adc_{s}'.format(i=ch, s=suffix)], cells)
-				legend = self.trans_grid.canvas['PH_H{i}_adc_{s}'.format(i=ch, s=suffix)].BuildLegend()
+				self.trans_grid.DrawHisto1D('PH_H{i}_adc_{s}'.format(i=ch + 1, s=suffix), self.min_adc, self.max_adc, self.delta_adc, var=self.ph_adc_h_varz['PH_H{i}'.format(i=ch + 1)], varname='PH H{i} [adc]'.format(i=ch + 1), cuts=tempcuts)
+				SetX1X2NDC(self.trans_grid.histo['PH_H{i}_adc_{s}'.format(i=ch + 1, s=suffix)], 0.15, 0.45, 'stats')
+				self.OverlayNoiseDistribution(self.trans_grid.histo['PH_H{i}_adc_{s}'.format(i=ch + 1, s=suffix)], cells)
+				legend = self.trans_grid.canvas['PH_H{i}_adc_{s}'.format(i=ch + 1, s=suffix)].BuildLegend()
 				ro.gPad.Update()
 				SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
-				self.PositionCanvas('PH_H{i}_adc_{s}'.format(i=ch, s=suffix))
+				self.PositionCanvas('PH_H{i}_adc_{s}'.format(i=ch + 1, s=suffix))
 
 	def PlotTestClusterStudies(self, cells='all'):
 		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
