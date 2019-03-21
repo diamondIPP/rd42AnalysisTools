@@ -501,6 +501,11 @@ def GetMinimumFromTree(tree, var, cut):
 	temp = Get1DVectorFromTree(tree, var, cut)
 	return temp.min()
 
+def GetSymmetric1DLimits(xmin, xmax, deltax, scale=1, oddbins=True):
+	minx, maxx = min(0, np.floor(xmin)), max(0, np.ceil(xmax))
+	mz = max(abs(minx), abs(maxx))
+	return {'min': -1 * scale * mz - deltax/2.0, 'max': scale * mz + deltax/2.0} if oddbins else {'min': -1 * scale * mz, 'max': scale * mz}
+
 def ExitMessage(txt, code=os.EX_SOFTWARE):
     print '##########'
     print txt
