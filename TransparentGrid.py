@@ -461,7 +461,7 @@ class TransparentGrid:
 		self.CreateTCutGsDiamondCenter()
 		self.CreateGridText()
 		self.cuts_man = CutManager(self.trans_tree, self.num_strips, self.cluster_size, self.saturated_ADC)
-		self.cuts_man.SetNegAndSatAndPedSigmaCuts(neg_cut_snr=self.neg_cut, neg_cut_adc=self.neg_cut_adc)
+		self.cuts_man.SetCuts(neg_cut_snr=self.neg_cut, neg_cut_adc=self.neg_cut_adc)
 		self.cuts_man.SetUpDownBorderCuts(lower=self.row_info_diamond['0'], upper=self.row_info_diamond['up'])
 
 

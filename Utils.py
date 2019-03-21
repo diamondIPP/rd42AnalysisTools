@@ -502,9 +502,13 @@ def GetMinimumFromTree(tree, var, cut):
 	return temp.min()
 
 def GetSymmetric1DLimits(xmin, xmax, deltax, scale=1, oddbins=True):
-	minx, maxx = min(0, np.floor(xmin)), max(0, np.ceil(xmax))
+	minx, maxx = min(0, np.floor(deltax * RoundInt(xmin / float(deltax)))), max(0, np.ceil(deltax * RoundInt(xmax / float(deltax))))
 	mz = max(abs(minx), abs(maxx))
 	return {'min': -1 * scale * mz - deltax/2.0, 'max': scale * mz + deltax/2.0} if oddbins else {'min': -1 * scale * mz, 'max': scale * mz}
+
+def Get1DLimits(xmin, xmax, deltax, scale=1, oddbins=True):
+	minx, maxx = deltax * RoundInt(xmin / float(deltax)), deltax * RoundInt(xmax / float(deltax))
+	return {'min': scale * minx - deltax / 2.0, 'max': scale * maxx + deltax / 2.0} if oddbins else {'min': scale * minx, 'max': scale * maxx}
 
 def ExitMessage(txt, code=os.EX_SOFTWARE):
     print '##########'
