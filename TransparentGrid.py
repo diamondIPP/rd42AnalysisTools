@@ -93,6 +93,22 @@ class TransparentGrid:
 		self.FindDiamondChannelLimits()
 		self.list_neg_cuts_clusters = {}
 		self.list_neg_cuts_noise = {}
+		self.suffix = {'all': 'all', 'good': 'selected', 'bad': 'not_selected'}
+
+		self.noise_varz = {'adc': 'diaChSignal', 'snr': 'diaChSignal/diaChPedSigmaCmc'}
+		self.ph_adc_h_varz = {}
+		self.ph_adc_ch_varz = {}
+		self.ph_snr_h_varz = {}
+		self.ph_snr_ch_varz = {}
+
+		self.phN_adc_h_varz = {}
+		self.phN_adc_ch_varz = {}
+		self.phN_snr_h_varz = {}
+		self.phN_snr_ch_varz = {}
+
+		self.minz = {cells: {} for cells in ['all', 'good', 'bad']}
+		self.maxz = {cells: {} for cells in ['all', 'good', 'bad']}
+
 
 	def CheckFoldersAndFiles(self):
 		if not os.path.isdir(self.dir):
@@ -1218,6 +1234,66 @@ class TransparentGrid:
 		# self.trans_file = None
 		# self.trans_tree = None
 
+	def SetVarz(self):
+		print 'Setting ph variables for plotting...', ; sys.stdout.flush()
+		for chi in xrange(self.cluster_size):
+			if FindLeafInTree(self.trans_tree, 'clusterChannel{i}'.format(i=chi)):
+				self.ph_adc_ch_varz['PH_Ch{i}'.format(i=chi)] = '(diaChSignal[clusterChannel{i}])'.format(i=chi)
+				self.ph_snr_ch_varz['PH_Ch{i}'.format(i=chi)] = '(diaChSignal[clusterChannel{i}]/diaChPedSigmaCmc[clusterChannel{i}])'.format(i=chi)
+			if FindLeafInTree(self.trans_tree, 'clusterChannelHighest{i}'.format(i=chi+1)):
+				self.ph_adc_h_varz['PH_H{i}'.format(i=chi + 1)] = '(diaChSignal[clusterChannelHighest{i}])'.format(i=chi + 1)
+				self.ph_snr_h_varz['PH_H{i}'.format(i=chi + 1)] = '(diaChSignal[clusterChannelHighest{i}]/diaChPedSigmaCmc[clusterChannelHighest{i}])'.format(i=chi + 1)
+
+		for ch in xrange(self.cluster_size):
+			list_adc_phN_ch = []
+			list_snr_phN_ch = []
+			list_adc_phN_h = []
+			list_snr_phN_h = []
+
+			for chi in xrange(ch + 1):
+				if 'PH_Ch{i}'.format(i=chi) in self.ph_adc_ch_varz.keys():
+					list_adc_phN_ch.append(self.ph_adc_ch_varz['PH_Ch{i}'.format(i=chi)])
+					list_snr_phN_ch.append(self.ph_snr_ch_varz['PH_Ch{i}'.format(i=chi)])
+				if 'PH_H{i}'.format(i=chi+1) in self.ph_adc_h_varz.keys():
+					list_adc_phN_h.append(self.ph_adc_h_varz['PH_H{i}'.format(i=chi+1)])
+					list_snr_phN_h.append(self.ph_snr_h_varz['PH_H{i}'.format(i=chi+1)])
+
+			self.phN_adc_ch_varz['PH{i}_Ch'.format(i=ch + 1)] = '(' + '+'.join(list_adc_phN_ch) + ')' if len(list_adc_phN_ch) > 0 else ''
+			self.phN_snr_ch_varz['PH{i}_Ch'.format(i=ch + 1)] = '(' + '+'.join(list_snr_phN_ch) + ')' if len(list_snr_phN_ch) > 0 else ''
+			self.phN_adc_h_varz['PH{i}_H'.format(i=ch + 1)] = '(' + '+'.join(list_adc_phN_h) + ')' if len(list_adc_phN_h) > 0 else ''
+			self.phN_snr_h_varz['PH{i}_H'.format(i=ch + 1)] = '(' + '+'.join(list_snr_phN_h) + ')' if len(list_snr_phN_h) > 0 else ''
+		print 'Done'
+
+	def FindMaxMinVarz(self, cells='good'):
+		print 'Finding Maximum and Minimum ranges for plotting inside {sf} cells...'.format(sf=self.suffix[cells]), ; sys.stdout.flush()
+		if len(self.minz[cells].keys()) + len(self.maxz[cells].keys()) < 2:
+			for ch in xrange(self.cluster_size):
+				if 'PH_Ch{i}'.format(i=ch) in self.ph_adc_ch_varz.keys() and 'PH_Ch{i}'.format(i=ch) in self.cuts_man.ph_adc_ch_cuts[cells].keys():
+					self.minz[cells]['PH_Ch{i}_adc'.format(i=ch)] = GetMinimumFromTree(self.trans_tree, self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch)], self.cuts_man.ph_adc_ch_cuts[cells]['PH_Ch{i}'.format(i=ch)])
+					self.maxz[cells]['PH_Ch{i}_adc'.format(i=ch)] = GetMaximumFromTree(self.trans_tree, self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch)], self.cuts_man.ph_adc_ch_cuts[cells]['PH_Ch{i}'.format(i=ch)])
+				if 'PH_H{i}'.format(i=ch+1) in self.ph_adc_h_varz.keys() and 'PH_H{i}'.format(i=ch+1) in self.cuts_man.ph_adc_h_cuts[cells].keys():
+					self.minz[cells]['PH_H{i}_adc'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.ph_adc_h_varz['PH_H{i}'.format(i=ch+1)], self.cuts_man.ph_adc_h_cuts[cells]['PH_H{i}'.format(i=ch+1)])
+					self.maxz[cells]['PH_H{i}_adc'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.ph_adc_h_varz['PH_H{i}'.format(i=ch+1)], self.cuts_man.ph_adc_h_cuts[cells]['PH_H{i}'.format(i=ch+1)])
+				if 'PH_Ch{i}'.format(i=ch) in self.ph_snr_ch_varz.keys() and 'PH_Ch{i}'.format(i=ch) in self.cuts_man.ph_snr_ch_cuts[cells].keys():
+					self.minz[cells]['PH_Ch{i}_snr'.format(i=ch)] = GetMinimumFromTree(self.trans_tree, self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch)], self.cuts_man.ph_snr_ch_cuts[cells]['PH_Ch{i}'.format(i=ch)])
+					self.maxz[cells]['PH_Ch{i}_snr'.format(i=ch)] = GetMaximumFromTree(self.trans_tree, self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch)], self.cuts_man.ph_snr_ch_cuts[cells]['PH_Ch{i}'.format(i=ch)])
+				if 'PH_H{i}'.format(i=ch+1) in self.ph_snr_h_varz.keys() and 'PH_H{i}'.format(i=ch+1) in self.cuts_man.ph_snr_h_cuts[cells].keys():
+					self.minz[cells]['PH_H{i}_snr'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.ph_snr_h_varz['PH_H{i}'.format(i=ch+1)], self.cuts_man.ph_snr_h_cuts[cells]['PH_H{i}'.format(i=ch+1)])
+					self.maxz[cells]['PH_H{i}_snr'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.ph_snr_h_varz['PH_H{i}'.format(i=ch+1)], self.cuts_man.ph_snr_h_cuts[cells]['PH_H{i}'.format(i=ch+1)])
+				if 'PH{i}_Ch'.format(i=ch+1) in self.phN_adc_ch_varz.keys() and 'PH{i}_Ch'.format(i=ch+1) in self.cuts_man.phN_adc_ch_cuts[cells].keys():
+					self.minz[cells]['PH{i}_Ch_adc'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.phN_adc_ch_varz['PH{i}_Ch'.format(i=ch+1)], self.cuts_man.phN_adc_ch_cuts[cells]['PH{i}_Ch'.format(i=ch+1)])
+					self.maxz[cells]['PH{i}_Ch_adc'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.phN_adc_ch_varz['PH{i}_Ch'.format(i=ch+1)], self.cuts_man.phN_adc_ch_cuts[cells]['PH{i}_Ch'.format(i=ch+1)])
+				if 'PH{i}_Ch'.format(i=ch+1) in self.phN_snr_ch_varz.keys() and 'PH{i}_Ch'.format(i=ch+1) in self.cuts_man.phN_snr_ch_cuts[cells].keys():
+					self.minz[cells]['PH{i}_Ch_snr'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.phN_snr_ch_varz['PH{i}_Ch'.format(i=ch+1)], self.cuts_man.phN_snr_ch_cuts[cells]['PH{i}_Ch'.format(i=ch+1)])
+					self.maxz[cells]['PH{i}_Ch_snr'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.phN_snr_ch_varz['PH{i}_Ch'.format(i=ch+1)], self.cuts_man.phN_snr_ch_cuts[cells]['PH{i}_Ch'.format(i=ch+1)])
+				if 'PH{i}_H'.format(i=ch+1) in self.phN_adc_h_varz.keys() and 'PH{i}_H'.format(i=ch+1) in self.cuts_man.phN_adc_h_cuts[cells].keys():
+					self.minz[cells]['PH{i}_H_adc'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.phN_adc_h_varz['PH{i}_H'.format(i=ch+1)], self.cuts_man.phN_adc_h_cuts[cells]['PH{i}_H'.format(i=ch+1)])
+					self.maxz[cells]['PH{i}_H_adc'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.phN_adc_h_varz['PH{i}_H'.format(i=ch+1)], self.cuts_man.phN_adc_h_cuts[cells]['PH{i}_H'.format(i=ch+1)])
+				if 'PH{i}_H'.format(i=ch+1) in self.phN_snr_h_varz.keys() and 'PH{i}_H'.format(i=ch+1) in self.cuts_man.phN_snr_h_cuts[cells].keys():
+					self.minz[cells]['PH{i}_H_snr'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.phN_snr_h_varz['PH{i}_H'.format(i=ch+1)], self.cuts_man.phN_snr_h_cuts[cells]['PH{i}_H'.format(i=ch+1)])
+					self.maxz[cells]['PH{i}_H_snr'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.phN_snr_h_varz['PH{i}_H'.format(i=ch+1)], self.cuts_man.phN_snr_h_cuts[cells]['PH{i}_H'.format(i=ch+1)])
+		print 'Done'
+
 if __name__ == '__main__':
 	parser = OptionParser()
 	parser.add_option('-d', '--dir', dest='dir', type='string', help='Path to the subdirectory that contains the output of different runs')
@@ -1228,7 +1304,6 @@ if __name__ == '__main__':
 	(options, args) = parser.parse_args()
 	run = int(options.run)
 	dir = str(options.dir)
-	# testnum = int(options.testnumber)
 	numstrips = int(options.numstrips)
 	colpitch = int(options.colpitch)
 

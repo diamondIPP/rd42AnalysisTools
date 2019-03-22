@@ -7,7 +7,7 @@ class CutManager:
 	def __init__(self, tree, numstrips=5, clust_size=10, sat_adc=4095):
 		self.tree = tree
 		self.numstrips = numstrips
-		self.clust_size = clust_size
+		self.cluster_size = clust_size
 		self.sat_adc = sat_adc
 		self.transp_ev = '(transparentEvent)'
 		self.tcutg_cell = {}
@@ -70,9 +70,19 @@ class CutManager:
 		self.sat_evts = None
 		self.sat_evts_region = '(satRegion)'
 		self.not_sat_evts_region = '(!satRegion)'
+		
+		self.noise_cuts = {t: '' for t in ['all', 'good', 'bad']}
+		self.ph_adc_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.ph_snr_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.ph_adc_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.ph_snr_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.phN_adc_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.phN_adc_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.phN_snr_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
+		self.phN_snr_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
 
 	def SetCuts(self, neg_cut_snr, neg_cut_adc):
-		for i in xrange(self.clust_size):
+		for i in xrange(self.cluster_size):
 			if FindLeafInTree(self.tree, 'clusterChannel{i}'.format(i=i)):
 				self.neg_snr_ph_ch['PH_Ch{i}'.format(i=i)] = '((diaChPedSigmaCmc[clusterChannel{i}]>0)&&(diaChSignal[clusterChannel{i}]/diaChPedSigmaCmc[clusterChannel{i}]<-{th}))'.format(i=i, th=neg_cut_snr)
 				self.not_neg_snr_ph_ch['PH_Ch{i}'.format(i=i)] = '((diaChPedSigmaCmc[clusterChannel{i}]>0)&&(diaChSignal[clusterChannel{i}]/diaChPedSigmaCmc[clusterChannel{i}]>=-{th}))'.format(i=i, th=neg_cut_snr)
@@ -91,7 +101,7 @@ class CutManager:
 				self.neg_snr_ph_h['PH_H{i}'.format(i=i+1)] = '((diaChPedSigmaCmc[clusterChannelHighest{i}]>0)&&(diaChSignal[clusterChannelHighest{i}]/diaChPedSigmaCmc[clusterChannelHighest{i}]<-{th}))'.format(i=i+1, th=neg_cut_snr)
 				self.not_neg_snr_ph_h['PH_H{i}'.format(i=i+1)] = '((diaChPedSigmaCmc[clusterChannelHighest{i}]>0)&&(diaChSignal[clusterChannelHighest{i}]/diaChPedSigmaCmc[clusterChannelHighest{i}]>=-{th}))'.format(i=i+1, th=neg_cut_snr)
 				self.neg_adc_ph_h['PH_H{i}'.format(i=i+1)] = '(diaChSignal[clusterChannelHighest{i}]<-{th})'.format(i=i+1, th=neg_cut_adc)
-				self.not_neg_adc_ph_h['PH_H{i}'.format(i=i+1)] = '(diaChSignal[clusterChannelHighest{i}]>=-{th})'.format(i=i+1, th=neg_cut_adc)
+				self.not_neg_adc_ph_h['PH_H{i}'.format(i=i+1)] = '(diaChSignal[clusterChannelHighest{i}]>=-{th})'.format(i=i + 1, th=neg_cut_adc)
 
 				self.sat_adc_h['H{i}'.format(i=i+1)] = '(diaChADC[clusterChannelHighest{i}]>={s})'.format(i=i+1, s=self.sat_adc)
 				self.not_sat_adc_h['H{i}'.format(i=i+1)] = '(diaChADC[clusterChannelHighest{i}]<{s})'.format(i=i+1, s=self.sat_adc)
@@ -101,7 +111,7 @@ class CutManager:
 				self.ph_adc_h['PH_H{i}'.format(i=i+1)] = self.transp_ev
 				self.ph_snr_h['PH_H{i}'.format(i=i+1)] = self.ConcatenateCuts(self.transp_ev, self.valid_ped_sigma_h['H{i}'.format(i=i + 1)])
 
-		for ch in xrange(self.clust_size):
+		for ch in xrange(self.cluster_size):
 			list_neg_snr_phN_ch = []
 			list_not_neg_snr_phN_ch = []
 			list_neg_adc_phN_ch = []
@@ -190,6 +200,24 @@ class CutManager:
 	def SetCellsCenters(self, selection, not_selection):
 		self.selected_cells_centers = self.selected_cells_centers.format(s=selection)
 		self.not_selected_cells_centers = self.not_selected_cells_centers.format(ns=not_selection)
+
+	def SetNoiseCuts(self):
+		self.noise_cuts = {cells: self.ConcatenateCutWithCells(cut=self.ConcatenateCuts(cut1=self.not_in_transp_cluster, cut2=self.valid_ped_sigma), cells=cells) for cells in ['all', 'good', 'bad']}
+
+	def SetPHCuts(self):
+		for cells in ['all', 'good', 'bad']:
+			for ch in xrange(self.cluster_size):
+				if FindLeafInTree(self.tree, 'clusterChannel{c}'.format(c=ch)):
+					self.ph_adc_ch_cuts[cells]['PH_Ch{c}'.format(c=ch)] = self.ConcatenateCutWithCells(cut=self.ph_adc_ch['PH_Ch{c}'.format(c=ch)], cells=cells)
+					self.ph_snr_ch_cuts[cells]['PH_Ch{c}'.format(c=ch)] = self.ConcatenateCutWithCells(cut=self.ph_snr_ch['PH_Ch{c}'.format(c=ch)], cells=cells)
+				if FindLeafInTree(self.tree, 'clusterChannelHighest{c}'.format(c=ch+1)):
+					self.ph_adc_h_cuts[cells]['PH_H{c}'.format(c=ch+1)] = self.ConcatenateCutWithCells(cut=self.ph_adc_h['PH_H{c}'.format(c=ch+1)], cells=cells)
+					self.ph_snr_h_cuts[cells]['PH_H{c}'.format(c=ch+1)] = self.ConcatenateCutWithCells(cut=self.ph_snr_h['PH_H{c}'.format(c=ch+1)], cells=cells)
+				self.phN_adc_ch_cuts[cells]['PH{c}_Ch'.format(c=ch+1)] = self.ConcatenateCutWithCells(cut=self.ph_adc_N_ch['PH{c}_Ch'.format(c=ch+1)], cells=cells)
+				self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=ch+1)] = self.ConcatenateCutWithCells(cut=self.ph_snr_N_ch['PH{c}_Ch'.format(c=ch+1)], cells=cells)
+				self.phN_adc_h_cuts[cells]['PH{c}_H'.format(c=ch+1)] = self.ConcatenateCutWithCells(cut=self.ph_adc_N_h['PH{c}_H'.format(c=ch+1)], cells=cells)
+				self.phN_snr_h_cuts[cells]['PH{c}_H'.format(c=ch+1)] = self.ConcatenateCutWithCells(cut=self.ph_snr_N_h['PH{c}_H'.format(c=ch+1)], cells=cells)
+
 
 	def SetUpDownBorderCuts(self, lower, upper):
 		self.no_up_down_borders = self.no_up_down_borders.format(l=lower, h=upper)
