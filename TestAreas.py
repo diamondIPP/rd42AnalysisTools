@@ -412,6 +412,9 @@ class TestAreas:
 				self.trans_grid.DrawHisto2D('PH{c}_H_Vs_strip_location_{s}'.format(c=ch+1, s=suffix), minx, maxx, deltax, 'dia Pred Ch hit pos', hist_limits['min'], hist_limits['max'], 4 * self.delta_adc, 'PH{c}_H [ADC]'.format(c=ch+1), 'diaChXPred-TMath::Floor(diaChXPred+0.5)', self.phN_adc_h_varz['PH{i}_H'.format(i=ch+1)], tempcuts)
 				self.PositionCanvas('PH{c}_H_Vs_strip_location_{s}'.format(c=ch+1, s=suffix))
 
+			for ch2 in xrange(self.cluster_size):
+				if 'PH{c1}_Ch'.format(c1=ch) in self.phN_adc_ch_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_adc_ch_varz.keys():
+					tempcuts = self.phN
 
 			#  1D distributions
 			if 'PH_Ch' + str(ch) in self.ph_snr_ch_varz.keys():
