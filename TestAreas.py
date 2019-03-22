@@ -413,8 +413,35 @@ class TestAreas:
 				self.PositionCanvas('PH{c}_H_Vs_strip_location_{s}'.format(c=ch+1, s=suffix))
 
 			for ch2 in xrange(self.cluster_size):
-				if 'PH{c1}_Ch'.format(c1=ch) in self.phN_adc_ch_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_adc_ch_varz.keys():
-					tempcuts = self.phN
+				if 'PH{c1}_Ch'.format(c1=ch+1) in self.phN_adc_ch_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_adc_ch_varz.keys():
+					tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_adc_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
+					xmin, xmax, ymin, ymax = -550, 2650, 0, 4200
+					self.trans_grid.DrawHisto2D('PH{c1}_Ch_Vs_PH_Ch{c2}'.format(c1=ch+1, c2=ch2), xmin, xmax, 4 * self.delta_adc, 'PH_Ch{c2} [ADC]'.format(c2=ch2), ymin, ymax, 4 * self.delta_adc, 'PH{c1}_Ch [ADC]'.format(c1=ch+1), self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch2)], self.phN_adc_ch_varz['PH{i}_Ch'.format(i=ch+1)], tempcuts)
+					self.PositionCanvas('PH{c1}_Ch_Vs_PH_Ch{c2}'.format(c1=ch+1, c2=ch2))
+
+				if 'PH{c1}_H'.format(c1=ch+1) in self.phN_adc_h_varz.keys() and 'PH_H{c2}'.format(c2=ch2+1) in self.ph_adc_h_varz.keys():
+					tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_adc_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_adc_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)])
+					xmin, xmax, ymin, ymax = -550, 2650, 0, 4200
+					self.trans_grid.DrawHisto2D('PH{c1}_H_Vs_PH_H{c2}'.format(c1=ch+1, c2=ch2+1), xmin, xmax, 4 * self.delta_adc, 'PH_H{c2} [ADC]'.format(c2=ch2+1), ymin, ymax, 4 * self.delta_adc, 'PH{c1}_H [ADC]'.format(c1=ch+1), self.ph_adc_h_varz['PH_H{i}'.format(i=ch2+1)], self.phN_adc_h_varz['PH{i}_H'.format(i=ch+1)], tempcuts)
+					self.PositionCanvas('PH{c1}_H_Vs_PH_H{c2}'.format(c1=ch+1, c2=ch2+1))
+
+				if 'PH{c1}_H'.format(c1=ch+1) in self.phN_adc_h_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_adc_ch_varz.keys():
+					tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_adc_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
+					xmin, xmax, ymin, ymax = -550, 2650, 0, 4200
+					self.trans_grid.DrawHisto2D('PH{c1}_H_Vs_PH_Ch{c2}'.format(c1=ch+1, c2=ch2), xmin, xmax, 4 * self.delta_adc, 'PH_Ch{c2} [ADC]'.format(c2=ch2), ymin, ymax, 4 * self.delta_adc, 'PH{c1}_H [ADC]'.format(c1=ch+1), self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch2)], self.phN_adc_h_varz['PH{i}_H'.format(i=ch+1)], tempcuts)
+					self.PositionCanvas('PH{c1}_H_Vs_PH_Ch{c2}'.format(c1=ch+1, c2=ch2))
+
+				if 'PH{c1}_Ch'.format(c1=ch+1) in self.phN_adc_ch_varz.keys() and 'PH_H{c2}'.format(c2=ch2+1) in self.ph_adc_h_varz.keys():
+					tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_adc_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_adc_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)])
+					xmin, xmax, ymin, ymax = -550, 2650, 0, 4200
+					self.trans_grid.DrawHisto2D('PH{c1}_Ch_Vs_PH_H{c2}'.format(c1=ch+1, c2=ch2+1), xmin, xmax, 4 * self.delta_adc, 'PH_H{c2} [ADC]'.format(c2=ch2+1), ymin, ymax, 4 * self.delta_adc, 'PH{c1}_Ch [ADC]'.format(c1=ch+1), self.ph_adc_h_varz['PH_H{i}'.format(i=ch2+1)], self.phN_adc_ch_varz['PH{i}_Ch'.format(i=ch+1)], tempcuts)
+					self.PositionCanvas('PH{c1}_Ch_Vs_PH_H{c2}'.format(c1=ch+1, c2=ch2+1))
+
+				if 'PH_H{c1}'.format(c1=ch+1) in self.ph_adc_h_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_adc_ch_varz.keys():
+					tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.ph_adc_h_cuts[cells]['PH_H{c1}'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
+					xmin, xmax, ymin, ymax = -550, 2650, -550, 2650
+					self.trans_grid.DrawHisto2D('PH_H{c1}_Vs_PH_Ch{c2}'.format(c1=ch+1, c2=ch2), xmin, xmax, 4 * self.delta_adc, 'PH_Ch{c2} [ADC]'.format(c2=ch2), ymin, ymax, 4 * self.delta_adc, 'PH_H{c1} [ADC]'.format(c1=ch+1), self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch2)], self.ph_adc_h_varz['PH_H{i}'.format(i=ch+1)], tempcuts)
+					self.PositionCanvas('PH_H{c1}_Vs_PH_Ch{c2}'.format(c1=ch+1, c2=ch2))
 
 			#  1D distributions
 			if 'PH_Ch' + str(ch) in self.ph_snr_ch_varz.keys():
