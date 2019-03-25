@@ -27,6 +27,7 @@ class ClusterChannelsAnalysis:
 		self.trash = []
 		self.w = 0
 		self.trans_grid = trans_grid
+		self.noise_ana = None
 		self.num_strips = numstrips
 		self.cluster_size = clustersize
 
@@ -74,33 +75,8 @@ class ClusterChannelsAnalysis:
 		self.PosCanvas('signal_noise_{c}_adc'.format(c=suffix))
 
 	def OverlayNoiseDistribution(self, histo, cells='all'):
-		suffix = self.suffix[cells]
-		hname = histo.GetName().split('h_')[1]
-		typ = 'adc' if 'adc' in hname.lower() else 'snr'
-		noise_name0 = 'signal_noise_{s}_{t}'.format(s=suffix, t=typ)
-		if not noise_name0 in self.trans_grid.histo.keys():
-			self.PlotNoiseNotInCluster(cells)
-		elif not self.trans_grid.histo[noise_name0]:
-			del self.trans_grid.histo[noise_name0]
-			self.PlotNoiseNotInCluster(cells)
-
-		noise_name_new = noise_name0 + '_' + hname
-		nbins = histo.GetNbinsX()
-		xbins = np.zeros(nbins, 'float64')
-		histo.GetXaxis().GetLowEdge(xbins)
-		xbins = np.append(xbins, 2 * xbins[-1] - xbins[-2])
-		self.trans_grid.histo[noise_name_new] = self.trans_grid.histo[noise_name0].Rebin(nbins, 'h_' + noise_name_new, xbins)
-		if self.trans_grid.histo[noise_name_new]:
-			self.trans_grid.histo[noise_name_new].SetTitle(noise_name0 + '(scaled)')
-			scale = histo.GetMaximum() / self.trans_grid.histo[noise_name_new].GetMaximum()
-			self.trans_grid.histo[noise_name_new].Scale(scale)
-			self.trans_grid.histo[noise_name_new].SetLineColor(ro.kGray + 1)
-			self.trans_grid.histo[noise_name_new].SetStats(0)
-			self.trans_grid.canvas[hname].cd()
-			if self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0):
-				self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0).SetBit(ro.TF1.kNotDraw)
-			self.trans_grid.histo[noise_name_new].Draw('same')
-			ro.gPad.Update()
+		if self.noise_ana:
+			self.noise_ana.OverlayNoiseDistribution(histo, cells)
 
 	def Do1DHistograms(self, cells='all', doLog=False):
 		def DrawHisto(name, histo_limits, plot_lims, deltax, varz, varname, cuts):
@@ -263,18 +239,17 @@ class ClusterChannelsAnalysis:
 
 				if 'PH_H{c1}'.format(c1=ch+1) in self.ph_adc_h_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_adc_ch_varz.keys():
 					tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.ph_adc_h_cuts[cells]['PH_H{c1}'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
-					DrawHistogram('PH_H{c1}_Vs_PH_Ch{c2}_adc'.format(c1=ch+1, c2=ch2), 'PH cluster ch{c2} [SNR]'.format(c2=ch2), -550, 2650, 'PH highest {c1}{sf} chs [SNR]'.format(c1=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch2)], self.ph_adc_h_varz['PH_H{i}'.format(i=ch+1)], tempcuts)
+					DrawHistogram('PH_H{c1}_Vs_PH_Ch{c2}_adc'.format(c1=ch+1, c2=ch2), 'PH cluster ch{c2} [SNR]'.format(c2=ch2), -550, 2650, 'PH highest {c1}{sf} ch [SNR]'.format(c1=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch2)], self.ph_adc_h_varz['PH_H{i}'.format(i=ch+1)], tempcuts)
 
 				if 'PH_H{c1}'.format(c1=ch+1) in self.ph_snr_h_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_snr_ch_varz.keys():
 					tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.ph_snr_h_cuts[cells]['PH_H{c1}'.format(c1=ch+1)], self.ph_snr_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
-					DrawHistogram('PH_H{c1}_Vs_PH_Ch{c2}_snr'.format(c1=ch+1, c2=ch2), 'PH cluster ch{c2} [SNR]'.format(c2=ch2), -55, 265, 'PH highest {c1}{sf} chs [SNR]'.format(c1=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch2)], self.ph_snr_h_varz['PH_H{i}'.format(i=ch+1)], tempcuts, 'snr')
+					DrawHistogram('PH_H{c1}_Vs_PH_Ch{c2}_snr'.format(c1=ch+1, c2=ch2), 'PH cluster ch{c2} [SNR]'.format(c2=ch2), -55, 265, 'PH highest {c1}{sf} ch [SNR]'.format(c1=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch2)], self.ph_snr_h_varz['PH_H{i}'.format(i=ch+1)], tempcuts, 'snr')
 
 	def DoClusterStudies(self, cells='all'):
 		self.minz[cells] = self.trans_grid.minz[cells]
 		self.maxz[cells] = self.trans_grid.maxz[cells]
 		self.GetCutsFromCutManager(cells)
 		self.GetVarzFromTranspGrid()
-		self.PlotNoiseNotInCluster(cells)
 		self.Do2DProfileMaps(cells)
 		self.DoStrips2DHistograms(cells)
 		self.DoPHStripCorrelations(cells)

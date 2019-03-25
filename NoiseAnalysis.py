@@ -35,6 +35,35 @@ class NoiseAnalysis:
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
 
+	def OverlayNoiseDistribution(self, histo, cells='all'):
+		suffix = self.suffix[cells]
+		hname = histo.GetName().split('h_')[1]
+		typ = 'adc' if 'adc' in hname.lower() else 'snr'
+		noise_name0 = 'signal_noise_{s}_{t}'.format(s=suffix, t=typ)
+		if not noise_name0 in self.trans_grid.histo.keys():
+			self.PlotNoiseNotInCluster(cells)
+		elif not self.trans_grid.histo[noise_name0]:
+			del self.trans_grid.histo[noise_name0]
+			self.PlotNoiseNotInCluster(cells)
+
+		noise_name_new = noise_name0 + '_' + hname
+		nbins = histo.GetNbinsX()
+		xbins = np.zeros(nbins, 'float64')
+		histo.GetXaxis().GetLowEdge(xbins)
+		xbins = np.append(xbins, 2 * xbins[-1] - xbins[-2])
+		self.trans_grid.histo[noise_name_new] = self.trans_grid.histo[noise_name0].Rebin(nbins, 'h_' + noise_name_new, xbins)
+		if self.trans_grid.histo[noise_name_new]:
+			self.trans_grid.histo[noise_name_new].SetTitle(noise_name0 + '(scaled)')
+			scale = histo.GetMaximum() / self.trans_grid.histo[noise_name_new].GetMaximum()
+			self.trans_grid.histo[noise_name_new].Scale(scale)
+			self.trans_grid.histo[noise_name_new].SetLineColor(ro.kGray + 1)
+			self.trans_grid.histo[noise_name_new].SetStats(0)
+			self.trans_grid.canvas[hname].cd()
+			if self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0):
+				self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0).SetBit(ro.TF1.kNotDraw)
+			self.trans_grid.histo[noise_name_new].Draw('same')
+			ro.gPad.Update()
+
 	def PlotNoiseNotInCluster(self, cells='all'):
 		temp_cut_noise = self.noise_cuts[cells]
 		temph = ro.TH1F('temph0', 'temph0', int(RoundInt((self.max_adc_noise - self.min_adc_noise) / float(self.delta_adc_noise))), self.min_adc_noise, self.max_adc_noise)

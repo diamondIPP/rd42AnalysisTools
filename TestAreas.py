@@ -30,7 +30,7 @@ class TestAreas:
 		self.skip_before_sat = 0
 		self.skip_after_sat = 1
 		self.do_threshold = False
-		self.window_shift = 5
+		self.window_shift = 3
 		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -65, 1, 2
 		# self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.125
 		self.min_snr, self.max_snr = -650, 650
@@ -290,10 +290,15 @@ class TestAreas:
 			ro.gPad.Update()
 
 	def DoNoiseStudies(self, cells='all'):
+		self.noise_ana.w, self.noise_ana.window_shift = self.w, self.window_shift
 		self.noise_ana.DoNoiseAnalysis(cells)
+		self.w, self.window_shift = self.noise_ana.w, self.noise_ana.window_shift
 
 	def DoClusterStudies(self, cells='all'):
+		self.cluster_ch_ana.w, self.cluster_ch_ana.window_shift = self.w, self.window_shift
+		self.cluster_ch_ana.noise_ana = self.noise_ana
 		self.cluster_ch_ana.DoClusterStudies(cells)
+		self.w, self.window_shift = self.cluster_ch_ana.w, self.cluster_ch_ana.window_shift
 
 	def DoSaturationPlots(self, cells='all'):
 		self.trans_grid.AddFriendWithSaturationRegions(self.skip_after_sat, self.skip_before_sat)
