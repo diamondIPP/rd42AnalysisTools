@@ -9,7 +9,7 @@ from Utils import *
 
 color_index = 10000
 
-class ClusterChannelsAnalysis:
+class NegativeEventsAnalysis:
 	def __init__(self, trans_grid, numstrips, clustersize):
 		self.phdelta = 0
 		self.window_shift = 3
@@ -53,8 +53,11 @@ class ClusterChannelsAnalysis:
 		self.phN_snr_h_varz = {}
 		self.phN_snr_ch_varz = {}
 
-	def PosCanvas(self, canvas_name):
-		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
+	def PositionCanvas(self, canvas_name):
+		if canvas_name in self.trans_grid.canvas.keys():
+			self.trans_grid.canvas[canvas_name].SetWindowPosition(self.w, self.w)
+			ro.gPad.Update()
+			self.w += self.window_shift
 
 	def PlotNoiseNotInCluster(self, cells='all'):
 		temp_cut_noise = self.noise_cuts[cells]
@@ -67,11 +70,11 @@ class ClusterChannelsAnalysis:
 		self.trans_grid.DrawHisto1D('signal_noise_{c}_snr'.format(c=suffix), self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, self.noise_varz['snr'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
 		self.trans_grid.FitGaus('signal_noise_{c}_snr'.format(c=suffix))
 		self.trans_grid.histo['signal_noise_{c}_snr'.format(c=suffix)].GetXaxis().SetRangeUser(-3.2, 3.2)
-		self.PosCanvas('signal_noise_{c}_snr'.format(c=suffix))
+		self.PositionCanvas('signal_noise_{c}_snr'.format(c=suffix))
 		self.trans_grid.DrawHisto1D('signal_noise_{c}_adc'.format(c=suffix), self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, self.noise_varz['adc'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
 		self.trans_grid.FitGaus('signal_noise_{c}_adc'.format(c=suffix))
 		self.trans_grid.histo['signal_noise_{c}_adc'.format(c=suffix)].GetXaxis().SetRangeUser(-32, 32)
-		self.PosCanvas('signal_noise_{c}_adc'.format(c=suffix))
+		self.PositionCanvas('signal_noise_{c}_adc'.format(c=suffix))
 
 	def OverlayNoiseDistribution(self, histo, cells='all'):
 		suffix = self.suffix[cells]
@@ -112,7 +115,7 @@ class ClusterChannelsAnalysis:
 			legend = self.trans_grid.canvas[name].BuildLegend()
 			ro.gPad.Update()
 			SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
-			self.PosCanvas(name)
+			self.PositionCanvas(name)
 
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
 		suffix = suffix + '_logScale' if doLog else suffix
@@ -151,7 +154,7 @@ class ClusterChannelsAnalysis:
 			self.trans_grid.DrawProfile2DDiamondChannel(name, varx, xname, varz, cuts)
 			self.trans_grid.profile[name].SetMaximum(zmax)
 			self.trans_grid.profile[name].SetMinimum(zmin)
-			self.PosCanvas(name)
+			self.PositionCanvas(name)
 
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
 		for ch in xrange(self.cluster_size):
@@ -172,7 +175,7 @@ class ClusterChannelsAnalysis:
 			histo_limits = Get1DLimits(zmin, zmax, 4 * self.delta_adc) if typ == 'adc' else Get1DLimits(zmin, zmax, 4 * self.delta_snr)
 			deltay = 4 * self.delta_adc if typ == 'adc' else 4 * self.delta_snr
 			self.trans_grid.DrawHisto2D(name, minx, maxx, deltax, xname, histo_limits['min'], histo_limits['max'], deltay, yname, xvar, yvar, cuts)
-			self.PosCanvas(name)
+			self.PositionCanvas(name)
 
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
 		for ch in xrange(self.cluster_size):
@@ -225,7 +228,7 @@ class ClusterChannelsAnalysis:
 				self.trans_grid.DrawHisto2D(name, xmin_adc, xmax_adc, self.delta_adc * 4, xname, ymin, ymax, self.delta_adc * 4, yname, varx, vary, cuts)
 			else:
 				self.trans_grid.DrawHisto2D(name, xmin_snr, xmax_snr, self.delta_snr * 4, xname, ymin, ymax, self.delta_snr * 4, yname, varx, vary, cuts)
-			self.PosCanvas(name)
+			self.PositionCanvas(name)
 
 		for ch in xrange(self.cluster_size):
 			for ch2 in xrange(self.cluster_size):
@@ -270,6 +273,7 @@ class ClusterChannelsAnalysis:
 					DrawHistogram('PH_H{c1}_Vs_PH_Ch{c2}_snr'.format(c1=ch+1, c2=ch2), 'PH cluster ch{c2} [SNR]'.format(c2=ch2), -55, 265, 'PH highest {c1}{sf} chs [SNR]'.format(c1=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch2)], self.ph_snr_h_varz['PH_H{i}'.format(i=ch+1)], tempcuts, 'snr')
 
 	def DoClusterStudies(self, cells='all'):
+		self.trans_grid.FindMaxMinVarz(cells)
 		self.minz[cells] = self.trans_grid.minz[cells]
 		self.maxz[cells] = self.trans_grid.maxz[cells]
 		self.GetCutsFromCutManager(cells)
@@ -305,4 +309,4 @@ class ClusterChannelsAnalysis:
 
 
 if __name__ == '__main__':
-	c = ClusterChannelsAnalysis(None, 0, 0)
+	c = NegativeEventsAnalysis(None, 0, 0)

@@ -38,6 +38,7 @@ class CutManager:
 		self.not_neg_adc_phN_ch = {}
 		self.not_neg_adc_phN_h = {}
 
+		self.not_in_cluster = '((!diaChSeed)&&(!diaChHits))'
 		self.not_in_transp_cluster = '((!diaChSeed)&&(!diaChHits)&&(!diaChsNoisy)&&(!diaChsScreened)&&(!diaChsNC))'
 		self.any_saturated = '(diaChADC=={s})'.format(s=self.sat_adc)
 		self.non_saturated = '(diaChADC!={s})'.format(s=self.sat_adc)

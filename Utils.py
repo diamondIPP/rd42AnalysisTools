@@ -510,6 +510,12 @@ def Get1DLimits(xmin, xmax, deltax, scale=1, oddbins=True):
 	minx, maxx = deltax * RoundInt(xmin / float(deltax)), deltax * RoundInt(xmax / float(deltax))
 	return {'min': scale * minx - deltax / 2.0, 'max': scale * maxx + deltax / 2.0} if oddbins else {'min': scale * minx, 'max': scale * maxx}
 
+def PositionCanvas(trans_grid, canvas_name, w_pos, window_shift=3):
+	if canvas_name in trans_grid.canvas.keys():
+		trans_grid.canvas[canvas_name].SetWindowPosition(w_pos, w_pos)
+		ro.gPad.Update()
+		return w_pos + window_shift
+
 def ExitMessage(txt, code=os.EX_SOFTWARE):
     print '##########'
     print txt

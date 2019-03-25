@@ -5,6 +5,7 @@ import ipdb, os
 from ConfigParser import ConfigParser
 from TransparentGrid import TransparentGrid
 from ClusterChannelsAnalysis import ClusterChannelsAnalysis
+from NoiseAnalysis import NoiseAnalysis
 from optparse import OptionParser
 from Utils import *
 
@@ -56,6 +57,7 @@ class TestAreas:
 		self.trans_grid = TransparentGrid(self.dir, self.run, self.cellsize)
 		self.trans_grid.pkl_sbdir = 'test' + str(self.num)
 		self.cluster_ch_ana = None
+		self.noise_ana = None
 		self.bias = self.trans_grid.bias
 		self.saturated_ADC = self.trans_grid.saturated_ADC
 		self.num_strips = self.trans_grid.num_strips if self.trans_grid.num_strips != 0 else 3
@@ -188,6 +190,8 @@ class TestAreas:
 		self.trans_grid.SetVarz()
 		self.SetCutsInCutManager()
 		self.cluster_ch_ana = ClusterChannelsAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
+		self.noise_ana = NoiseAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
+		self.trans_grid.FindMaxMinVarz()
 
 	def SetCutsInCutManager(self):
 		print 'Setting cuts in cut manager...', ; sys.stdout.flush()
@@ -285,103 +289,11 @@ class TestAreas:
 			self.trans_grid.histo[noise_name_new].Draw('same')
 			ro.gPad.Update()
 
+	def DoNoiseStudies(self, cells='all'):
+		self.noise_ana.DoNoiseAnalysis(cells)
+
 	def DoClusterStudies(self, cells='all'):
 		self.cluster_ch_ana.DoClusterStudies(cells)
-
-	def PlotTestClusterStudies(self, cells='all'):
-		y0, rowpitch, numrows, xoff, yoff, colpitch, numcols, yup = self.trans_grid.row_info_diamond['0'], self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['num'], self.trans_grid.row_info_diamond['x_off'], self.trans_grid.row_info_diamond['y_off'], self.trans_grid.col_pitch, self.trans_grid.num_cols, self.trans_grid.row_info_diamond['up']
-		list_cuts_clusters_snr_ci = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=self.max_snr, n=i)] for i in xrange(self.cluster_size)}
-		list_cuts_noise_snr_ci = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal/(diaChPedSigmaCmc+1e-12)<{m})&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
-		list_cuts_clusters_adc_ci = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal<{m}*diaChPedSigmaCmc)&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=self.max_snr, n=i)] for i in xrange(self.cluster_size)}
-		list_cuts_noise_adc_ci = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal<{m}*diaChPedSigmaCmc)&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
-		list_cuts_clusters_adc_phjk = {i: ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChSignal<{m}*diaChPedSigmaCmc)&&(diaChPedSigmaCmc>0)&&(diaChannels==clusterChannel{n}))'.format(y0=y0, yup=yup, m=self.max_snr, n=i)] for i in xrange(self.cluster_size)}
-		list_cuts_noise_adc_phjk = ['(({y0}<diaChYPred)&&(diaChYPred<{yup})&&(diaChHits==0)&&(diaChSignal<{m}*diaChPedSigmaCmc)&&(diaChPedSigmaCmc>0))'.format(y0=y0, yup=yup, m=self.max_snr)]
-
-		if cells == 'good':
-			list_cuts_noise_snr_ci.append(self.trans_grid.gridAreas.goodAreasCutNames_simplified_diamond)
-		elif cells == 'bad':
-			list_cuts_noise_snr_ci.append(self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
-		temp_cut_clusters = {i: '&&'.join(list_cut) for i, list_cut in list_cuts_clusters_snr_ci.iteritems()}
-		temp_cut_noise = '&&'.join(list_cuts_noise_snr_ci)
-		lastbin = RoundInt((self.max_snr_neg - self.min_snr_neg) / float(self.delta_snr))
-		tempmin, tempmax, tempbins = self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins
-		suffix = self.suffix[cells]
-		if cells == 'all':
-			temp = [self.trans_grid.DrawHisto1D('ph_c{n}_{c}'.format(n=i, c=suffix), self.min_snr, self.max_snr, self.delta_snr, var='diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='PH closestStrip{n} (SNR)'.format(n=i), cuts=temp_cut_clusters[i]) for i in xrange(self.cluster_size)]
-		elif cells == 'good':
-			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr, self.max_snr, RoundInt((self.max_snr - self.min_snr) / float(self.delta_snr))
-			temp = [self.trans_grid.DrawPHGoodAreas('ph_c{n}_{c}'.format(n=i, c=suffix), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond', varname='PH closestStrip{n} (SNR)'.format(n=i)) for i in xrange(self.cluster_size)]
-		elif cells == 'bad':
-			self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = self.min_snr, self.max_snr, RoundInt((self.max_snr - self.min_snr) / float(self.delta_snr))
-			temp = [self.trans_grid.DrawPHBadAreas('ph_c{n}_{c}'.format(n=i, c=suffix), 'diaChSignal/(diaChPedSigmaCmc+1e-12)', temp_cut_clusters[i], 'diamond', varname='PH closestStrip{n} (SNR)'.format(n=i)) for i in xrange(self.cluster_size)]
-		self.trans_grid.phmin, self.trans_grid.phmax, self.trans_grid.phbins = tempmin, tempmax, tempbins
-		temp = [self.trans_grid.DrawHisto1D('signal_noise_c{n}_{c}'.format(n=i, c=suffix), self.min_snr, self.max_snr, self.delta_snr, 'diaChSignal/(diaChPedSigmaCmc+1e-12)', varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='goff') for i in xrange(self.cluster_size)]
-		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].SetLineColor(ro.kGray + 1) for i in xrange(self.cluster_size)]
-		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].Scale(self.trans_grid.histo['ph_c{n}_{c}'.format(n=i, c=suffix)].GetBinContent(lastbin)/self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].GetBinContent(lastbin)) for i in xrange(self.cluster_size)]
-		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].SetStats(0) for i in xrange(self.cluster_size)]
-		temp = [self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=i, c=suffix)].SetTitle('signal_not_in_cluster(scaled)') for i in xrange(self.cluster_size)]
-
-		for c in xrange(self.cluster_size):
-			ro.gPad.Update()
-			self.trans_grid.canvas['ph_c{n}_{c}'.format(n=c, c=suffix)].SetWindowPosition(self.w, self.w)
-			self.trans_grid.canvas['ph_c{n}_{c}'.format(n=c, c=suffix)].cd()
-			self.trans_grid.histo['signal_noise_c{n}_{c}'.format(n=c, c=suffix)].Draw('same')
-			ro.gPad.Update()
-			if self.trans_grid.histo['ph_c{n}_{c}'.format(n=c, c=suffix)].FindObject('stats'):
-				self.trans_grid.histo['ph_c{n}_{c}'.format(n=c, c=suffix)].FindObject('stats').SetX1NDC(0.15)
-				self.trans_grid.histo['ph_c{n}_{c}'.format(n=c, c=suffix)].FindObject('stats').SetX2NDC(0.45)
-				ro.gPad.Update()
-			legend = self.trans_grid.canvas['ph_c{n}_{c}'.format(n=c, c=suffix)].BuildLegend()
-			ro.gPad.Update()
-			legend.SetX1NDC(0.15)
-			legend.SetX2NDC(0.45)
-			legend.SetY1NDC(0.5)
-			legend.SetY2NDC(0.6)
-			ro.gPad.Update()
-			self.w += self.window_shift
-
-		self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)] = ro.TCanvas('ph_ch{c}'.format(c=suffix), 'ph_ch{c}'.format(c=suffix), 1)
-		for c in xrange(self.cluster_size):
-			self.trans_grid.histo['ph_c{n}_{c}'.format(n=self.cluster_size - c - 1, c=suffix)].SetStats(0)
-			self.trans_grid.histo['ph_c{n}_{c}'.format(n=self.cluster_size - c - 1, c=suffix)].Draw('same')
-			r, g, b = ReturnRGB(c, 0, self.cluster_size)
-			self.trash.append(ro.TColor(color_index + c, r, g, b))
-			self.trans_grid.histo['ph_c{n}_{c}'.format(n=self.cluster_size - c - 1, c=suffix)].SetLineColor(color_index + c)
-			self.trans_grid.histo['ph_c{n}_{c}'.format(n=self.cluster_size - c - 1, c=suffix)].SetMarkerColor(ro.kBlack)
-
-		self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)].SetLogy()
-		self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)].SetGridx()
-		self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)].SetGridy()
-		self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)].SetTicky()
-
-		legend = self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)].BuildLegend()
-		ro.gPad.Update()
-		legend.SetX1NDC(0.15)
-		legend.SetX2NDC(0.45)
-		legend.SetY1NDC(0.7)
-		legend.SetY2NDC(0.9)
-		ro.gPad.Update()
-		self.trans_grid.canvas['ph_ch{c}'.format(c=suffix)].SetWindowPosition(self.w, self.w)
-		self.w += self.window_shift
-
-		for clch in ['1', '2', 'N']:
-			for c in xrange(self.cluster_size):
-				cuts = '({c})'.format(c=self.trans_grid.gridAreas.goodAreasCutNames_simplified_diamond) if cells == 'good' else '({c})'.format(c=self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond) if cells == 'good' else ''
-				self.trans_grid.DrawHisto2D('ph_ch{ch}_vs_ph{clch}_{c}'.format(ch=c, clch=clch, c=suffix), -500, 2500, 50, 'ph_ch{c}[ADC]'.format(c=c), 0, 4200, 40, 'ph{clch}[ADC]'.format(clch=clch), 'diaChSignal[clusterChannel{c}]'.format(c=c), 'clusterCharge{clch}'.format(clch=clch), cuts)
-				self.trans_grid.canvas['ph_ch{ch}_vs_ph{clch}_{c}'.format(ch=c, clch=clch, c=suffix)].SetGridx()
-				self.trans_grid.canvas['ph_ch{ch}_vs_ph{clch}_{c}'.format(ch=c, clch=clch, c=suffix)].SetGridy()
-				ro.gPad.Update()
-				self.trans_grid.canvas['ph_ch{ch}_vs_ph{clch}_{c}'.format(ch=c, clch=clch, c=suffix)].SetWindowPosition(self.w, self.w)
-				self.w += self.window_shift
-
-		for c in xrange(self.cluster_size):
-			self.trans_grid.DrawProfile2DDiamond('ph_map_c{n}'.format(n=c, c=suffix), 'diaChSignal[clusterChannel{i}]'.format(i=c))
-			self.trans_grid.profile['ph_map_c{n}'.format(n=c, c=suffix)].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-			self.trans_grid.profile['ph_map_c{n}'.format(n=c, c=suffix)].GetYaxis().SetRangeUser(y0 - int(rowpitch / self.trans_grid.bins_per_ch_y), yup + int(rowpitch / self.trans_grid.bins_per_ch_y))
-			self.trans_grid.canvas['ph_map_c{n}'.format(n=c, c=suffix)].SetWindowPosition(self.w, self.w)
-			self.trans_grid.DrawTCutGs('ph_map_c{n}'.format(n=c, c=suffix), 'diamond')
-			self.trans_grid.DrawGoodAreasDiamondCenters('ph_map_c{n}'.format(n=c, c=suffix))
-			self.w += self.window_shift
 
 	def DoSaturationPlots(self, cells='all'):
 		self.trans_grid.AddFriendWithSaturationRegions(self.skip_after_sat, self.skip_before_sat)
@@ -742,11 +654,13 @@ class TestAreas:
 		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys())
 
 	def DoAutomatic(self, cells='good', do_save=True):
-		self.PlotTestClusterStudies(cells)
-		self.PlotTestForNegative(cells)
-		self.PlotTest()
-		if self.do_saturation:
-			self.PlotSaturation()
+		self.DoNoiseStudies(cells)
+		self.DoClusterStudies(cells)
+		# self.PlotTestClusterStudies(cells)
+		# self.PlotTestForNegative(cells)
+		# self.PlotTest()
+		# if self.do_saturation:
+		# 	self.PlotSaturation()
 		if do_save:
 			self.SaveCanvas()
 

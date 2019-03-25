@@ -574,6 +574,28 @@ class TransparentGrid:
 		else:
 			self.DrawProfile2DNoTopBottomBorders(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
 
+	def DrawProfile1D(self, name, xmin, xmax, deltax, xname, varx, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True, plot_option='prof e hist'):
+		ro.TFormula.SetMaxima(100000)
+		if name in self.profile.keys():
+			self.profile[name].Delete()
+
+		self.profile[name] = ro.TProfile('h_' + name, 'h_' + name, int(RoundInt((xmax - xmin)/float(deltax), 'f8') + 2), xmin - deltax, xmax + deltax)
+		self.profile[name].GetXaxis().SetTitle(xname)
+		self.profile[name].GetYaxis().SetTitle(zname)
+		if 'goff' not in plot_option:
+			if name in self.canvas.keys():
+				self.canvas[name].Close()
+			self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
+			self.canvas[name].cd()
+		list_cuts = ['transparentEvent'] if transp_ev else []
+		if cuts != '':
+			list_cuts.append(cuts)
+		temp_cut = '&&'.join(list_cuts)
+		self.trans_tree.Draw('{y}:{x}>>h_{n}'.format(y=varz, x=varx, n=name), temp_cut, plot_option)
+		ro.gPad.Update()
+		SetDefault1DStats(self.profile[name])
+		ro.TFormula.SetMaxima(1000)
+
 	def DrawProfile2D(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True, plot_option='colz prof'):
 		# ro.gStyle.SetOptStat('en')
 		ro.TFormula.SetMaxima(100000)
