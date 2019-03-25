@@ -168,7 +168,7 @@ class PedestalDeviceCalculations(mp.Process):
 
             adc_old_cmc = np.subtract(self.device_ADC_all[:, ev - self.slide_leng], self.device_cm[ev - self.slide_leng])
             signal_new_cmc = np.subtract(adc_new, self.mean_cmc, dtype='float64')
-            condition_cm = np.bitwise_and((abs(signal_new_cmc) < np.multiply(self.cm_cut, self.sigma_cmc, dtype='float64')), self.is_not_masked)
+            condition_cm = np.bitwise_and((np.abs(signal_new_cmc) < np.multiply(self.cm_cut, self.sigma_cmc, dtype='float64')), self.is_not_masked)
             cm = np.extract(condition_cm, signal_new_cmc).mean(dtype='float64') if condition_cm.any() else 0
             self.cm.fill(cm)
             adc_new_cmc = np.subtract(adc_new, self.cm, dtype='float64')
@@ -266,7 +266,7 @@ class PedestalDeviceCalculations(mp.Process):
             # condition_s = np.bitwise_and(np.bitwise_not(condition_p), np.bitwise_not(condition_h))
             adc_cond = [np.extract(condition_p[ch], device_ADC[ch]) for ch in xrange(self.chs)]
 
-            condition_cm = np.bitwise_and((abs(device_signal_cmc) < np.multiply(self.cm_cut, self.device_ADC_sigma_cmc[:, :self.slide_leng], dtype='float64')), not_masked_array)
+            condition_cm = np.bitwise_and((np.abs(device_signal_cmc) < np.multiply(self.cm_cut, self.device_ADC_sigma_cmc[:, :self.slide_leng], dtype='float64')), not_masked_array)
             self.device_cm[:self.slide_leng] = np.array([np.extract(condition_cm[:, ev], device_signal_cmc[:, ev]).mean(dtype='float64') for ev in xrange(self.slide_leng)])
             cm_array = np.array([self.device_cm[:self.slide_leng] for ch in xrange(self.chs)], 'float32')
             device_ADC_cmc = np.subtract(device_ADC, cm_array, dtype='float64')
