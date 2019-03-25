@@ -516,6 +516,33 @@ def PositionCanvas(trans_grid, canvas_name, w_pos, window_shift=3):
 		ro.gPad.Update()
 		return w_pos + window_shift
 
+def Get_Branches_Value_To_Numpy(tree_r, list_bra=[], list_numpy_arrays=[], n_entries=1, elements_per_ev=1):
+	for val, arr in enumerate(list_numpy_arrays):
+		Branch_List_To_Array(tree_r.GetVal(val), arr, n_entries, elements_per_ev)
+
+def Branch_List_To_Array(bra_list, array_v=np.zeros((128,500)), n_entries=1, vec_size=1):
+	if vec_size == 1:
+		np.putmask(array_v, np.ones(n_entries, dtype='?'), [bra_list[ev] for ev in xrange(n_entries)])
+	else:
+		np.putmask(array_v, np.ones((vec_size, n_entries), dtype='?'), [[bra_list[ev * vec_size + ch] for ev in xrange(n_entries)] for ch in xrange(vec_size)])
+
+def Select_Branches_For_Get_Val(tree_r, list_bra=[]):
+	tree_r.SetBranchStatus('*', 0)
+	for bra in list_bra:
+		if '[' in bra:
+			tree_r.SetBranchStatus(bra.split('[')[0], 1)
+		else:
+			tree_r.SetBranchStatus(bra, 1)
+
+def Draw_Branches_For_Get_Val(tree_r, list_bra=[], start_ev=0, n_entries=1, cut='', option='goff'):
+	draw_opt = option + ' para' if len(list_bra) > 3 and 'para' not in option else option
+	draw_opt = draw_opt + ' goff' if 'goff' not in draw_opt else draw_opt
+	Select_Branches_For_Get_Val(tree_r, list_bra)
+	leng = tree_r.Draw(':'.join(list_bra), cut, draw_opt, n_entries, start_ev)
+	while leng > tree_r.GetEstimate():
+		tree_r.SetEstimate(leng)
+		leng = tree_r.Draw(':'.join(list_bra), cut, draw_opt, n_entries, start_ev)
+
 def ExitMessage(txt, code=os.EX_SOFTWARE):
     print '##########'
     print txt

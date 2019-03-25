@@ -14,6 +14,7 @@ import cPickle as pickle
 from Langaus import LanGaus
 from GridAreas import GridAreas
 from CutManager import CutManager
+from PedestalCalculations import PedestalCalculations
 from array import array
 
 # ph_bins_options = np.array((1, 2, 4, 5, 10, 16, 20, 25, 32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000), 'uint16')
@@ -109,6 +110,9 @@ class TransparentGrid:
 		self.minz = {cells: {} for cells in ['all', 'good', 'bad']}
 		self.maxz = {cells: {} for cells in ['all', 'good', 'bad']}
 
+		self.ped_file = None
+		self.ped_tree = None
+
 
 	def CheckFoldersAndFiles(self):
 		if not os.path.isdir(self.dir):
@@ -128,6 +132,15 @@ class TransparentGrid:
 		if self.trans_tree.FindLeaf('clusterSize'):
 			self.cluster_size = self.trans_tree.GetMaximum('clusterSize')
 			self.cluster_size = RoundInt(self.cluster_size)
+
+	def OpenPedestalFileAndTree(self):
+		if os.path.isfile('{d}/{r}/pedestalData.{r}.root'.format(d=self.dir, r=self.run)):
+			self.ped_file = ro.TFile('{d}/{r}/pedestalData.{r}.root'.format(d=self.dir, r=self.run), 'READ')
+			if self.ped_file.FindKey('pedestalTree'):
+				self.ped_tree = self.ped_file.Get('pedestalTree')
+				self.ped_tree.SetBranchStatus('*', 0)
+				for branch in ['eventNumber', 'DiaADC']:
+					self.ped_tree.SetBranchStatus(branch, 1)
 
 	def FindDiamondChannelLimits(self):
 		temph = ro.TH1F('temph', 'temph', 128, -0.5, 127.5)
@@ -1247,6 +1260,12 @@ class TransparentGrid:
 			else:
 				self.CreateFriendWithSaturationRegions(suffix, skipAfter, skipBefore)
 
+	def CreateFriendWithNewPedestalBuffer(self, slide_length=50, hit_factor=3, seed_factor=4):
+		self.OpenPedestalFileAndTree()
+		pedCalc = PedestalCalculations(self.ped_tree, self.dir, self.run, slide_length, hit_factor, seed_factor)
+		self.CloseOriginalPedestalFile()
+		pedCalc.CalculateDevicesPedestals()
+
 	def CloseInputROOTFiles(self):
 		if self.trans_file:
 			if self.trans_file.IsOpen():
@@ -1255,6 +1274,13 @@ class TransparentGrid:
 				del self.trans_tree
 		# self.trans_file = None
 		# self.trans_tree = None
+
+	def CloseOriginalPedestalFile(self):
+		if self.ped_file:
+			if self.ped_file.IsOpen():
+				self.ped_file.Close()
+			if self.ped_tree:
+				del self.ped_tree
 
 	def SetVarz(self):
 		print 'Setting ph variables for plotting...', ; sys.stdout.flush()

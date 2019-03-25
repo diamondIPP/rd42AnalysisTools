@@ -659,6 +659,7 @@ class TestAreas:
 		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys())
 
 	def DoAutomatic(self, cells='good', do_save=True):
+		self.DoBorderPlots()
 		self.DoNoiseStudies(cells)
 		self.DoClusterStudies(cells)
 		# self.PlotTestClusterStudies(cells)
