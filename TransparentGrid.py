@@ -41,6 +41,8 @@ class TransparentGrid:
 		self.loaded_pickle = False
 		self.loaded_default_pickle = False
 		self.align_info = {'xoff': float(0), 'phi': float(0)}
+		self.col_overlay_var = ''
+		self.row_overlay_var = ''
 		self.cluster_size, self.num_strips = 0, 0
 		self.num_cols = 19 if col_pitch == 50 else 13
 		self.ch_ini = 0
@@ -273,6 +275,13 @@ class TransparentGrid:
 			self.AskUserLowerYLines()
 			self.CreateLines()
 		self.gridAreas = GridAreas(self.num_cols, self.row_info_diamond['num'], self.run)
+		self.SetOverlayVariables()
+
+	def SetOverlayVariables(self):
+		col_fact = 10000  # ~0.1nm
+		row_fact = 10000  # ~0.1nm
+		self.col_overlay_var = '(((diaChXPred-{ox})*({p}*{cf}))%({p}*{cf}))/{cf}'.format(ox=self.row_info_diamond['x_off'], p=self.col_pitch, cf=col_fact)
+		self.row_overlay_var = '(((diaChYPred-{oy})*{rf})%({rp}*{rf}))/{rf}'.format(oy=self.row_info_diamond['y_off'], rp=self.row_info_diamond['pitch'], rf=row_fact)
 
 	def FindHorizontalParametersThroughAlignment(self):
 		self.LoadAlignmentParameters()
@@ -517,6 +526,11 @@ class TransparentGrid:
 				if col == self.num_cols -1 and row == self.row_info_diamond['num'] - 1:
 					self.row_info_diamond['up'] = tempy[2]
 
+	def CreateTCutGSymmetricRectangle(self, percentage=80):
+		self.gridAreas.CreateRectangleSymmetricCentralRegion(percentage, self.col_pitch, self.row_info_diamond['pitch'], self.col_overlay_var, self.row_overlay_var)
+		self.cuts_man.in_central_rect_region[percentage] = '(' + self.gridAreas.center_rectangles[percentage]['name'] + ')'
+		self.cuts_man.out_central_rect_region[percentage] = '(!' + self.gridAreas.center_rectangles[percentage]['name'] + ')'
+
 	def CreateTCutGsDiamondCenter(self):
 		def GetNumpyArraysX(coli):
 			x0 = self.ch_ini - self.length_central_region/(2.0*self.col_pitch) + coli
@@ -723,6 +737,11 @@ class TransparentGrid:
 				temph.Delete()
 				del temph
 
+	def DrawCentralArea(self, name, percent):
+		self.canvas[name].cd()
+		if percent in self.gridAreas.center_rectangles.keys():
+			self.gridAreas.center_rectangles[percent]['tcutg'].Draw('same')
+
 	def DrawGoodAreasDiamond(self, name):
 		self.DrawGoodAreas(name, type='diamond')
 
@@ -797,8 +816,24 @@ class TransparentGrid:
 	def ResetAreas(self):
 		self.gridAreas.ResetAreas()
 
+	def DrawPHInArea(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, varname='PH[ADC]'):
+		if cells == 'good':
+			self.DrawPHGoodAreas(name, var, cuts, varname=varname)
+		elif cells == 'bad':
+			self.DrawPHBadAreas(name, var, cuts, varname=varname)
+		else:
+			self.DrawPHAllAreas(name, var, cuts, varname=varname)
+
 	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]'):
 		list_cuts = [self.cuts_man.selected_cells]
+		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
+		if cuts != '':
+			list_cuts.append(cuts)
+		temp_cut = '&&'.join(list_cuts)
+		self.DrawHisto1D(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cut, transp_ev)
+
+	def DrawPHAllAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]'):
+		list_cuts = [self.cuts_man.all_cells]
 		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
@@ -829,7 +864,7 @@ class TransparentGrid:
 		temp_cuts = '&&'.join(list_cuts)
 		rowpitch, y0, xoff = self.row_info_diamond['pitch'], self.row_info_diamond['0'], self.row_info_diamond['x_off']
 		self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch,
-		                   float(rowpitch)/self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=xoff, p=self.col_pitch), 'diaChYPred', var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
+		                   float(rowpitch)/self.bins_per_ch_y, 'dia Y [#mum]', self.col_overlay_var, 'diaChYPred', var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
 	def DrawProfile2DDiamondRowOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
 		y0, rowpitch, numrows, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['y_off']
@@ -837,15 +872,15 @@ class TransparentGrid:
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawProfile2D(name, -0.5, 127.5, self.cell_resolution, 'dia X ch', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
+		self.DrawProfile2D(name, -0.5, 127.5, self.cell_resolution, 'dia X ch', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', self.row_overlay_var, var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
-	def DrawProfile2DDiamondCellOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
+	def DrawProfile2DDiamondCellOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz', varname='PH[ADC]'):
 		y0, rowpitch, numrows, xoff, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['x_off'], self.row_info_diamond['y_off']
 		list_cuts = [self.cuts_man.selected_cells if cells == 'good' else self.cuts_man.not_selected_cells if cells == 'bad' else self.cuts_man.all_cells]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '(((diaChXPred-{ox})*{p})%{p})/10000'.format(ox=xoff, p=self.col_pitch * 10000), '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
+		self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', self.col_overlay_var, self.row_overlay_var, var, varname, temp_cuts, transp_ev, plot_option)
 		# self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '((diaChXPred-{ox})*{p})%{p}'.format(ox=xoff, p=self.col_pitch), '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
 	def DrawHisto2DDiamondChannelOverlay(self, name, cells='all', cuts='', transp_ev=True):

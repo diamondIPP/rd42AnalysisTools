@@ -6,6 +6,7 @@ import shapely.geometry as geom
 import shapely.ops as ops
 import ipdb
 import sys
+from Utils import *
 
 class GridAreas:
 	def __init__(self, numcols=0, numrows=0, run=0):
@@ -26,6 +27,23 @@ class GridAreas:
 		self.badAreasCutNames_diamond = ''
 		self.badAreasCutNames_simplified_diamond = ''
 		self.badAreasCutNames_diamond_centers = ''
+
+		self.center_rectangles = {}
+
+	def CreateRectangleSymmetricCentralRegion(self, percentage=80, pitchCol=50, pitchRow=50, xvar='(((diaChXPred-0.5)*(50*10000))%(50*10000))/10000', yvar='(((diaChYPred-25)*10000)%(50*10000))/10000'):
+		xinf = np.divide(pitchCol * (1 - np.sqrt(percentage / 100., dtype='float128')), 2.0, dtype='float128')
+		xsup = np.subtract(pitchCol, xinf, dtype='float128')
+		yinf = np.divide(pitchRow * (1 - np.sqrt(percentage / 100., dtype='float128')), 2.0, dtype='float128')
+		ysup = np.subtract(pitchRow, yinf, dtype='float128')
+		xarray = np.array([xinf, xinf, xsup, xsup, xinf], dtype='float64')
+		yarray = np.array([yinf, ysup, ysup, yinf, yinf], dtype='float64')
+		tempname = 'cutg_center_rect_{r}_{p}'.format(r=self.run, p=percentage)
+		tempCutG = ro.TCutG(tempname, 5, xarray, yarray)
+		tempCutG.SetNameTitle(tempname, tempname)
+		tempCutG.SetVarX(xvar)
+		tempCutG.SetVarY(yvar)
+		tempCutG.SetLineColor(ro.kRed)
+		self.center_rectangles[percentage] = {'name': tempname, 'tcutg': tempCutG}
 
 	def AddGoodAreas(self, col, row, tcutgs_diamond, tcutgs_diamond_center):
 		if 0 <= col < self.num_cols and 0 <= row < self.num_rows:

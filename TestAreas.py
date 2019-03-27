@@ -6,6 +6,7 @@ from ConfigParser import ConfigParser
 from TransparentGrid import TransparentGrid
 from ClusterChannelsAnalysis import ClusterChannelsAnalysis
 from NoiseAnalysis import NoiseAnalysis
+from CenterCellAnalysis import CenterCellAnalysis
 from optparse import OptionParser
 from Utils import *
 
@@ -58,6 +59,7 @@ class TestAreas:
 		self.trans_grid.pkl_sbdir = 'test' + str(self.num)
 		self.cluster_ch_ana = None
 		self.noise_ana = None
+		self.center_cells_ana = None
 		self.bias = self.trans_grid.bias
 		self.saturated_ADC = self.trans_grid.saturated_ADC
 		self.num_strips = self.trans_grid.num_strips if self.trans_grid.num_strips != 0 else 3
@@ -192,6 +194,7 @@ class TestAreas:
 		self.cluster_ch_ana = ClusterChannelsAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 		self.noise_ana = NoiseAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 		self.trans_grid.FindMaxMinVarz()
+		self.center_cells_ana = CenterCellAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 
 	def SetCutsInCutManager(self):
 		print 'Setting cuts in cut manager...', ; sys.stdout.flush()
@@ -299,6 +302,15 @@ class TestAreas:
 		self.cluster_ch_ana.noise_ana = self.noise_ana
 		self.cluster_ch_ana.DoClusterStudies(cells)
 		self.w, self.window_shift = self.cluster_ch_ana.w, self.cluster_ch_ana.window_shift
+
+	def DoCenterCellStudies(self, cells='all'):
+		self.center_cells_ana.w, self.center_cells_ana.window_shift = self.w, self.window_shift
+		dists = np.arange(0.2, 1, 0.05)
+		percents = np.floor(np.power(dists, 2) * 100 + 0.5).astype('int32')
+		for percent in percents:
+			self.trans_grid.CreateTCutGSymmetricRectangle(percent)
+		self.center_cells_ana.DoCenterRegionStudies(percents, cells)
+		self.w, self.window_shift = self.center_cells_ana.w, self.center_cells_ana.window_shift
 
 	def DoSaturationPlots(self, cells='all'):
 		self.trans_grid.AddFriendWithSaturationRegions(self.skip_after_sat, self.skip_before_sat)

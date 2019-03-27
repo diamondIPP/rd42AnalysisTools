@@ -85,6 +85,9 @@ class CutManager:
 		self.phN_snr_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
 		self.phN_snr_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
 
+		self.in_central_rect_region = {}
+		self.out_central_rect_region = {}
+
 	def SetCuts(self, neg_cut_snr, neg_cut_adc):
 		for i in xrange(self.cluster_size):
 			if FindLeafInTree(self.tree, 'clusterChannel{i}'.format(i=i)):
