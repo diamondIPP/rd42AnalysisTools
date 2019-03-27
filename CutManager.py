@@ -43,6 +43,7 @@ class CutManager:
 		self.any_saturated = '(diaChADC=={s})'.format(s=self.sat_adc)
 		self.non_saturated = '(diaChADC!={s})'.format(s=self.sat_adc)
 		self.valid_ped_sigma = '(diaChPedSigmaCmc>0)'
+		self.valid_ped_new_sigma = '(pedTree.diaChPedSigmaCmc>0)'
 		self.valid_ped_sigma_ch = {}
 		self.valid_ped_sigma_h = {}
 		self.valid_ped_sigma_N_ch = {}
@@ -73,6 +74,7 @@ class CutManager:
 		self.not_sat_evts_region = '(!satRegion)'
 		
 		self.noise_cuts = {t: '' for t in ['all', 'good', 'bad']}
+		self.noise_new_cuts = {t: '' for t in ['all', 'good', 'bad']}
 		self.ph_adc_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
 		self.ph_snr_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
 		self.ph_adc_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
@@ -204,6 +206,7 @@ class CutManager:
 
 	def SetNoiseCuts(self):
 		self.noise_cuts = {cells: self.ConcatenateCutWithCells(cut=self.ConcatenateCuts(cut1=self.not_in_transp_cluster, cut2=self.valid_ped_sigma), cells=cells) for cells in ['all', 'good', 'bad']}
+		self.noise_new_cuts = {cells: self.ConcatenateCutWithCells(cut=self.ConcatenateCuts(cut1=self.not_in_transp_cluster, cut2=self.valid_ped_new_sigma), cells=cells) for cells  in ['all', 'good', 'bad']}
 
 	def SetPHCuts(self):
 		for cells in ['all', 'good', 'bad']:

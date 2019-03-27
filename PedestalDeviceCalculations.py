@@ -19,6 +19,7 @@ __author__ = 'DA'
 
 class PedestalDeviceCalculations(mp.Process):
     def __init__(self, outdir, run_no, hit_fact, seed_fact, dut_np_data_type, chs, events, nc_array, noisy_array, masked_array, slide_leng, cm_cut, device, show_progressbar, input_adc_array, out_array_mean, out_array_sigma, out_array_is_ped, out_array_is_hit, out_array_is_seed, out_array_chs_cm, out_array_cm, out_array_mean_cmc, out_array_sigma_cmc, out_array_is_ped_cmc, out_array_is_hit_cmc, out_array_is_seed_cmc, det_index):
+    # def __init__(self, outdir, run_no, hit_fact, seed_fact, dut_np_data_type, chs, events, nc_array, noisy_array, masked_array, slide_leng, cm_cut, device, show_progressbar, input_adc_array, out_array_mean, out_array_sigma, out_array_is_ped, out_array_is_hit, out_array_is_seed, out_array_chs_cm, out_array_cm, out_array_mean_cmc, out_array_sigma_cmc, out_array_is_ped_cmc, out_array_is_hit_cmc, out_array_is_seed_cmc, out_array_signal, out_array_signal_cmc, det_index):
         mp.Process.__init__(self)
         print 'Creating PedestalCalculations instance'
         self.show_pb = show_progressbar
@@ -59,6 +60,7 @@ class PedestalDeviceCalculations(mp.Process):
         self.device_ADC_is_ped = np.zeros((self.chs, self.ana_events), dtype='?')
         self.device_ADC_is_hit = np.zeros((self.chs, self.ana_events), dtype='?')
         self.device_ADC_is_seed = np.zeros((self.chs, self.ana_events), dtype='?')
+        # self.device_ADC_signal = np.zeros((self.chs, self.ana_events), dtype='float32')
 
         self.device_channels_cm = np.zeros((self.chs, self.ana_events), dtype='?')
         self.device_cm = np.zeros(self.ana_events, dtype='float32')
@@ -68,6 +70,7 @@ class PedestalDeviceCalculations(mp.Process):
         self.device_is_ped_cmc = np.zeros((self.chs, self.ana_events), dtype='?')
         self.device_is_hit_cmc = np.zeros((self.chs, self.ana_events), dtype='?')
         self.device_is_seed_cmc = np.zeros((self.chs, self.ana_events), dtype='?')
+        # self.device_ADC_signal_cmc = np.zeros((self.chs, self.ana_events), dtype='float32')
 
         # Numpy arrays for event based calculations
         self.adc = np.zeros(self.chs, dtype=self.np_type)
@@ -95,15 +98,18 @@ class PedestalDeviceCalculations(mp.Process):
 
         # global variables passed as reference for shared memory ctype vectors
         global in_adc_array, out_array_m, out_array_s, out_array_is_p, out_array_is_h, out_array_is_s
+        # global in_adc_array, out_array_m, out_array_s, out_array_is_p, out_array_is_h, out_array_is_s, out_array_signa
         in_adc_array = input_adc_array
         out_array_m = out_array_mean
         out_array_s = out_array_sigma
         out_array_is_h = out_array_is_hit
         out_array_is_s = out_array_is_seed
         out_array_is_p = out_array_is_ped
+        # out_array_signa = out_array_signal
         self.det_index = det_index
 
         global out_array_chs_c, out_array_c, out_array_mean_cm, out_array_sigma_cm, out_array_is_ped_cm, out_array_is_hit_cm, out_array_is_seed_cm
+        # global out_array_chs_c, out_array_c, out_array_mean_cm, out_array_sigma_cm, out_array_is_ped_cm, out_array_is_hit_cm, out_array_is_seed_cm, out_array_signa_cm
         out_array_chs_c = out_array_chs_cm
         out_array_c = out_array_cm
         out_array_mean_cm = out_array_mean_cmc
@@ -111,6 +117,7 @@ class PedestalDeviceCalculations(mp.Process):
         out_array_is_ped_cm = out_array_is_ped_cmc
         out_array_is_hit_cm = out_array_is_hit_cmc
         out_array_is_seed_cm = out_array_is_seed_cmc
+        # out_array_signa_cm = out_array_signal_cmc
 
         self.device_ADC_all = np.ctypeslib.as_array(in_adc_array.get_obj())
 
@@ -205,6 +212,7 @@ class PedestalDeviceCalculations(mp.Process):
             # self.sigma = np.sqrt(np.subtract(meansqtemp, np.power(meantemp, 2.0, dtype='float128'), dtype='float128'), dtype='float128')
             self.device_ADC_mean[:, ev] = np.where(condition_mean, np.divide(self.sum_adc, self.elem, dtype='float128', where=condition_mean), self.device_ADC_mean[:, ev - 1])
             self.device_ADC_sigma[:, ev] = np.where(condition_sigma, np.sqrt(np.subtract(np.divide(self.sum_adc_sq, self.elem, dtype='float128', where=condition_sigma), np.power(np.divide(self.sum_adc, self.elem, dtype='float128', where=condition_sigma), 2.0, dtype='float128', where=condition_sigma), dtype='float128', where=condition_sigma), dtype='float128', where=condition_sigma), self.device_ADC_sigma[:, ev - 1])
+            # self.device_ADC_signal[:, ev] = np.subtract(self.device_ADC_all[:, ev], self.device_ADC_mean[:, ev], dtype='float128')
             # self.device_ADC_mean[:, ev] = self.mean
             # self.device_ADC_sigma[:, ev] = self.sigma
 
@@ -293,6 +301,7 @@ class PedestalDeviceCalculations(mp.Process):
             condition_sigma_cmc = np.bitwise_and(condition_mean_cmc, np.multiply(self.sum_adc_sq_cmc, self.elem_cmc, dtype='float128') > np.power(self.sum_adc_cmc, 2.0, dtype='float128'))
             self.device_ADC_mean_cmc[:, ev] = np.where(condition_mean_cmc, np.divide(self.sum_adc_cmc, self.elem_cmc, dtype='float128', where=condition_mean_cmc), self.device_ADC_mean_cmc[:, ev - 1])
             self.device_ADC_sigma_cmc[:, ev] = np.where(condition_sigma_cmc, np.sqrt(np.subtract(np.divide(self.sum_adc_sq_cmc, self.elem_cmc, dtype='float128', where=condition_sigma_cmc), np.power(np.divide(self.sum_adc_cmc, self.elem_cmc, dtype='float128', where=condition_sigma_cmc), 2.0, dtype='float128', where=condition_sigma_cmc), dtype='float128', where=condition_sigma_cmc), dtype='float128', where=condition_sigma_cmc), self.device_ADC_sigma_cmc[:, ev - 1])
+            # self.device_ADC_signal[:, ev] = np.subtract(np.subtract(self.device_ADC_all[:, ev], cm, dtype='float128'), self.device_ADC_mean_cmc[:, ev], dtype='float128')
             # self.device_ADC_mean_cmc[:, ev] = self.mean_cmc
             # self.device_ADC_sigma_cmc[:, ev] = self.sigma_cmc
 
@@ -315,6 +324,8 @@ class PedestalDeviceCalculations(mp.Process):
         np.ctypeslib.as_array(out_array_is_ped_cm.get_obj())[:] = self.device_is_ped_cmc
         np.ctypeslib.as_array(out_array_is_hit_cm.get_obj())[:] = self.device_is_hit_cmc
         np.ctypeslib.as_array(out_array_is_seed_cm.get_obj())[:] = self.device_is_seed_cmc
+        # np.ctypeslib.as_array(out_array_signa.get_obj())[:] = self.device_ADC_signal
+        # np.ctypeslib.as_array(out_array_signa_cm.get_obj())[:] = self.device_ADC_signal_cmc
         if self.show_pb:
             print 'Done in', time.time() - t0, 'seconds'
 
@@ -366,12 +377,14 @@ class PedestalDeviceCalculations(mp.Process):
                 self.device_ADC_sigma_cmc[ch, :self.slide_leng].fill(adc_cond_cmc[ch].std(dtype='float128'))
 
             device_signal = device_ADC - self.device_ADC_mean[:, :self.slide_leng]
+            # self.device_ADC_signal[:, :self.slide_leng] = device_ADC - self.device_ADC_mean[:, :self.slide_leng]
             self.device_ADC_is_ped[:, :self.slide_leng] = condition_p
             self.device_ADC_is_hit[:, :self.slide_leng] = condition_h
             self.device_ADC_is_seed[:, :self.slide_leng] = condition_s
 
             self.device_channels_cm[:, :self.slide_leng] = condition_cm
-            device_signal_cmc = np.subtract(device_ADC, self.device_ADC_mean_cmc[:, :self.slide_leng], dtype='float128')
+            device_signal_cmc = np.subtract(device_ADC_cmc, self.device_ADC_mean_cmc[:, :self.slide_leng], dtype='float128')
+            # self.device_ADC_signal_cmc[:, :self.slide_leng] = np.subtract(device_ADC_cmc, self.device_ADC_mean_cmc[:, :self.slide_leng], dtype='float128')
             self.device_is_ped_cmc[:, :self.slide_leng] = condition_p_cmc
             self.device_is_hit_cmc[:, :self.slide_leng] = condition_h_cmc
             self.device_is_seed_cmc[:, :self.slide_leng] = condition_s_cmc
@@ -408,6 +421,7 @@ def main():
     #     ExitMessage('device must be "dut" or "telx#" or "tely#". Exiting...', os.EX_IOERR)
     # do_pb = bool(options.progressbar)
     z = PedestalDeviceCalculations('', 0, 0, 0, 'int32', 128, 1, [0], [0], [0], 50, 5, 'dut', True, [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], -1)
+    # z = PedestalDeviceCalculations('', 0, 0, 0, 'int32', 128, 1, [0], [0], [0], 50, 5, 'dut', True, [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], -1)
 
 
 if __name__ == '__main__':

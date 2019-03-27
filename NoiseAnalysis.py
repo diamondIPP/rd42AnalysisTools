@@ -29,8 +29,10 @@ class NoiseAnalysis:
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 
 		self.noise_cuts = {t: '' for t in ['all', 'good', 'bad']}
+		self.noise_new_cuts = {t: '' for t in ['all', 'good', 'bad']}
 
 		self.noise_varz = {}
+		self.noise_new_varz = {}
 
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
@@ -64,7 +66,7 @@ class NoiseAnalysis:
 			self.trans_grid.histo[noise_name_new].Draw('same')
 			ro.gPad.Update()
 
-	def PlotNoiseNotInCluster(self, cells='all'):
+	def PlotNoiseNotInCluster(self, cells='all', optending=''):
 		temp_cut_noise = self.noise_cuts[cells]
 		temph = ro.TH1F('temph0', 'temph0', int(RoundInt((self.max_adc_noise - self.min_adc_noise) / float(self.delta_adc_noise))), self.min_adc_noise, self.max_adc_noise)
 		self.trans_grid.trans_tree.Draw('diaChSignal>>temph0', temp_cut_noise, 'goff')
@@ -72,14 +74,35 @@ class NoiseAnalysis:
 		temph.Delete()
 		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = (ni / float(sigma) for ni in [self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise])
 		suffix = self.suffix[cells]
-		self.trans_grid.DrawHisto1D('signal_noise_{c}_snr'.format(c=suffix), self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, self.noise_varz['snr'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
-		self.trans_grid.FitGaus('signal_noise_{c}_snr'.format(c=suffix))
-		self.trans_grid.histo['signal_noise_{c}_snr'.format(c=suffix)].GetXaxis().SetRangeUser(-3.2, 3.2)
-		self.PosCanvas('signal_noise_{c}_snr'.format(c=suffix))
-		self.trans_grid.DrawHisto1D('signal_noise_{c}_adc'.format(c=suffix), self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, self.noise_varz['adc'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
-		self.trans_grid.FitGaus('signal_noise_{c}_adc'.format(c=suffix))
-		self.trans_grid.histo['signal_noise_{c}_adc'.format(c=suffix)].GetXaxis().SetRangeUser(-32, 32)
-		self.PosCanvas('signal_noise_{c}_adc'.format(c=suffix))
+		self.trans_grid.DrawHisto1D('signal_noise_{c}_snr{s}'.format(c=suffix, s=optending), self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, self.noise_varz['snr'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
+		self.trans_grid.FitGaus('signal_noise_{c}_snr{s}'.format(c=suffix, s=optending))
+		self.trans_grid.histo['signal_noise_{c}_snr{s}'.format(c=suffix, s=optending)].GetXaxis().SetRangeUser(-3.2, 3.2)
+		self.PosCanvas('signal_noise_{c}_snr{s}'.format(c=suffix, s=optending))
+		self.trans_grid.DrawHisto1D('signal_noise_{c}_adc{s}'.format(c=suffix, s=optending), self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, self.noise_varz['adc'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
+		self.trans_grid.FitGaus('signal_noise_{c}_adc{s}'.format(c=suffix, s=optending))
+		self.trans_grid.histo['signal_noise_{c}_adc{s}'.format(c=suffix, s=optending)].GetXaxis().SetRangeUser(-32, 32)
+		self.PosCanvas('signal_noise_{c}_adc{s}'.format(c=suffix, s=optending))
+
+	def PlotNewNoiseNotInCluster(self, cells='all'):
+		if self.trans_grid.trans_tree.GetFriend('pedTree'):
+			optending = 'buffer_{v}'.format(v=int(RoundInt(self.trans_grid.trans_tree.GetMaximum('pedTree.slidingLength'))))
+			temp_cut_noise = self.noise_new_cuts[cells]
+			temph = ro.TH1F('temph0', 'temph0', int(RoundInt((self.max_adc_noise - self.min_adc_noise) / float(self.delta_adc_noise))), self.min_adc_noise, self.max_adc_noise)
+			self.trans_grid.trans_tree.Draw('pedTree.diaChSignal>>temph0', temp_cut_noise, 'goff')
+			mean, sigma = temph.GetMean(), temph.GetRMS()
+			temph.Delete()
+			self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = (ni / float(sigma) for ni in [self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise])
+			suffix = self.suffix[cells]
+			self.trans_grid.DrawHisto1D('signal_noise_{s}_{c}_snr'.format(c=suffix, s=optending), self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, self.noise_new_varz['snr'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
+			self.trans_grid.FitGaus('signal_noise_{s}_{c}_snr'.format(c=suffix, s=optending))
+			self.trans_grid.histo['signal_noise_{s}_{c}_snr'.format(c=suffix, s=optending)].GetXaxis().SetRangeUser(-3.2, 3.2)
+			self.PosCanvas('signal_noise_{s}_{c}_snr'.format(c=suffix, s=optending))
+			self.trans_grid.DrawHisto1D('signal_noise_{s}_{c}_adc'.format(c=suffix, s=optending), self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, self.noise_new_varz['adc'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
+			self.trans_grid.FitGaus('signal_noise_{s}_{c}_adc'.format(c=suffix, s=optending))
+			self.trans_grid.histo['signal_noise_{s}_{c}_adc'.format(c=suffix, s=optending)].GetXaxis().SetRangeUser(-32, 32)
+			self.PosCanvas('signal_noise_{s}_{c}_adc'.format(c=suffix, s=optending))
+		else:
+			print 'The transparent tree has no pedTree friend. Cannot do these plots'
 
 	def DoProfileMaps(self):
 		minev, maxev = self.trans_grid.trans_tree.GetMinimum('event'), self.trans_grid.trans_tree.GetMaximum('event')
@@ -122,9 +145,11 @@ class NoiseAnalysis:
 
 	def GetCutsFromCutManager(self, cells):
 		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]
+		self.noise_new_cuts[cells] = self.trans_grid.cuts_man.noise_new_cuts[cells]
 
 	def GetVarzFromTranspGrid(self):
 		self.noise_varz = self.trans_grid.noise_varz
+		self.noise_new_varz = self.trans_grid.noise_new_varz
 
 if __name__ == '__main__':
 	c = NoiseAnalysis(None, 0, 0)

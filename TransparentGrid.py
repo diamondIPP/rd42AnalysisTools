@@ -97,6 +97,7 @@ class TransparentGrid:
 		self.suffix = {'all': 'all', 'good': 'selected', 'bad': 'not_selected'}
 
 		self.noise_varz = {'adc': 'diaChSignal', 'snr': 'diaChSignal/diaChPedSigmaCmc'}
+		self.noise_new_varz = {'adc': 'pedTree.diaChSignal', 'snr': 'pedTree.diaChSignal/pedTree.diaChPedSigmaCmc'}
 		self.ph_adc_h_varz = {}
 		self.ph_adc_ch_varz = {}
 		self.ph_snr_h_varz = {}
@@ -1261,10 +1262,20 @@ class TransparentGrid:
 				self.CreateFriendWithSaturationRegions(suffix, skipAfter, skipBefore)
 
 	def CreateFriendWithNewPedestalBuffer(self, slide_length=50, hit_factor=3, seed_factor=4):
+		ev_ini, ev_end = self.trans_tree.GetMinimum('event'), self.trans_tree.GetMaximum('event')
 		self.OpenPedestalFileAndTree()
-		pedCalc = PedestalCalculations(self.ped_tree, self.dir, self.run, slide_length, hit_factor, seed_factor)
+		pedCalc = PedestalCalculations(self.ped_tree, self.dir, self.run, slide_length, hit_factor, seed_factor, ev_ini, ev_end)
 		self.CloseOriginalPedestalFile()
 		pedCalc.CalculateDevicesPedestals()
+		if not self.trans_tree.GetFriend('pedTree'):
+			self.trans_tree.AddFriend('pedTree', '{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, r=self.run, s=slide_length))
+
+	def AddFriendWithNewPedestalBuffer(self, slide_length=50, hit_factor=3, seed_factor=4):
+		if not self.trans_tree.GetFriend('pedTree'):
+			if os.path.isfile('{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, s=slide_length, r=self.run)):
+				self.trans_tree.AddFriend('pedTree', '{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, r=self.run, s=slide_length))
+			else:
+				self.CreateFriendWithNewPedestalBuffer(slide_length, hit_factor, seed_factor)
 
 	def CloseInputROOTFiles(self):
 		if self.trans_file:
