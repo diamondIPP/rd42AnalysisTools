@@ -19,7 +19,7 @@ __author__ = 'DA'
 
 class PedestalDeviceCalculations(mp.Process):
     def __init__(self, outdir, run_no, hit_fact, seed_fact, dut_np_data_type, chs, events, nc_array, noisy_array, masked_array, slide_leng, cm_cut, device, show_progressbar, input_adc_array, out_array_mean, out_array_sigma, out_array_is_ped, out_array_is_hit, out_array_is_seed, out_array_chs_cm, out_array_cm, out_array_mean_cmc, out_array_sigma_cmc, out_array_is_ped_cmc, out_array_is_hit_cmc, out_array_is_seed_cmc, det_index):
-        # mp.Process.__init__(self)
+        mp.Process.__init__(self)
         print 'Creating PedestalCalculations instance'
         self.show_pb = show_progressbar
         self.device = device
@@ -85,8 +85,8 @@ class PedestalDeviceCalculations(mp.Process):
 
         self.sum_adc = np.zeros(self.chs, dtype='int64')
         self.sum_adc_sq = np.zeros(self.chs, dtype='uint64')
-        self.sum_adc_cmc = np.zeros(self.chs, dtype='int64')
-        self.sum_adc_sq_cmc = np.zeros(self.chs, dtype='uint64')
+        self.sum_adc_cmc = np.zeros(self.chs, dtype='float128')
+        self.sum_adc_sq_cmc = np.zeros(self.chs, dtype='float128')
 
         # channels that are masked for common mode calculation because they are screened or noisy
 
@@ -114,8 +114,8 @@ class PedestalDeviceCalculations(mp.Process):
 
         self.device_ADC_all = np.ctypeslib.as_array(in_adc_array.get_obj())
 
-    # def run(self):
-    #     self.CalculatePedestals()
+    def run(self):
+        self.CalculatePedestals()
 
     def CalculatePedestals(self):
         self.CalculateStartingPedestals()
@@ -125,7 +125,7 @@ class PedestalDeviceCalculations(mp.Process):
             bar.update(self.slide_leng)
 
         for ev in xrange(self.slide_leng, self.ana_events):
-            if ev == 23116: ipdb.set_trace()
+            # if ev == 23116: ipdb.set_trace()
             self.mean = self.device_ADC_mean[:, ev - 1]
             self.sigma = self.device_ADC_sigma[:, ev - 1]
             adc_new = self.device_ADC_all[:, ev]
@@ -134,66 +134,83 @@ class PedestalDeviceCalculations(mp.Process):
             condition_p = np.abs(signal_new, dtype='float128') < np.multiply(self.hit_factor, self.sigma, dtype='float128')
             condition_h = np.bitwise_and(np.multiply(self.hit_factor, self.sigma, dtype='float128') <= signal_new, signal_new < np.multiply(self.seed_factor, self.sigma, dtype='float128'))
             condition_s = signal_new >= np.multiply(self.seed_factor, self.sigma, dtype='float128')
-            # condition_s = np.bitwise_and(np.bitwise_not(condition_p), np.bitwise_not(condition_h))
+            # # condition_s = np.bitwise_and(np.bitwise_not(condition_p), np.bitwise_not(condition_h))
+            self.device_ADC_is_ped[:, ev] = condition_p
+            self.device_ADC_is_hit[:, ev] = condition_h
+            self.device_ADC_is_seed[:, ev] = condition_s
 
-            mean1 = self.mean
+            # # prueba
+            # self.device_ADC_is_ped[:, ev] = condition_p
+            # self.device_ADC_is_hit[:, ev] = condition_h
+            # self.device_ADC_is_seed[:, ev] = condition_s
+            #
+            # self.elem = self.device_ADC_is_ped[:, ev - self.slide_leng + 1: ev + 1].sum(axis=1)
+            # rowelements = np.insert(self.elem, 0, 0)
+            # selected_adc_flattened = np.extract(self.device_ADC_is_ped[:, ev - self.slide_leng + 1: ev + 1], self.device_ADC_all[:, ev - self.slide_leng + 1: ev + 1])
+            #
+            # # self.device_ADC_mean[:, ev] = [selected_adc_flattened[rowelements[:i].sum():rowelements[:i+1].sum()].mean() if self.elem[i-1] > 1 else self.mean[i-1] for i in xrange(1, rowelements.size)]
+            # # self.device_ADC_sigma[:, ev] = [selected_adc_flattened[rowelements[:i].sum():rowelements[:i+1].sum()].std() if self.elem[i-1] > 1 else self.sigma[i-1] for i in xrange(1, rowelements.size)]
+            #
+            # for i in xrange(1, rowelements.size):
+            #     self.device_ADC_mean[i - 1, ev] = selected_adc_flattened[rowelements[:i].sum():rowelements[:i+1].sum()].mean() if self.elem[i-1] > 1 else self.device_ADC_mean[i - 1 , ev]
+            #     self.device_ADC_sigma[i - 1, ev] = selected_adc_flattened[rowelements[:i].sum():rowelements[:i+1].sum()].std() if self.elem[i-1] > 1 else self.device_ADC_sigma[i - 1 , ev]
+            # # prueba
+
+            # mean1 = self.mean
             sum1 = self.sum_adc
-            # mean2 = (self.mean * self.elem - adc_old) / (self.elem - 1.0)
-            mean2 = np.divide(np.subtract(np.multiply(self.mean, self.elem, dtype='float128'), adc_old, dtype='float128'), np.subtract(self.elem, 1.0, dtype='float128'), dtype='float128')
+            # # mean2 = (self.mean * self.elem - adc_old) / (self.elem - 1.0)
+            # mean2 = np.divide(np.subtract(np.multiply(self.mean, self.elem, dtype='float128'), adc_old, dtype='float128'), np.subtract(self.elem, 1.0, dtype='float128'), dtype='float128')
             sum2 = np.subtract(self.sum_adc, adc_old, dtype='int64')
 
-            mean1_sq = self.mean_sq
+            # mean1_sq = self.mean_sq
             sum1sq = self.sum_adc_sq
-            # mean2_sq = (self.mean_sq * self.elem - adc_old ** 2) / (self.elem - 1.0)
-            mean2_sq = np.divide(np.subtract(np.multiply(self.mean_sq, self.elem, dtype='float128'), np.power(adc_old, 2.0, dtype='float128'), dtype='float128'), np.subtract(self.elem, 1.0, dtype='float128'), dtype='float128')
-            sum2sq = np.subtract(self.sum_adc_sq, np.power(adc_old, 2, dtype='uint64'), dtype='uint64')
+            # # mean2_sq = (self.mean_sq * self.elem - adc_old ** 2) / (self.elem - 1.0)
+            # mean2_sq = np.divide(np.subtract(np.multiply(self.mean_sq, self.elem, dtype='float128'), np.power(adc_old, 2.0, dtype='float128'), dtype='float128'), np.subtract(self.elem, 1.0, dtype='float128'), dtype='float128')
+            sum2sq = np.subtract(self.sum_adc_sq.astype('uint64'), np.power(adc_old, 2, dtype='uint64'), dtype='uint64')
 
             elem1 = self.elem
             elem2 = self.elem - 1
 
             condition_old = self.device_ADC_is_ped[:, ev - self.slide_leng]
-            self.mean = np.where(condition_old, mean2, mean1)
-            self.mean_sq = np.where(condition_old, mean2_sq, mean1_sq)
+            # self.mean = np.where(condition_old, mean2, mean1)
+            # self.mean_sq = np.where(condition_old, mean2_sq, mean1_sq)
             self.elem = np.where(condition_old, elem2, elem1)
             self.sum_adc = np.where(condition_old, sum2, sum1)
             self.sum_adc_sq = np.where(condition_old, sum2sq, sum1sq)
 
-            mean1 = self.mean
+            # mean1 = self.mean
             sum1 = self.sum_adc
-            # mean2 = (self.mean * self.elem + adc_new) / (self.elem + 1.0)
-            mean2 = np.divide(np.add(np.multiply(self.mean, self.elem, dtype='float128'), adc_new, dtype='float128'), np.add(self.elem, 1.0, dtype='float128'), dtype='float128')
+            # # mean2 = (self.mean * self.elem + adc_new) / (self.elem + 1.0)
+            # mean2 = np.divide(np.add(np.multiply(self.mean, self.elem, dtype='float128'), adc_new, dtype='float128'), np.add(self.elem, 1.0, dtype='float128'), dtype='float128')
             sum2 = np.add(self.sum_adc, adc_new, dtype='int64')
 
-            mean1_sq = self.mean_sq
+            # mean1_sq = self.mean_sq
             sum1sq = self.sum_adc_sq
-            # mean2_sq = (self.mean_sq * self.elem + adc_new ** 2) / (self.elem + 1.0)
-            mean2_sq = np.divide(np.add(np.multiply(self.mean_sq, self.elem, dtype='float128'), np.power(adc_new, 2.0, dtype='float128'), dtype='float128'), np.add(self.elem, 1.0, dtype='float128'), dtype='float128')
-            sum2sq = np.add(self.sum_adc_sq, np.power(adc_new, 2, dtype='uint64'), dtype='uint64')
+            # # mean2_sq = (self.mean_sq * self.elem + adc_new ** 2) / (self.elem + 1.0)
+            # mean2_sq = np.divide(np.add(np.multiply(self.mean_sq, self.elem, dtype='float128'), np.power(adc_new, 2.0, dtype='float128'), dtype='float128'), np.add(self.elem, 1.0, dtype='float128'), dtype='float128')
+            sum2sq = np.add(self.sum_adc_sq.astype('uint64'), np.power(adc_new, 2, dtype='uint64'), dtype='uint64')
 
             elem1 = self.elem
             elem2 = self.elem + 1
 
-            self.mean = np.where(condition_p, mean2, mean1)
-            self.mean_sq = np.where(condition_p, mean2_sq, mean1_sq)
+            # self.mean = np.where(condition_p, mean2, mean1)
+            # self.mean_sq = np.where(condition_p, mean2_sq, mean1_sq)
             self.elem = np.where(condition_p, elem2, elem1)
             self.sum_adc = np.where(condition_p, sum2, sum1)
             self.sum_adc_sq = np.where(condition_p, sum2sq, sum1sq)
 
             # self.sigma = np.sqrt(np.subtract(self.mean_sq, np.power(self.mean, 2.0, dtype='float128'), dtype='float128'), dtype='float128')
-            meansqtemp = np.divide(self.sum_adc_sq, self.elem, dtype='float128')
-            meantemp = np.divide(self.sum_adc, self.elem, dtype='float128')
-            self.sigma = np.sqrt(np.subtract(meansqtemp, np.power(meantemp, 2.0, dtype='float128'), dtype='float128'), dtype='float128')
-
-            condition_bla = self.elem > 1
-
+            condition_mean = self.elem > 1
+            condition_sigma = np.bitwise_and(condition_mean, np.multiply(self.sum_adc_sq, self.elem) > np.power(self.sum_adc, 2, dtype='int64'))
+            # self.sigma = np.sqrt(np.subtract(meansqtemp, np.power(meantemp, 2.0, dtype='float128'), dtype='float128'), dtype='float128')
+            self.device_ADC_mean[:, ev] = np.where(condition_mean, np.divide(self.sum_adc, self.elem, dtype='float128', where=condition_mean), self.device_ADC_mean[:, ev - 1])
+            self.device_ADC_sigma[:, ev] = np.where(condition_sigma, np.sqrt(np.subtract(np.divide(self.sum_adc_sq, self.elem, dtype='float128', where=condition_sigma), np.power(np.divide(self.sum_adc, self.elem, dtype='float128', where=condition_sigma), 2.0, dtype='float128', where=condition_sigma), dtype='float128', where=condition_sigma), dtype='float128', where=condition_sigma), self.device_ADC_sigma[:, ev - 1])
             # self.device_ADC_mean[:, ev] = self.mean
-            self.device_ADC_mean[:, ev] = np.where(condition_bla, meantemp, self.device_ADC_mean[:, ev - 1])
             # self.device_ADC_sigma[:, ev] = self.sigma
-            self.device_ADC_sigma[:, ev] = np.where(condition_bla, self.sigma, self.device_ADC_sigma[:, ev - 1])
-            self.device_ADC_is_ped[:, ev] = condition_p
-            self.device_ADC_is_hit[:, ev] = condition_h
-            self.device_ADC_is_seed[:, ev] = condition_s
 
+            # Cmc values:
+            self.mean_cmc = self.device_ADC_mean_cmc[:, ev - 1]
+            self.sigma_cmc = self.device_ADC_sigma_cmc[:, ev - 1]
             adc_old_cmc = np.subtract(self.device_ADC_all[:, ev - self.slide_leng], self.device_cm[ev - self.slide_leng], dtype='float128')
             signal_new_cmc = np.subtract(adc_new, self.mean_cmc, dtype='float128')
             condition_cm = np.bitwise_and((np.abs(signal_new_cmc) < np.multiply(self.cm_cut, self.sigma_cmc, dtype='float128')), self.is_not_masked)
@@ -205,42 +222,79 @@ class PedestalDeviceCalculations(mp.Process):
             condition_h_cmc = np.bitwise_and(np.multiply(self.hit_factor, self.sigma_cmc, dtype='float128') <= signal_new_cmc2, signal_new_cmc2 < np.multiply(self.seed_factor, self.sigma_cmc, dtype='float128'))
             condition_s_cmc = signal_new_cmc2 >= np.multiply(self.seed_factor, self.sigma_cmc, dtype='float128')
             # condition_s_cmc = np.bitwise_and(np.bitwise_not(condition_p_cmc), np.bitwise_not(condition_h_cmc))
+            self.device_channels_cm[:, ev] = condition_cm
+            self.device_cm[ev] = self.cm
+            self.device_is_ped_cmc[:, ev] = condition_p_cmc
+            self.device_is_hit_cmc[:, ev] = condition_h_cmc
+            self.device_is_seed_cmc[:, ev] = condition_s_cmc
 
-            mean1_cmc = self.mean_cmc
-            mean2_cmc = np.divide(np.subtract(np.multiply(self.mean_cmc, self.elem_cmc, dtype='float128'), adc_old_cmc, dtype='float128'), np.subtract(self.elem_cmc, 1.0, dtype='float128'), dtype='float128')
+            # # prueba
+            # self.device_cm[ev] = self.cm
+            # self.device_channels_cm[:, ev] = condition_cm
+            # self.device_is_ped_cmc[:, ev] = condition_p_cmc
+            # self.device_is_hit_cmc[:, ev] = condition_h_cmc
+            # self.device_is_seed_cmc[:, ev] = condition_s_cmc
+            #
+            # self.elem_cmc = self.device_is_ped_cmc[:, ev - self.slide_leng + 1: ev + 1].sum(axis=1)
+            # rowelements_cmc = np.insert(self.elem_cmc, 0, 0)
+            # selected_adc_flattened_cmc = np.extract(self.device_is_ped_cmc[:, ev - self.slide_leng + 1: ev + 1], np.subtract(self.device_ADC_all[:, ev - self.slide_leng + 1: ev + 1], self.device_cm[ev - self.slide_leng + 1: ev + 1], dtype='float128'))
+            #
+            # # self.device_ADC_mean_cmc[:, ev] = [selected_adc_flattened_cmc[rowelements_cmc[:i].sum():rowelements_cmc[:i+1].sum()].mean() if self.elem_cmc[i-1] > 1 else self.mean_cmc[i-1] for i in xrange(1, rowelements_cmc.size)]
+            # # self.device_ADC_sigma_cmc[:, ev] = [selected_adc_flattened_cmc[rowelements_cmc[:i].sum():rowelements_cmc[:i+1].sum()].std() if self.elem_cmc[i-1] > 1 else self.sigma_cmc[i-1] for i in xrange(1, rowelements_cmc.size)]
+            #
+            # for i in xrange(1, rowelements_cmc.size):
+            #     self.device_ADC_mean_cmc[i - 1, ev] = selected_adc_flattened_cmc[rowelements_cmc[:i].sum():rowelements_cmc[:i+1].sum()].mean() if self.elem_cmc[i-1] > 1 else self.device_ADC_mean_cmc[i - 1 , ev]
+            #     self.device_ADC_sigma_cmc[i - 1, ev] = selected_adc_flattened_cmc[rowelements_cmc[:i].sum():rowelements_cmc[:i+1].sum()].std() if self.elem_cmc[i-1] > 1 else self.device_ADC_sigma_cmc[i - 1 , ev]
+            #
+            # # prueba
 
-            mean1_sq_cmc = self.mean_sq_cmc
-            mean2_sq_cmc = np.divide(np.subtract(np.multiply(self.mean_sq_cmc, self.elem_cmc, dtype='float128'), np.power(adc_old_cmc, 2.0, dtype='float128'), dtype='float128'), np.subtract(self.elem_cmc, 1.0, dtype='float128'), dtype='float128')
+            # mean1_cmc = self.mean_cmc
+            sum1_cmc = self.sum_adc_cmc
+            # mean2_cmc = np.divide(np.subtract(np.multiply(self.mean_cmc, self.elem_cmc, dtype='float128'), adc_old_cmc, dtype='float128'), np.subtract(self.elem_cmc, 1.0, dtype='float128'), dtype='float128')
+            sum2_cmc = np.subtract(self.sum_adc_cmc, adc_old_cmc, dtype='float128')
+
+            # mean1_sq_cmc = self.mean_sq_cmc
+            sum1sq_cmc = self.sum_adc_sq_cmc
+            # mean2_sq_cmc = np.divide(np.subtract(np.multiply(self.mean_sq_cmc, self.elem_cmc, dtype='float128'), np.power(adc_old_cmc, 2.0, dtype='float128'), dtype='float128'), np.subtract(self.elem_cmc, 1.0, dtype='float128'), dtype='float128')
+            sum2sq_cmc = np.subtract(self.sum_adc_sq_cmc, np.power(adc_old_cmc, 2.0, dtype='float128'), dtype='float128')
 
             elem1_cmc = self.elem_cmc
             elem2_cmc = self.elem_cmc - 1
 
             condition_old_cmc = self.device_is_ped_cmc[:, ev - self.slide_leng]
-            self.mean_cmc = np.where(condition_old_cmc, mean2_cmc, mean1_cmc)
-            self.mean_sq_cmc = np.where(condition_old_cmc, mean2_sq_cmc, mean1_sq_cmc)
+            # self.mean_cmc = np.where(condition_old_cmc, mean2_cmc, mean1_cmc)
+            # self.mean_sq_cmc = np.where(condition_old_cmc, mean2_sq_cmc, mean1_sq_cmc)
             self.elem_cmc = np.where(condition_old_cmc, elem2_cmc, elem1_cmc)
+            self.sum_adc_cmc = np.where(condition_old_cmc, sum2_cmc, sum1_cmc)
+            self.sum_adc_sq_cmc = np.where(condition_old_cmc, sum2sq_cmc, sum1sq_cmc)
 
-            mean1_cmc = self.mean_cmc
-            mean2_cmc = np.divide(np.add(np.multiply(self.mean_cmc, self.elem_cmc, dtype='float128'), adc_new_cmc, dtype='float128'), np.add(self.elem_cmc, 1.0, dtype='float128'), dtype='float128')
+            # mean1_cmc = self.mean_cmc
+            sum1_cmc = self.sum_adc_cmc
+            # mean2_cmc = np.divide(np.add(np.multiply(self.mean_cmc, self.elem_cmc, dtype='float128'), adc_new_cmc, dtype='float128'), np.add(self.elem_cmc, 1.0, dtype='float128'), dtype='float128')
+            sum2_cmc = np.add(self.sum_adc_cmc, adc_new_cmc, dtype='float128')
 
-            mean1_sq_cmc = self.mean_sq_cmc
-            mean2_sq_cmc = np.divide(np.add(np.multiply(self.mean_sq_cmc, self.elem_cmc, dtype='float128'), np.power(adc_new_cmc, 2.0, dtype='float128'), dtype='float128'), np.add(self.elem_cmc, 1.0, dtype='float128'), dtype='float128')
+            # mean1_sq_cmc = self.mean_sq_cmc
+            sum1sq_cmc = self.sum_adc_sq_cmc
+            # mean2_sq_cmc = np.divide(np.add(np.multiply(self.mean_sq_cmc, self.elem_cmc, dtype='float128'), np.power(adc_new_cmc, 2.0, dtype='float128'), dtype='float128'), np.add(self.elem_cmc, 1.0, dtype='float128'), dtype='float128')
+            sum2sq_cmc = np.add(self.sum_adc_sq_cmc, np.power(adc_new_cmc, 2.0, dtype='float128'), dtype='float128')
 
             elem1_cmc = self.elem_cmc
             elem2_cmc = self.elem_cmc + 1
 
-            self.mean_cmc = np.where(condition_p_cmc, mean2_cmc, mean1_cmc)
-            self.mean_sq_cmc = np.where(condition_p_cmc, mean2_sq_cmc, mean1_sq_cmc)
+            # self.mean_cmc = np.where(condition_p_cmc, mean2_cmc, mean1_cmc)
+            # self.mean_sq_cmc = np.where(condition_p_cmc, mean2_sq_cmc, mean1_sq_cmc)
             self.elem_cmc = np.where(condition_p_cmc, elem2_cmc, elem1_cmc)
-            self.sigma_cmc = np.sqrt(np.subtract(self.mean_sq_cmc, np.power(self.mean_cmc, 2.0, dtype='float128'), dtype='float128'), dtype='float128')
+            # if (np.subtract(self.mean_sq_cmc, np.power(self.mean_cmc, 2.0, dtype='float128'), dtype='float128') < 0).any():ipdb.set_trace()
+            # self.sigma_cmc = np.sqrt(np.subtract(self.mean_sq_cmc, np.power(self.mean_cmc, 2.0, dtype='float128'), dtype='float128'), dtype='float128')
+            self.sum_adc_cmc = np.where(condition_p_cmc, sum2_cmc, sum1_cmc)
+            self.sum_adc_sq_cmc = np.where(condition_p_cmc, sum2sq_cmc, sum1sq_cmc)
 
-            self.device_channels_cm[:, ev] = condition_cm
-            self.device_cm[ev] = self.cm
-            self.device_ADC_mean_cmc[:, ev] = self.mean_cmc
-            self.device_ADC_sigma_cmc[:, ev] = self.sigma_cmc
-            self.device_is_ped_cmc[:, ev] = condition_p_cmc
-            self.device_is_hit_cmc[:, ev] = condition_h_cmc
-            self.device_is_seed_cmc[:, ev] = condition_s_cmc
+            condition_mean_cmc = self.elem_cmc > 1
+            condition_sigma_cmc = np.bitwise_and(condition_mean_cmc, np.multiply(self.sum_adc_sq_cmc, self.elem_cmc, dtype='float128') > np.power(self.sum_adc_cmc, 2.0, dtype='float128'))
+            self.device_ADC_mean_cmc[:, ev] = np.where(condition_mean_cmc, np.divide(self.sum_adc_cmc, self.elem_cmc, dtype='float128', where=condition_mean_cmc), self.device_ADC_mean_cmc[:, ev - 1])
+            self.device_ADC_sigma_cmc[:, ev] = np.where(condition_sigma_cmc, np.sqrt(np.subtract(np.divide(self.sum_adc_sq_cmc, self.elem_cmc, dtype='float128', where=condition_sigma_cmc), np.power(np.divide(self.sum_adc_cmc, self.elem_cmc, dtype='float128', where=condition_sigma_cmc), 2.0, dtype='float128', where=condition_sigma_cmc), dtype='float128', where=condition_sigma_cmc), dtype='float128', where=condition_sigma_cmc), self.device_ADC_sigma_cmc[:, ev - 1])
+            # self.device_ADC_mean_cmc[:, ev] = self.mean_cmc
+            # self.device_ADC_sigma_cmc[:, ev] = self.sigma_cmc
 
             if self.show_pb:
                 bar.update(ev + 1)
@@ -321,7 +375,6 @@ class PedestalDeviceCalculations(mp.Process):
             self.device_is_ped_cmc[:, :self.slide_leng] = condition_p_cmc
             self.device_is_hit_cmc[:, :self.slide_leng] = condition_h_cmc
             self.device_is_seed_cmc[:, :self.slide_leng] = condition_s_cmc
-        ipdb.set_trace()
         self.mean = self.device_ADC_mean[:, 0]
         self.sigma = self.device_ADC_sigma[:, 0]
         self.mean_sq = np.add(np.power(self.sigma, 2, dtype='float128'), np.power(self.mean, 2, dtype='float128'), dtype='float128')
