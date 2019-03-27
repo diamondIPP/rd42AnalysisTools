@@ -97,7 +97,7 @@ class TransparentGrid:
 		self.suffix = {'all': 'all', 'good': 'selected', 'bad': 'not_selected'}
 
 		self.noise_varz = {'adc': 'diaChSignal', 'snr': 'diaChSignal/diaChPedSigmaCmc'}
-		self.noise_new_varz = {'adc': 'pedTree.diaChSignal', 'snr': 'pedTree.diaChSignal/pedTree.diaChPedSigmaCmc'}
+		self.noise_friend_varz = {'adc': 'pedTree.diaChSignal', 'snr': 'pedTree.diaChSignal/pedTree.diaChPedSigmaCmc'}
 		self.ph_adc_h_varz = {}
 		self.ph_adc_ch_varz = {}
 		self.ph_snr_h_varz = {}
