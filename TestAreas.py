@@ -317,9 +317,10 @@ class TestAreas:
 		temp0 = np.array([percents[1] - percents[0]] + [percents[i] - percents[i-1] for i in xrange(1, percents.size)])
 		temp0fact = (percents[-1] - percents[0]) / (2 * temp0.sum(dtype='float64') - temp0[0] - temp0[-1])
 		xarrayerrs = np.multiply(temp0, temp0fact, dtype='float64')
+
 		yarrayin = np.array([self.trans_grid.histo['PH2_H_adc_in_rect_{p}_percent_{s}'.format(p=p, s=suffix)].GetMean() for p in percents], 'float64')
-		yarrayout = np.array([self.trans_grid.histo['PH2_H_adc_out_rect_{p}_percent_{s}'.format(p=p, s=suffix)].GetMean() for p in percents], 'float64')
 		yarrayinerrs = np.array([self.trans_grid.histo['PH2_H_adc_in_rect_{p}_percent_{s}'.format(p=p, s=suffix)].GetMeanError() for p in percents], 'float64')
+		yarrayout = np.array([self.trans_grid.histo['PH2_H_adc_out_rect_{p}_percent_{s}'.format(p=p, s=suffix)].GetMean() for p in percents], 'float64')
 		yarrayouterrs = np.array([self.trans_grid.histo['PH2_H_adc_out_rect_{p}_percent_{s}'.format(p=p, s=suffix)].GetMeanError() for p in percents], 'float64')
 		maxy = max(yarrayin.max() + yarrayinerrs.max(), yarrayout.max() + yarrayouterrs.max())
 
@@ -352,6 +353,45 @@ class TestAreas:
 		self.trans_grid.graph[outgraphname].Draw('ALP')
 		SetDefault1DCanvasSettings(self.trans_grid.canvas[outgraphname])
 		self.PositionCanvas(outgraphname)
+
+		ysatin = [self.trans_grid.trans_tree.Draw('event', self.center_cells_ana.sat_adc_inside_cut[p], 'goff') for p in percents]
+		ysatout = [self.trans_grid.trans_tree.Draw('event', self.center_cells_ana.sat_adc_outside_cut[p], 'goff') for p in percents]
+		ynosatin = [self.trans_grid.trans_tree.Draw('event', self.center_cells_ana.nosat_adc_inside_cut[p], 'goff') for p in percents]
+		ynosatout = [self.trans_grid.trans_tree.Draw('event', self.center_cells_ana.nosat_adc_outside_cut[p], 'goff') for p in percents]
+		ysat_nosat_ratio_in = np.divide(ysatin, np.add(ynosatin, ysatin), dtype='float64')
+		ysat_nosat_ratio_out = np.divide(ysatout, np.add(ysatout, ynosatout), dtype='float64')
+		ysat_nosat_ratio_in_errs = np.divide(np.sqrt(np.add(np.power(np.multiply(ysatin, np.sqrt(ynosatin)), 2), np.power(np.multiply(ynosatin, np.sqrt(ysatin)), 2))), np.power(np.add(ysatin, ynosatin), 2), dtype='float64')
+		ysat_nosat_ratio_out_errs = np.divide(np.sqrt(np.add(np.power(np.multiply(ysatout, np.sqrt(ynosatout)), 2), np.power(np.multiply(ynosatout, np.sqrt(ysatout)), 2))), np.power(np.add(ysatout, ynosatout), 2), dtype='float64')
+
+		tgraphe_sat_ratio_in = ro.TGraphErrors(int(xarray.size), xarray, ysat_nosat_ratio_in, xarrayerrs, ysat_nosat_ratio_in_errs)
+		ingraphrationame = 'Sat_events_ratio_in_rect_Vs_percent_area_in'
+		tgraphe_sat_ratio_in.SetNameTitle('g_' + ingraphrationame, 'g_' + ingraphrationame)
+		tgraphe_sat_ratio_in.GetXaxis().SetTitle('percentage of rectangular area inside')
+		tgraphe_sat_ratio_in.GetYaxis().SetTitle('sat_tracks/all_tracks')
+		tgraphe_sat_ratio_in.GetYaxis().SetRangeUser(0, 1)
+		tgraphe_sat_ratio_in.SetMarkerStyle(8)
+		tgraphe_sat_ratio_in.SetMarkerColor(ro.kRed)
+		tgraphe_sat_ratio_in.SetLineColor(ro.kRed)
+		self.trans_grid.graph[ingraphrationame] = tgraphe_sat_ratio_in
+		self.trans_grid.canvas[ingraphrationame] = ro.TCanvas('c_' + ingraphrationame, 'c_' + ingraphrationame, 1)
+		self.trans_grid.graph[ingraphrationame].Draw('ALP')
+		SetDefault1DCanvasSettings(self.trans_grid.canvas[ingraphrationame])
+		self.PositionCanvas(ingraphrationame)
+
+		tgraphe_sat_ratio_out = ro.TGraphErrors(int(xarray.size), xarray, ysat_nosat_ratio_out, xarrayerrs, ysat_nosat_ratio_out_errs)
+		outgraphrationame = 'Sat_events_ratio_out_rect_Vs_percent_area_in'
+		tgraphe_sat_ratio_out.SetNameTitle('g_' + outgraphrationame, 'g_' + outgraphrationame)
+		tgraphe_sat_ratio_out.GetXaxis().SetTitle('percentage of rectangular area inside')
+		tgraphe_sat_ratio_out.GetYaxis().SetTitle('sat_tracks/all_tracks')
+		tgraphe_sat_ratio_out.GetYaxis().SetRangeUser(0, 1)
+		tgraphe_sat_ratio_out.SetMarkerStyle(8)
+		tgraphe_sat_ratio_out.SetMarkerColor(ro.kBlue)
+		tgraphe_sat_ratio_out.SetLineColor(ro.kBlue)
+		self.trans_grid.graph[outgraphrationame] = tgraphe_sat_ratio_out
+		self.trans_grid.canvas[outgraphrationame] = ro.TCanvas('c_' + outgraphrationame, 'c_' + outgraphrationame, 1)
+		self.trans_grid.graph[outgraphrationame].Draw('ALP')
+		SetDefault1DCanvasSettings(self.trans_grid.canvas[outgraphrationame])
+		self.PositionCanvas(outgraphrationame)
 
 	def DoSaturationPlots(self, cells='all'):
 		self.trans_grid.AddFriendWithSaturationRegions(self.skip_after_sat, self.skip_before_sat)

@@ -54,8 +54,24 @@ class CenterCellAnalysis:
 		self.phN_adc_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
 		self.phN_snr_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
 
+		self.sat_adc_ch_cut = {}
+		self.sat_adc_h_cut = {}
+		self.not_sat_adc_ch_cut = {}
+		self.not_sat_adc_h_cut = {}
+
+		self.sat_adc_N_ch_cut = {}
+		self.sat_adc_N_h_cut = {}
+		self.not_sat_adc_N_ch_cut = {}
+		self.not_sat_adc_N_h_cut = {}
+
+
 		self.in_central_rect_cut = {}
 		self.out_central_rect_cut = {}
+
+		self.sat_adc_inside_cut = {}
+		self.sat_adc_outside_cut = {}
+		self.nosat_adc_inside_cut = {}
+		self.nosat_adc_outside_cut = {}
 
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
@@ -103,6 +119,17 @@ class CenterCellAnalysis:
 		self.phN_adc_h_cuts[cells] = self.trans_grid.cuts_man.phN_adc_h_cuts[cells]
 		self.phN_snr_h_cuts[cells] = self.trans_grid.cuts_man.phN_snr_h_cuts[cells]
 
+		self.sat_adc_ch_cut = self.trans_grid.cuts_man.sat_adc_ch
+		self.sat_adc_h_cut = self.trans_grid.cuts_man.sat_adc_h
+		self.not_sat_adc_ch_cut = self.trans_grid.cuts_man.not_sat_adc_ch
+		self.not_sat_adc_h_cut = self.trans_grid.cuts_man.not_sat_adc_h
+		self.sat_adc_N_ch_cut = self.trans_grid.cuts_man.sat_adc_N_ch
+		self.sat_adc_N_h_cut = self.trans_grid.cuts_man.sat_adc_N_h
+		self.not_sat_adc_N_ch_cut = self.trans_grid.cuts_man.not_sat_adc_N_ch
+		self.not_sat_adc_N_h_cut = self.trans_grid.cuts_man.not_sat_adc_N_h
+
+		self.SetCutsForSaturationRatio(cells)
+
 	def GetVarzFromTranspGrid(self):
 		self.noise_varz = self.trans_grid.noise_varz
 		self.noise_friend_varz = self.trans_grid.noise_friend_varz
@@ -114,6 +141,18 @@ class CenterCellAnalysis:
 		self.phN_snr_ch_varz = self.trans_grid.phN_snr_ch_varz
 		self.phN_adc_h_varz = self.trans_grid.phN_adc_h_varz
 		self.phN_snr_h_varz = self.trans_grid.phN_snr_h_varz
+
+	def SetCutsForSaturationRatio(self, cells='all'):
+		tempsat = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.sat_adc_N_h_cut['2_H'])
+		tempsat = self.trans_grid.cuts_man.ConcatenateCuts(tempsat, self.phN_adc_h_cuts[cells]['PH2_H'])
+		tempnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, self.not_sat_adc_N_h_cut['2_H'])
+		tempnosat = self.trans_grid.cuts_man.ConcatenateCuts(tempnosat, self.phN_adc_h_cuts[cells]['PH2_H'])
+		for p, cut in self.in_central_rect_cut.iteritems():
+			self.sat_adc_inside_cut[p] = self.trans_grid.cuts_man.ConcatenateCuts(tempsat, cut)
+			self.nosat_adc_inside_cut[p] = self.trans_grid.cuts_man.ConcatenateCuts(tempnosat, cut)
+		for p, cut in self.out_central_rect_cut.iteritems():
+			self.sat_adc_outside_cut[p] = self.trans_grid.cuts_man.ConcatenateCuts(tempsat, cut)
+			self.nosat_adc_outside_cut[p] = self.trans_grid.cuts_man.ConcatenateCuts(tempnosat, cut)
 
 
 if __name__ == '__main__':

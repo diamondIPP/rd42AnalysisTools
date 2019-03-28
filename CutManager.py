@@ -186,9 +186,9 @@ class CutManager:
 			self.not_neg_adc_phN_h['PH{i}_H'.format(i=ch + 1)] = '(' + '&&'.join(list_not_neg_adc_phN_h) + ')' if len(list_not_neg_adc_phN_h) > 0 else ''
 
 			self.sat_adc_N_ch['{i}_Ch'.format(i=ch + 1)] = '(' + '||'.join(list_sat_N_ch) + ')' if len(list_sat_N_ch) > 0 else ''
-			self.not_sat_adc_N_ch['{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_sat_N_ch) + ')' if len(list_not_sat_N_ch) > 0 else ''
+			self.not_sat_adc_N_ch['{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_not_sat_N_ch) + ')' if len(list_not_sat_N_ch) > 0 else ''
 			self.sat_adc_N_h['{i}_H'.format(i=ch + 1)] = '(' + '||'.join(list_sat_N_h) + ')' if len(list_sat_N_h) > 0 else ''
-			self.not_sat_adc_N_h['{i}_H'.format(i=ch + 1)] = '(' + '&&'.join(list_sat_N_h) + ')' if len(list_not_sat_N_h) > 0 else ''
+			self.not_sat_adc_N_h['{i}_H'.format(i=ch + 1)] = '(' + '&&'.join(list_not_sat_N_h) + ')' if len(list_not_sat_N_h) > 0 else ''
 
 			self.valid_ped_sigma_N_ch['{i}_Ch'.format(i=ch + 1)] = '(' + '&&'.join(list_valid_ped_sigma_N_ch) + ')' if len(list_valid_ped_sigma_N_ch) > 0 else ''
 			self.valid_ped_sigma_N_h['{i}_H'.format(i=ch + 1)] = '(' + '&&'.join(list_valid_ped_sigma_N_h) + ')' if len(list_valid_ped_sigma_N_h) > 0 else ''
