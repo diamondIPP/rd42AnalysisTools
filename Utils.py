@@ -480,6 +480,12 @@ def SetDefault1DStats(histo):
 		histo.FindObject('stats').SetY2NDC(0.9)
 		ro.gPad.Update()
 
+def SetDefault1DCanvasSettings(canvas):
+	canvas.SetGridx()
+	canvas.SetGridy()
+	canvas.SetTicky()
+	ro.gPad.Update()
+
 def FindLeafInTree(tree, leaf):
 	if tree.FindLeaf(leaf):
 		return True

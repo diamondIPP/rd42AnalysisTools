@@ -42,7 +42,8 @@ class GridAreas:
 		tempCutG.SetNameTitle(tempname, tempname)
 		tempCutG.SetVarX(xvar)
 		tempCutG.SetVarY(yvar)
-		tempCutG.SetLineColor(ro.kRed)
+		tempCutG.SetLineColor(ro.kBlack)
+		tempCutG.SetLineWidth(2)
 		self.center_rectangles[percentage] = {'name': tempname, 'tcutg': tempCutG}
 
 	def AddGoodAreas(self, col, row, tcutgs_diamond, tcutgs_diamond_center):

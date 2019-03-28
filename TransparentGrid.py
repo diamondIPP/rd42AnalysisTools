@@ -356,8 +356,13 @@ class TransparentGrid:
 		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
 
 	def FindXandYOffests(self, factor=0.1, do_plot=True):
+		self.FindXOffset(factor, do_plot)
+		self.FindYOffset(factor, do_plot)
+
+	def FindXOffset(self, factor=0.1, do_plot=True):
 		plot_option = 'prof colz' if do_plot else 'prof goff'
 		self.row_info_diamond['x_off'] += 3.0 / 2.0
+		self.SetOverlayVariables()
 		delta_x = self.col_pitch
 		# proj_width = self.row_info_diamond['pitch'] / 5.0  # in mum
 		proj_width = self.row_info_diamond['pitch']  # in mum
@@ -370,6 +375,7 @@ class TransparentGrid:
 		x_off_shifted, x_min = 0.0, 0.0
 		while abs(delta_x) > self.delta_offset_threshold and iteration < 100:
 			self.row_info_diamond['x_off'] -= np.divide(delta_x, self.col_pitch, dtype='float64') * (np.exp(-iteration) * (1 - factor) + factor)
+			self.SetOverlayVariables()
 			self.DrawProfile2DDiamondCellOverlay('x_off_alignment', 'clusterCharge1', 'good', plot_option=plot_option)
 			# h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high)
 			h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high, 'e hist')
@@ -387,8 +393,12 @@ class TransparentGrid:
 			print iteration, x_min, delta_x
 		print 'final', min_delta
 		self.row_info_diamond['x_off'] = x_off_shifted - 0.5
+		self.SetOverlayVariables()
 
+	def FindYOffset(self, factor=0.1, do_plot=True):
+		plot_option = 'prof colz' if do_plot else 'prof goff'
 		self.row_info_diamond['y_off'] += 3.0 * self.row_info_diamond['pitch'] / 2.0
+		self.SetOverlayVariables()
 		delta_y = self.row_info_diamond['pitch']
 		proj_width = self.col_pitch / 5.0  # in mum
 		proj_bins = RoundInt(float(proj_width) / self.cell_resolution)
@@ -399,7 +409,8 @@ class TransparentGrid:
 		min_delta = self.row_info_diamond['pitch']
 		y_off_shifted, y_min = 0.0, 0.0
 		while abs(delta_y) > self.delta_offset_threshold and iteration < 100:
-			self.row_info_diamond['y_off'] -= delta_y * (np.exp(-iteration) * (1-factor) + factor)
+			self.row_info_diamond['y_off'] -= delta_y * (np.exp(-iteration) * (1 - factor) + factor)
+			self.SetOverlayVariables()
 			self.DrawProfile2DDiamondCellOverlay('y_off_alignment', 'clusterCharge1', 'good', plot_option=plot_option)
 			h_proj_y = self.profile['y_off_alignment'].ProjectionY('y_off_alignment_py', proj_low, proj_high, 'e hist')
 			h_proj_y.GetXaxis().SetRangeUser(0.1, self.row_info_diamond['pitch'] - 0.1)
@@ -415,6 +426,7 @@ class TransparentGrid:
 			print iteration, y_min, delta_y
 		print 'final', min_delta
 		self.row_info_diamond['y_off'] = y_off_shifted - self.row_info_diamond['pitch'] / 2.0
+		self.SetOverlayVariables()
 
 	def AskUserLowerYLines(self):
 		do_diamond = raw_input('Enter 1 if you want to enter the lower y line parameters of the plots in diamond space')
@@ -716,9 +728,7 @@ class TransparentGrid:
 			self.canvas[name].cd()
 		self.trans_tree.Draw('{v}>>h_{n}'.format(v=var, n=name), temp_cuts, option)
 		if 'goff' not in option:
-			self.canvas[name].SetGridx()
-			self.canvas[name].SetGridy()
-			self.canvas[name].SetTicky()
+			SetDefault1DCanvasSettings(self.canvas[name])
 			ro.gPad.Update()
 			SetDefault1DStats(self.histo[name])
 		ro.TFormula.SetMaxima(1000)
