@@ -68,27 +68,6 @@ class TestAreas:
 		if self.num_rows != 0:
 			self.trans_grid.row_info_diamond['num'] = self.num_rows
 
-		self.noise_cuts = {t: '' for t in ['all', 'good', 'bad']}
-		self.ph_adc_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.ph_snr_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.ph_adc_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.ph_snr_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.phN_adc_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.phN_adc_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.phN_snr_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.phN_snr_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
-
-		self.noise_varz = {}
-		self.ph_adc_h_varz = {}
-		self.ph_adc_ch_varz = {}
-		self.ph_snr_h_varz = {}
-		self.ph_snr_ch_varz = {}
-
-		self.phN_adc_h_varz = {}
-		self.phN_adc_ch_varz = {}
-		self.phN_snr_h_varz = {}
-		self.phN_snr_ch_varz = {}
-
 	def ReadConfigFile(self):
 		def unpack_row_col(string):
 			elements = string.replace('{', '').replace('}', '')
@@ -165,6 +144,14 @@ class TestAreas:
 			print 'Done'
 			self.trans_grid.AddRemainingToBadAreas()
 			print 'Marked the remaining cells as bad'
+			if len(self.trans_grid.gridAreas.goodAreas_diamond) < 2:
+				print 'There is only', len(self.trans_grid.gridAreas.goodAreas_diamond), 'cell in the selection. Check the thresholds or the area config file. Break'
+				if self.do_threshold:
+					self.threshold = int(RoundInt(self.threshold * 0.75))
+					print 'Trying with a new threshold of', self.threshold
+					self.SetTest()
+				else:
+					return
 			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
 			self.SetAnalysis()
 		elif len(self.rows) + len(self.cols) + len(self.cells) > 0:
@@ -210,7 +197,7 @@ class TestAreas:
 			self.w += self.window_shift
 
 	def DoBorderPlots(self):
-		self.trans_grid.DrawProfile2DDiamond('PH2_H_map_with_borders', self.phN_adc_h_varz['PH2_H'], draw_top_borders=True)
+		self.trans_grid.DrawProfile2DDiamond('PH2_H_map_with_borders', self.trans_grid.phN_adc_h_varz['PH2_H'], draw_top_borders=True)
 		self.trans_grid.DrawGoodAreasDiamond('PH2_H_map_with_borders')
 		self.trans_grid.DrawBadAreasDiamond('PH2_H_map_with_borders')
 		xbinmin, xbinmax = self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5), self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5) + self.trans_grid.num_cols * self.trans_grid.bins_per_ch_x - 1
@@ -243,54 +230,8 @@ class TestAreas:
 		self.trans_grid.fits['PH2_H_map_with_borders_py'] = self.trans_grid.histo['PH2_H_map_with_borders_py'].Fit('box_fcn', 'QIEBMS', 'goff', self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((minbiny))), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((maxbiny))))
 		self.PositionCanvas('PH2_H_map_with_borders_py')
 
-	def PlotNoiseNotInCluster(self, cells='all'):
-		temp_cut_noise = self.noise_cuts[cells]
-		temph = ro.TH1F('temph0', 'temph0', int(RoundInt((self.max_adc_noise - self.min_adc_noise) / float(self.delta_adc_noise))), self.min_adc_noise, self.max_adc_noise)
-		self.trans_grid.trans_tree.Draw('diaChSignal>>temph0', temp_cut_noise, 'goff')
-		mean, sigma = temph.GetMean(), temph.GetRMS()
-		temph.Delete()
-		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = (ni / float(sigma) for ni in [self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise])
-		suffix = self.suffix[cells]
-		self.trans_grid.DrawHisto1D('signal_noise_{c}_snr'.format(c=suffix), self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, self.noise_varz['snr'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
-		self.trans_grid.FitGaus('signal_noise_{c}_snr'.format(c=suffix))
-		self.trans_grid.histo['signal_noise_{c}_snr'.format(c=suffix)].GetXaxis().SetRangeUser(-3.2, 3.2)
-		self.PositionCanvas('signal_noise_{c}_snr'.format(c=suffix))
-		self.trans_grid.DrawHisto1D('signal_noise_{c}_adc'.format(c=suffix), self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, self.noise_varz['adc'], varname='Signal not in cluster (ADC)', cuts=temp_cut_noise, option='e hist')
-		self.trans_grid.FitGaus('signal_noise_{c}_adc'.format(c=suffix))
-		self.trans_grid.histo['signal_noise_{c}_adc'.format(c=suffix)].GetXaxis().SetRangeUser(-32, 32)
-		self.PositionCanvas('signal_noise_{c}_adc'.format(c=suffix))
-
 	def DoSaturationStudies(self, cells='all'):
 		pass
-
-	def OverlayNoiseDistribution(self, histo, cells='all'):
-		suffix = self.suffix[cells]
-		hname = histo.GetName().split('h_')[1]
-		typ = 'adc' if 'adc' in hname.lower() else 'snr'
-		noise_name0 = 'signal_noise_{s}_{t}'.format(s=suffix, t=typ)
-		if not noise_name0 in self.trans_grid.histo.keys():
-			self.PlotNoiseNotInCluster(cells)
-		elif not self.trans_grid.histo[noise_name0]:
-			del self.trans_grid.histo[noise_name0]
-			self.PlotNoiseNotInCluster(cells)
-
-		noise_name_new = noise_name0 + '_' + hname
-		nbins = histo.GetNbinsX()
-		xbins = np.zeros(nbins, 'float64')
-		histo.GetXaxis().GetLowEdge(xbins)
-		xbins = np.append(xbins, 2 * xbins[-1] - xbins[-2])
-		self.trans_grid.histo[noise_name_new] = self.trans_grid.histo[noise_name0].Rebin(nbins, 'h_' + noise_name_new, xbins)
-		if self.trans_grid.histo[noise_name_new]:
-			self.trans_grid.histo[noise_name_new].SetTitle(noise_name0 + '(scaled)')
-			scale = histo.GetMaximum() / self.trans_grid.histo[noise_name_new].GetMaximum()
-			self.trans_grid.histo[noise_name_new].Scale(scale)
-			self.trans_grid.histo[noise_name_new].SetLineColor(ro.kGray + 1)
-			self.trans_grid.histo[noise_name_new].SetStats(0)
-			self.trans_grid.canvas[hname].cd()
-			if self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0):
-				self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0).SetBit(ro.TF1.kNotDraw)
-			self.trans_grid.histo[noise_name_new].Draw('same')
-			ro.gPad.Update()
 
 	def DoNoiseStudies(self, cells='all'):
 		self.noise_ana.w, self.noise_ana.window_shift = self.w, self.window_shift
@@ -354,6 +295,23 @@ class TestAreas:
 		SetDefault1DCanvasSettings(self.trans_grid.canvas[outgraphname])
 		self.PositionCanvas(outgraphname)
 
+	def DoCenterCellSaturationStudies(self, cells='all'):
+		suffix = self.suffix[cells]
+		dists = np.arange(0.1, 1, 0.025)
+		percents = np.unique(np.floor(np.power(dists, 2) * 100 + 0.5).astype('int32'))
+		for percent in percents:
+			self.trans_grid.CreateTCutGSymmetricRectangle(percent)
+		self.center_cells_ana.GetCutsFromCutManager(cells)
+		self.center_cells_ana.GetVarzFromTranspGrid()
+
+		dists = np.arange(0.1, 1, 0.025)
+		percents = np.unique(np.floor(np.power(dists, 2) * 100 + 0.5).astype('int32'))
+
+		xarray = percents.astype('float64')
+		temp0 = np.array([percents[1] - percents[0]] + [percents[i] - percents[i-1] for i in xrange(1, percents.size)])
+		temp0fact = (percents[-1] - percents[0]) / (2 * temp0.sum(dtype='float64') - temp0[0] - temp0[-1])
+		xarrayerrs = np.multiply(temp0, temp0fact, dtype='float64')
+		# ipdb.set_trace()
 		ysatin = [self.trans_grid.trans_tree.Draw('event', self.center_cells_ana.sat_adc_inside_cut[p], 'goff') for p in percents]
 		ysatout = [self.trans_grid.trans_tree.Draw('event', self.center_cells_ana.sat_adc_outside_cut[p], 'goff') for p in percents]
 		ynosatin = [self.trans_grid.trans_tree.Draw('event', self.center_cells_ana.nosat_adc_inside_cut[p], 'goff') for p in percents]

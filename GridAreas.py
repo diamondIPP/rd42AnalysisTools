@@ -225,7 +225,7 @@ class GridAreas:
 			return {'polygons': polygon_list, 'names': name_list}
 		if len(polygon_list) == 0:
 			lentemp0 = len(area_list)
-			maxperm = int(lentemp0 * (lentemp0 - 1))
+			maxperm = max(int(lentemp0 * (lentemp0 - 1)), 1)
 			# maxperm = int(lentemp0 * (lentemp0 - 1) / 2.0)
 			sys.setrecursionlimit(maxperm)
 			for areai in area_list:

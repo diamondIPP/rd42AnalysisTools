@@ -515,7 +515,6 @@ class TransparentGrid:
 		self.cuts_man.SetCuts(neg_cut_snr=self.neg_cut, neg_cut_adc=self.neg_cut_adc)
 		self.cuts_man.SetUpDownBorderCuts(lower=self.row_info_diamond['0'], upper=self.row_info_diamond['up'])
 
-
 	def CreateTCutGsDiamond(self):
 		def GetNumpyArraysX(coli):
 			x0 = self.ch_ini - 0.5 + coli
