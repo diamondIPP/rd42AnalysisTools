@@ -233,9 +233,51 @@ class TestAreas:
 	def DoSaturationStudies(self, cells='all'):
 		pass
 
+	def DoNoiseStudiesDifferentBuffers(self, cells='good'):
+		suffix = self.suffix[cells]
+		divs, minbuffer, maxbuff = 3., 10, 2000
+		tempbuff = np.unique(np.floor(np.power(10, np.divide(np.arange(divs), float(divs), dtype='float64'), dtype='float64') + 0.5).astype('int32'))
+		tempbuff = np.append(np.append(np.append(np.append(np.append(tempbuff, 10*tempbuff), 100*tempbuff), 1000*tempbuff), 10000*tempbuff), 100000*tempbuff)
+		buffers = np.extract(np.bitwise_and(minbuffer <= tempbuff, tempbuff <= maxbuff), tempbuff)
+		cond_do_buffs = np.bitwise_not([self.trans_grid.CheckIfPedTreeFriendExists(buff) for buff in buffers])
+		buffers_to_create = np.extract(cond_do_buffs, buffers)
+		self.trans_grid.CreatePedTreeFriendsForStudy(buffers_to_create)
+		for buff in buffers:
+			self.trans_grid.AddFriendWithNewPedestalBuffer(buff)
+			self.DoNoiseFriendStudies(cells)
+			self.trans_grid.UnfriendTree(self.trans_grid.trans_tree.GetFriend('pedTree'))
+
+		temp0 = np.array([buffers[1] - buffers[0]] + [buffers[i] - buffers[i-1] for i in xrange(1, buffers.size)])
+		temp0fact = (buffers[-1] - buffers[0]) / (2 * temp0.sum(dtype='float64') - temp0[0] - temp0[-1])
+		xarrayerrs = np.multiply(temp0, temp0fact, dtype='float64')
+
+		yarray = np.array([self.trans_grid.histo['signal_noise_buffer_{b}_{s}_adc'.format(s=suffix, b=buff)].GetRMS() for buff in buffers], dtype='float64')
+		yarrayerrs = np.array([self.trans_grid.histo['signal_noise_buffer_{b}_{s}_adc'.format(s=suffix, b=buff)].GetRMSError() for buff in buffers], dtype='float64')
+		# maxy = yarray.max() + yarrayerrs.max()
+		
+		tgraph = ro.TGraphErrors(int(buffers.size), buffers.astype('float64'), yarray, xarrayerrs, yarrayerrs)
+		graphname = 'signal_noise_Vs_buffer_sizes_in_adc_{s}'.format(s=suffix)
+		tgraph.SetNameTitle('g_' + graphname, 'g_' + graphname)
+		tgraph.GetXaxis().SetTitle('buffer size')
+		tgraph.GetYaxis().SetTitle('signal noise [ADC]')
+		# tgraph.GetYaxis().SetRangeUser(0, maxy)
+		tgraph.SetMarkerStyle(8)
+		tgraph.SetMarkerColor(ro.kBlack)
+		tgraph.SetLineColor(ro.kBlack)
+		self.trans_grid.graph[graphname] = tgraph
+		self.trans_grid.canvas[graphname] = ro.TCanvas('c_' + graphname, 'c_' + graphname, 1)
+		self.trans_grid.graph[graphname].Draw('ALP')
+		SetDefault1DCanvasSettings(self.trans_grid.canvas[graphname])
+		self.PositionCanvas(graphname)
+
 	def DoNoiseStudies(self, cells='all'):
 		self.noise_ana.w, self.noise_ana.window_shift = self.w, self.window_shift
 		self.noise_ana.DoNoiseAnalysis(cells)
+		self.w, self.window_shift = self.noise_ana.w, self.noise_ana.window_shift
+
+	def DoNoiseFriendStudies(self, cells='all'):
+		self.noise_ana.w, self.noise_ana.window_shift = self.w, self.window_shift
+		self.noise_ana.DoFriendNoiseAnalysis(cells)
 		self.w, self.window_shift = self.noise_ana.w, self.noise_ana.window_shift
 
 	def DoClusterStudies(self, cells='all'):

@@ -192,6 +192,7 @@ class NoiseAnalysis:
 			nameh = 'pedestal_mean_{s}_vs_event'.format(s=optending)
 
 		self.trans_grid.DrawHisto2D(nameh, minev, maxev, deltaev, 'event', miny, maxy, 1.0, 'pedestal mean cluster chs [ADC]', 'event', varz, tempcuts)
+		self.PosCanvas(nameh)
 
 	def DoNoiseAnalysis(self, cells='all'):
 		self.GetCutsFromCutManager(cells)

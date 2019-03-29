@@ -30,6 +30,7 @@ class TransparentGrid:
 		ro.gStyle.SetOptFit(111)
 		ro.gStyle.SetPaintTextFormat(".0f")
 		# ro.TFormula.SetMaxima(100000)
+		self.num_parallel = 3
 		self.run = run
 		self.dir = os.path.abspath(os.path.expanduser(os.path.expandvars(dir)))
 		self.trans_file = None
@@ -43,6 +44,8 @@ class TransparentGrid:
 		self.align_info = {'xoff': float(0), 'phi': float(0)}
 		self.col_overlay_var = ''
 		self.row_overlay_var = ''
+		self.hit_factor = 3
+		self.seed_factor = 4
 		self.cluster_size, self.num_strips = 0, 0
 		self.num_cols = 19 if col_pitch == 50 else 13
 		self.ch_ini = 0
@@ -180,6 +183,9 @@ class TransparentGrid:
 		object_dic['bias'] = self.bias
 		object_dic['events_after_saturation_cut'] = self.evs_after_sat_cut
 		object_dic['events_before_saturation_cut'] = self.evs_before_sat_cut
+		object_dic['num_parallel'] = self.num_parallel
+		object_dic['hit_factor'] = self.hit_factor
+		object_dic['seed_factor'] = self.seed_factor
 
 		if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
 			os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
@@ -264,6 +270,12 @@ class TransparentGrid:
 			self.evs_before_sat_cut = self.pkl['events_before_saturation_cut']
 		if 'events_after_saturation_cut' in self.pkl.keys():
 			self.evs_after_sat_cut = self.pkl['events_after_saturation_cut']
+		if 'num_parallel' in self.pkl.keys():
+			self.num_parallel = self.pkl['num_parallel']
+		if 'hit_factor' in self.pkl.keys():
+			self.hit_factor = self.pkl['hit_factor']
+		if 'seed_factor' in self.pkl.keys():
+			self.seed_factor = self.pkl['seed_factor']
 
 	def SetLines(self, try_align=True):
 		self.LoadPickle()
@@ -1305,21 +1317,56 @@ class TransparentGrid:
 			else:
 				self.CreateFriendWithSaturationRegions(suffix, skipAfter, skipBefore)
 
-	def CreateFriendWithNewPedestalBuffer(self, slide_length=50, hit_factor=3, seed_factor=4):
+	def CreateFriendWithNewPedestalBuffer(self, slide_length=50, hit_factor=0, seed_factor=0):
+		hit_fact = hit_factor if hit_factor != 0 else self.hit_factor
+		seed_fact = seed_factor if seed_factor != 0 else self.seed_factor
 		ev_ini, ev_end = self.trans_tree.GetMinimum('event'), self.trans_tree.GetMaximum('event')
 		self.OpenPedestalFileAndTree()
-		pedCalc = PedestalCalculations(self.ped_tree, self.dir, self.run, slide_length, hit_factor, seed_factor, ev_ini, ev_end)
+		pedCalc = PedestalCalculations(self.ped_tree, self.dir, self.run, slide_length, hit_fact, seed_fact, ev_ini, ev_end)
 		self.CloseOriginalPedestalFile()
 		pedCalc.CalculateDevicesPedestals()
-		if not self.trans_tree.GetFriend('pedTree'):
-			self.trans_tree.AddFriend('pedTree', '{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, r=self.run, s=slide_length))
 
-	def AddFriendWithNewPedestalBuffer(self, slide_length=50, hit_factor=3, seed_factor=4):
+	def AddFriendWithNewPedestalBuffer(self, slide_length=50, hit_factor=0, seed_factor=0):
+		hit_fact = hit_factor if hit_factor != 0 else self.hit_factor
+		seed_fact = seed_factor if seed_factor != 0 else self.seed_factor
 		if not self.trans_tree.GetFriend('pedTree'):
 			if os.path.isfile('{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, s=slide_length, r=self.run)):
 				self.trans_tree.AddFriend('pedTree', '{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, r=self.run, s=slide_length))
 			else:
-				self.CreateFriendWithNewPedestalBuffer(slide_length, hit_factor, seed_factor)
+				self.CreateFriendWithNewPedestalBuffer(slide_length, hit_fact, seed_fact)
+				if os.path.isfile('{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, s=slide_length, r=self.run)):
+					self.trans_tree.AddFriend('pedTree', '{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, r=self.run, s=slide_length))
+				else:
+					print 'Something went wrong... Created file does not exist!'
+
+	def UnfriendTree(self, extreefriend):
+		treename = extreefriend.GetName()
+		hasfriend = True if self.trans_tree.GetFriend(treename) else False
+		if hasfriend:
+			self.trans_tree.RemoveFriend(extreefriend)
+
+	def CheckIfPedTreeFriendExists(self, buff=50):
+		return True if os.path.isfile('{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, s=buff, r=self.run)) else False
+
+	def CreatePedTreeFriendsForStudy(self, buffers_array):
+		ev_ini, ev_end = self.trans_tree.GetMinimum('event'), self.trans_tree.GetMaximum('event')
+		job_chunks = [buffers_array[i:i+self.num_parallel] for i in xrange(0, buffers_array.size, self.num_parallel)]
+		for buffsrow in job_chunks:
+			process = []
+			for it, buff in enumerate(buffsrow):
+				if it == len(buffsrow) - 1:
+					self.OpenPedestalFileAndTree()
+					tempPedCalc = PedestalCalculations(self.ped_tree, self.dir, self.run, buff, self.hit_factor, self.seed_factor, ev_ini, ev_end, True)
+					self.CloseOriginalPedestalFile()
+				else:
+					self.OpenPedestalFileAndTree()
+					tempPedCalc = PedestalCalculations(self.ped_tree, self.dir, self.run, buff, self.hit_factor, self.seed_factor, ev_ini, ev_end, False)
+					self.CloseOriginalPedestalFile()
+				tempPedCalc.start()
+				process.append(tempPedCalc)
+			for j in process:
+				j.join()
+		print ('Finished creating the pedTrees for buffers:', buffers_array) if len(buffers_array) > 0 else ('All pedTrees already exist ')
 
 	def CloseInputROOTFiles(self):
 		if self.trans_file:

@@ -18,8 +18,9 @@ import ipdb
 
 __author__ = 'DA'
 
-class PedestalCalculations:
-    def __init__(self, origTree, outdir, run_no, sliding_length=50, hit_fact=3, seed_fact=5, ev_ini=0, ev_end=0):
+class PedestalCalculations(mp.Process):
+    def __init__(self, origTree, outdir, run_no, sliding_length=50, hit_fact=3, seed_fact=5, ev_ini=0, ev_end=0, showprogress=True):
+        mp.Process.__init__(self)
         print 'Creating PedestalCalculations instance'
         self.rootTree = origTree
         self.out_dir = outdir
@@ -32,7 +33,7 @@ class PedestalCalculations:
         self.seed_fact = seed_fact
         self.ev_ini = int(ev_ini)
         self.ev_end = int(ev_end)
-
+        self.showprogress = showprogress
 
         # self.out_dir = self.settings.output_dir
         # self.sub_dir = self.settings.sub_dir
@@ -134,12 +135,15 @@ class PedestalCalculations:
         print 'Done in', time.time() - time0, 'seconds'
         return mp.Array(np.ctypeslib.as_ctypes(temp)._type_, np.ctypeslib.as_ctypes(temp))
 
+    def run(self):
+        self.CalculateDevicesPedestals()
+
     def CalculateDevicesPedestals(self):
         jobs_chunks = [self.devices[i:i+self.num_parallel] for i in xrange(0, len(self.devices), self.num_parallel)]
         for row in jobs_chunks:
             self.device_ped_process = []
             for it, device in enumerate(row):
-                if it == len(row) - 1:
+                if (it == len(row) - 1) and self.showprogress:
                     print 'Calculating pedestals for', device, '. The progress is shown below:'
                     temp = PedestalDeviceCalculations(self.out_dir, self.run_no, self.hit_fact, self.seed_fact, self.dut_np_data_type, self.chs, self.events, self.diaNcChs, self.diaNoisyChs, self.diaMaskedChs, self.slide_leng, self.cm_cut, device, True, self.dut_ADC_all_mp, self.dut_ADC_mean_all_mp, self.dut_ADC_sigma_all_mp, self.dut_ADC_is_ped_all_mp, self.dut_ADC_is_hit_all_mp, self.dut_ADC_is_seed_all_mp, self.dut_ADC_chs_cm_all_mp, self.dut_ADC_cm_all_mp, self.dut_ADC_mean_cmc_all_mp, self.dut_ADC_sigma_cmc_all_mp, self.dut_ADC_is_ped_cmc_all_mp, self.dut_ADC_is_hit_cmc_all_mp, self.dut_ADC_is_seed_cmc_all_mp, -1)
                     # temp = PedestalDeviceCalculations(self.out_dir, self.run_no, self.hit_fact, self.seed_fact, self.dut_np_data_type, self.chs, self.events, self.diaNcChs, self.diaNoisyChs, self.diaMaskedChs, self.slide_leng, self.cm_cut, device, True, self.dut_ADC_all_mp, self.dut_ADC_mean_all_mp, self.dut_ADC_sigma_all_mp, self.dut_ADC_is_ped_all_mp, self.dut_ADC_is_hit_all_mp, self.dut_ADC_is_seed_all_mp, self.dut_ADC_chs_cm_all_mp, self.dut_ADC_cm_all_mp, self.dut_ADC_mean_cmc_all_mp, self.dut_ADC_sigma_cmc_all_mp, self.dut_ADC_is_ped_cmc_all_mp, self.dut_ADC_is_hit_cmc_all_mp, self.dut_ADC_is_seed_cmc_all_mp, self.dut_ADC_signal_all_mp, self.dut_ADC_signal_cmc_all_mp, -1)
@@ -164,17 +168,17 @@ class PedestalCalculations:
 
     def SetBranches(self):
         print 'Setting branches in tree...', ; sys.stdout.flush()
-        self.outTree.Branch('diaChPedNoCmc', self.dut_ADC_is_ped, 'diaChPedNoCmc[{chs}]/O'.format(chs=self.chs))
-        self.outTree.Branch('diaChHitsNoCmc', self.dut_ADC_is_hit, 'diaChHitsNoCmc[{chs}]/O'.format(chs=self.chs))
-        self.outTree.Branch('diaChSeedNoCmc', self.dut_ADC_is_seed, 'diaChSeedNoCmc[{chs}]/O'.format(chs=self.chs))
-        self.outTree.Branch('diaChSignalNoCmc', self.dut_ADC_signal, 'diaChSignalNoCmc[{chs}]/F'.format(chs=self.chs))
-        self.outTree.Branch('diaChPedMeanNoCmc', self.dut_ADC_mean, 'diaChPedMeanNoCmc[{f}]/F'.format(f=self.chs))
-        self.outTree.Branch('diaChPedSigmaNoCmc', self.dut_ADC_sigma, 'diaChPedSigmaNoCmc[{f}]/F'.format(f=self.chs))
-        self.outTree.Branch('diaChCm', self.dut_ADC_cm_chs, 'diaChCm[{f}]/O'.format(f=self.chs))
+        # self.outTree.Branch('diaChPedNoCmc', self.dut_ADC_is_ped, 'diaChPedNoCmc[{chs}]/O'.format(chs=self.chs))
+        # self.outTree.Branch('diaChHitsNoCmc', self.dut_ADC_is_hit, 'diaChHitsNoCmc[{chs}]/O'.format(chs=self.chs))
+        # self.outTree.Branch('diaChSeedNoCmc', self.dut_ADC_is_seed, 'diaChSeedNoCmc[{chs}]/O'.format(chs=self.chs))
+        # self.outTree.Branch('diaChSignalNoCmc', self.dut_ADC_signal, 'diaChSignalNoCmc[{chs}]/F'.format(chs=self.chs))
+        # self.outTree.Branch('diaChPedMeanNoCmc', self.dut_ADC_mean, 'diaChPedMeanNoCmc[{f}]/F'.format(f=self.chs))
+        # self.outTree.Branch('diaChPedSigmaNoCmc', self.dut_ADC_sigma, 'diaChPedSigmaNoCmc[{f}]/F'.format(f=self.chs))
+        # self.outTree.Branch('diaChCm', self.dut_ADC_cm_chs, 'diaChCm[{f}]/O'.format(f=self.chs))
         self.outTree.Branch('cmn', self.dut_ADC_cm, 'cmn/F')
-        self.outTree.Branch('diaChPed', self.dut_ADC_is_ped_cmc, 'diaChPed[{chs}]/O'.format(chs=self.chs))
-        self.outTree.Branch('diaChHits', self.dut_ADC_is_hit_cmc, 'diaChHits[{chs}]/O'.format(chs=self.chs))
-        self.outTree.Branch('diaChSeed', self.dut_ADC_is_seed_cmc, 'diaChSeed[{chs}]/O'.format(chs=self.chs))
+        # self.outTree.Branch('diaChPed', self.dut_ADC_is_ped_cmc, 'diaChPed[{chs}]/O'.format(chs=self.chs))
+        # self.outTree.Branch('diaChHits', self.dut_ADC_is_hit_cmc, 'diaChHits[{chs}]/O'.format(chs=self.chs))
+        # self.outTree.Branch('diaChSeed', self.dut_ADC_is_seed_cmc, 'diaChSeed[{chs}]/O'.format(chs=self.chs))
         self.outTree.Branch('diaChSignal', self.dut_ADC_signal_cmc, 'diaChSignal[{chs}]/F'.format(chs=self.chs))
         self.outTree.Branch('diaChPedMeanCmc', self.dut_ADC_mean_cmc, 'diaChPedMeanCmc[{f}]/F'.format(f=self.chs))
         self.outTree.Branch('diaChPedSigmaCmc', self.dut_ADC_sigma_cmc, 'diaChPedSigmaCmc[{f}]/F'.format(f=self.chs))
@@ -195,33 +199,34 @@ class PedestalCalculations:
 
     def FillTree(self):
         print 'Filling tree...'
-        nevents = int(self.ev_end - self.ev_ini + 1)
-        bar = CreateProgressBarUtils(nevents)
-        bar.start()
+        if self.showprogress:
+            nevents = int(self.ev_end - self.ev_ini + 1)
+            bar = CreateProgressBarUtils(nevents)
+            bar.start()
         for ev in xrange(self.ev_ini, self.ev_end + 1):
             # self.outTree.GetEntry(ev)
             self.LoadArrays(ev)
             self.outTree.Fill()
-            bar.update(int(ev - self.ev_ini + 1))
+            if self.showprogress: bar.update(int(ev - self.ev_ini + 1))
         # self.outTree.Write()
         self.outFile.Write()
         self.outFile.Close()
-        bar.finish()
+        if self.showprogress: bar.finish()
 
     def LoadArrays(self, ev):
         np.putmask(self.dut_ADC_all, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_all_mp.get_obj())[:, ev])
-        np.putmask(self.dut_ADC_is_ped, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_is_ped_all_mp.get_obj())[:, ev].astype('?'))
-        np.putmask(self.dut_ADC_is_hit, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_is_hit_all_mp.get_obj())[:, ev].astype('?'))
-        np.putmask(self.dut_ADC_is_seed, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_is_seed_all_mp.get_obj())[:, ev].astype('?'))
+        # np.putmask(self.dut_ADC_is_ped, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_is_ped_all_mp.get_obj())[:, ev].astype('?'))
+        # np.putmask(self.dut_ADC_is_hit, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_is_hit_all_mp.get_obj())[:, ev].astype('?'))
+        # np.putmask(self.dut_ADC_is_seed, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_is_seed_all_mp.get_obj())[:, ev].astype('?'))
         # np.putmask(self.dut_ADC_signal, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_signal_all_mp.get_obj())[:, ev])
-        np.putmask(self.dut_ADC_mean, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_mean_all_mp.get_obj())[:, ev])
-        np.putmask(self.dut_ADC_sigma, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_sigma_all_mp.get_obj())[:, ev])
-        np.putmask(self.dut_ADC_cm_chs, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_chs_cm_all_mp.get_obj())[:, ev].astype('?'))
-        np.putmask(self.dut_ADC_signal, np.ones(self.chs, '?'), self.dut_ADC_all - self.dut_ADC_mean)
+        # np.putmask(self.dut_ADC_mean, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_mean_all_mp.get_obj())[:, ev])
+        # np.putmask(self.dut_ADC_sigma, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_sigma_all_mp.get_obj())[:, ev])
+        # np.putmask(self.dut_ADC_cm_chs, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_chs_cm_all_mp.get_obj())[:, ev].astype('?'))
+        # np.putmask(self.dut_ADC_signal, np.ones(self.chs, '?'), self.dut_ADC_all - self.dut_ADC_mean)
         self.dut_ADC_cm.fill(np.ctypeslib.as_array(self.dut_ADC_cm_all_mp.get_obj())[ev])
-        np.putmask(self.dut_ADC_is_ped_cmc, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_is_ped_cmc_all_mp.get_obj())[:, ev].astype('?'))
-        np.putmask(self.dut_ADC_is_hit_cmc, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_is_hit_cmc_all_mp.get_obj())[:, ev].astype('?'))
-        np.putmask(self.dut_ADC_is_seed_cmc, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_is_seed_cmc_all_mp.get_obj())[:, ev].astype('?'))
+        # np.putmask(self.dut_ADC_is_ped_cmc, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_is_ped_cmc_all_mp.get_obj())[:, ev].astype('?'))
+        # np.putmask(self.dut_ADC_is_hit_cmc, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_is_hit_cmc_all_mp.get_obj())[:, ev].astype('?'))
+        # np.putmask(self.dut_ADC_is_seed_cmc, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_is_seed_cmc_all_mp.get_obj())[:, ev].astype('?'))
         # np.putmask(self.dut_ADC_signal_cmc, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_signal_cmc_all_mp.get_obj())[:, ev])
         np.putmask(self.dut_ADC_mean_cmc, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_mean_cmc_all_mp.get_obj())[:, ev])
         np.putmask(self.dut_ADC_sigma_cmc, np.ones(self.chs, '?'), np.ctypeslib.as_array(self.dut_ADC_sigma_cmc_all_mp.get_obj())[:, ev])

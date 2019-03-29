@@ -50,6 +50,9 @@ class CutManager:
 		self.valid_ped_sigma_N_ch = {}
 		self.valid_ped_sigma_N_h = {}
 
+		self.sat_regions_skip = '(!satRegion)'
+		self.sat_regions_only = '(satRegion)'
+
 		self.sat_adc_ch = {}
 		self.sat_adc_h = {}
 		self.not_sat_adc_ch = {}
