@@ -86,7 +86,6 @@ class NoiseAnalysis:
 		self.trans_grid.histo[name + '_adc'].GetXaxis().SetRangeUser(-32, 32)
 		self.PosCanvas(name + '_adc')
 
-
 	def PlotNoiseNotInCluster(self, cells='all'):
 		suffix = self.suffix[cells]
 		nameh = 'signal_noise_{c}'.format(c=suffix)
@@ -125,12 +124,12 @@ class NoiseAnalysis:
 		self.trans_grid.DrawProfile1D('cm_event_profile', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 'event', 'cmn', 'cm [ADC]', self.trans_grid.cuts_man.transp_ev)
 		self.PosCanvas('cm_event_profile')
 
-		self.trans_grid.DrawProfile2D('adc_channel_event_profile', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChADC', 'ADC', self.trans_grid.cuts_man.transp_ev)
-		self.PosCanvas('adc_channel_event_profile')
-		self.trans_grid.DrawProfile2D('signal_channel_event_profile', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChSignal', 'Signal [ADC]', self.trans_grid.cuts_man.transp_ev)
-		self.PosCanvas('signal_channel_event_profile')
-		self.trans_grid.DrawProfile2D('noise_cmc_channel_event_profile_all', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChPedSigmaCmc', 'Noise [ADC]', self.trans_grid.cuts_man.transp_ev)
-		self.PosCanvas('noise_cmc_channel_event_profile_all')
+		# self.trans_grid.DrawProfile2D('adc_channel_event_profile', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChADC', 'ADC', self.trans_grid.cuts_man.transp_ev)
+		# self.PosCanvas('adc_channel_event_profile')
+		# self.trans_grid.DrawProfile2D('signal_channel_event_profile', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChSignal', 'Signal [ADC]', self.trans_grid.cuts_man.transp_ev)
+		# self.PosCanvas('signal_channel_event_profile')
+		# self.trans_grid.DrawProfile2D('noise_cmc_channel_event_profile_all', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChPedSigmaCmc', 'Noise [ADC]', self.trans_grid.cuts_man.transp_ev)
+		# self.PosCanvas('noise_cmc_channel_event_profile_all')
 
 	def DoFriendProfileMaps(self):
 		optending = 'buffer_{v}'.format(v=int(RoundInt(self.trans_grid.trans_tree.GetMaximum('pedTree.slidingLength'))))
@@ -141,10 +140,10 @@ class NoiseAnalysis:
 
 		# self.trans_grid.DrawProfile2D('adc_channel_event_profile_{s}'.format(s=optending), minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChADC', 'ADC', self.trans_grid.cuts_man.transp_ev)
 		# self.PosCanvas('adc_channel_event_profile_{s}'.format(s=optending))
-		self.trans_grid.DrawProfile2D('signal_channel_event_profile_{s}'.format(s=optending), minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'pedTree.diaChSignal', 'Signal [ADC]', self.trans_grid.cuts_man.transp_ev)
-		self.PosCanvas('signal_channel_event_profile_{s}'.format(s=optending))
-		self.trans_grid.DrawProfile2D('noise_cmc_channel_event_profile_all_{s}'.format(s=optending), minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'pedTree.diaChPedSigmaCmc', 'Noise [ADC]', self.trans_grid.cuts_man.transp_ev)
-		self.PosCanvas('noise_cmc_channel_event_profile_all_{s}'.format(s=optending))
+		# self.trans_grid.DrawProfile2D('signal_channel_event_profile_{s}'.format(s=optending), minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'pedTree.diaChSignal', 'Signal [ADC]', self.trans_grid.cuts_man.transp_ev)
+		# self.PosCanvas('signal_channel_event_profile_{s}'.format(s=optending))
+		# self.trans_grid.DrawProfile2D('noise_cmc_channel_event_profile_all_{s}'.format(s=optending), minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'pedTree.diaChPedSigmaCmc', 'Noise [ADC]', self.trans_grid.cuts_man.transp_ev)
+		# self.PosCanvas('noise_cmc_channel_event_profile_all_{s}'.format(s=optending))
 
 	def DoStrips2DHistograms(self):
 		minch, maxch, deltach, xname, xvar = -0.5, 127.5, 1, 'VA channel', 'diaChannels'
@@ -211,8 +210,8 @@ class NoiseAnalysis:
 		self.GetCutsFromCutManager(cells)
 		self.GetVarzFromTranspGrid()
 		self.DoProfileMaps()
-		self.DoPedestalEventHistograms(False)
-		self.DoStrips2DHistograms()
+		# self.DoPedestalEventHistograms(False)
+		# self.DoStrips2DHistograms()
 		self.PlotNoiseNotInCluster(cells)
 		self.PlotNoiseNCChannels(cells)
 
@@ -221,8 +220,8 @@ class NoiseAnalysis:
 			self.GetCutsFromCutManager(cells)
 			self.GetVarzFromTranspGrid()
 			self.DoFriendProfileMaps()
-			self.DoPedestalEventHistograms(True)
-			self.DoFriendStrips2DHistograms()
+			# self.DoPedestalEventHistograms(True)
+			# self.DoFriendStrips2DHistograms()
 			self.PlotFriendNoiseNotInCluster(cells)
 			self.PlotFriendNoiseNCChannels(cells)
 		else:

@@ -94,7 +94,10 @@ class PedestalDeviceCalculations(mp.Process):
         # channels that are masked for common mode calculation because they are screened or noisy
 
         # self.is_not_masked = np.array([ch not in set(self.settings.noisy) | set(self.settings.screened) for ch in xrange(self.chs)], '?')
-        self.is_not_masked = np.bitwise_not(np.bitwise_or(self.noisy_array, self.masked_array))
+        self.is_not_masked = np.bitwise_not(np.bitwise_or(np.bitwise_or(self.noisy_array, self.masked_array), self.nc_array))
+        # self.is_not_masked = np.bitwise_not(np.bitwise_or(self.noisy_array, self.masked_array))
+        # self.is_not_masked = np.bitwise_not(np.bitwise_or(self.noisy_array, self.nc_array))
+        # self.is_not_masked = np.bitwise_not(self.noisy_array)
 
         # global variables passed as reference for shared memory ctype vectors
         global in_adc_array, out_array_m, out_array_s, out_array_is_p, out_array_is_h, out_array_is_s
@@ -359,7 +362,7 @@ class PedestalDeviceCalculations(mp.Process):
             adc_cond = [np.extract(condition_p[ch], device_ADC[ch]) for ch in xrange(self.chs)]
 
             condition_cm = np.bitwise_and((np.abs(device_signal_cmc) < np.multiply(self.cm_cut, self.device_ADC_sigma_cmc[:, :self.slide_leng], dtype='float128')), not_masked_array)
-            self.device_cm[:self.slide_leng] = np.array([np.extract(condition_cm[:, ev], device_signal_cmc[:, ev]).mean(dtype='float128') for ev in xrange(self.slide_leng)])
+            self.device_cm[:self.slide_leng] = np.array([np.extract(condition_cm[:, ev], device_signal_cmc[:, ev]).mean(dtype='float128') if condition_cm[:, ev].any() else 0 for ev in xrange(self.slide_leng)])
             cm_array = np.array([self.device_cm[:self.slide_leng] for ch in xrange(self.chs)], 'float32')
             device_ADC_cmc = np.subtract(device_ADC, cm_array, dtype='float128')
             device_signal_cmc = np.subtract(device_ADC_cmc, self.device_ADC_mean_cmc[:, :self.slide_leng], dtype='float128')

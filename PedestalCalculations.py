@@ -127,12 +127,13 @@ class PedestalCalculations(mp.Process):
         # self.rootFile, self.rootTree = Open_RootFile_Load_Tree('{d}/{s}/{r}/{f}.root'.format(d=self.out_dir, s=self.sub_dir, r=self.run, f=self.file_name), treename=self.tree_name, mode='READ')
         # self.rootTree.SetEstimate(256 * self.rootTree.GetEntries())
         time0 = time.time()
-        print 'Getting all events for DUT...', ; sys.stdout.flush()
+        if self.showprogress:
+            print 'Getting all events for DUT...', ; sys.stdout.flush()
 
         Draw_Branches_For_Get_Val(self.rootTree, [self.raw_dut_branch], 0, self.events, option='goff')
         temp = np.zeros((self.chs, self.events), dtype=self.dut_np_data_type)
         Get_Branches_Value_To_Numpy(self.rootTree, [self.raw_dut_branch], [temp], self.events, self.chs)
-        print 'Done in', time.time() - time0, 'seconds'
+        if self.showprogress: print 'Done in', time.time() - time0, 'seconds'
         return mp.Array(np.ctypeslib.as_ctypes(temp)._type_, np.ctypeslib.as_ctypes(temp))
 
     def run(self):
@@ -150,7 +151,7 @@ class PedestalCalculations(mp.Process):
                     # temp = PedestalDeviceCalculations('{d}/{s}/{r}/{f}.settings'.format(d=self.out_dir, s=self.sub_dir, r=self.run, f=self.file_name), device, True, self.dut_ADC_all_mp, self.dut_ADC_mean_all_mp, self.dut_ADC_sigma_all_mp, self.dut_ADC_is_ped_all_mp, self.dut_ADC_is_hit_all_mp, self.dut_ADC_is_seed_all_mp, self.dut_ADC_chs_cm_all_mp, self.dut_ADC_cm_all_mp, self.dut_ADC_mean_cmc_all_mp, self.dut_ADC_sigma_cmc_all_mp, self.dut_ADC_is_ped_cmc_all_mp, self.dut_ADC_is_hit_cmc_all_mp, self.dut_ADC_is_seed_cmc_all_mp, -1)
 
                 else:
-                    print 'Calculating pedestals for', device
+                    # print 'Calculating pedestals for', device
                     temp = PedestalDeviceCalculations(self.out_dir, self.run_no, self.hit_fact, self.seed_fact, self.dut_np_data_type, self.chs, self.events, self.diaNcChs, self.diaNoisyChs, self.diaMaskedChs, self.slide_leng, self.cm_cut, device, False, self.dut_ADC_all_mp, self.dut_ADC_mean_all_mp, self.dut_ADC_sigma_all_mp, self.dut_ADC_is_ped_all_mp, self.dut_ADC_is_hit_all_mp, self.dut_ADC_is_seed_all_mp, self.dut_ADC_chs_cm_all_mp, self.dut_ADC_cm_all_mp, self.dut_ADC_mean_cmc_all_mp, self.dut_ADC_sigma_cmc_all_mp, self.dut_ADC_is_ped_cmc_all_mp, self.dut_ADC_is_hit_cmc_all_mp, self.dut_ADC_is_seed_cmc_all_mp, -1)
                     # temp = PedestalDeviceCalculations(self.out_dir, self.run_no, self.hit_fact, self.seed_fact, self.dut_np_data_type, self.chs, self.events, self.diaNcChs, self.diaNoisyChs, self.diaMaskedChs, self.slide_leng, self.cm_cut, device, False, self.dut_ADC_all_mp, self.dut_ADC_mean_all_mp, self.dut_ADC_sigma_all_mp, self.dut_ADC_is_ped_all_mp, self.dut_ADC_is_hit_all_mp, self.dut_ADC_is_seed_all_mp, self.dut_ADC_chs_cm_all_mp, self.dut_ADC_cm_all_mp, self.dut_ADC_mean_cmc_all_mp, self.dut_ADC_sigma_cmc_all_mp, self.dut_ADC_is_ped_cmc_all_mp, self.dut_ADC_is_hit_cmc_all_mp, self.dut_ADC_is_seed_cmc_all_mp, self.dut_ADC_signal_all_mp, self.dut_ADC_signal_cmc_all_mp, -1)
                     # temp = PedestalDeviceCalculations('{d}/{s}/{r}/{f}.settings'.format(d=self.out_dir, s=self.sub_dir, r=self.run, f=self.file_name), device, False, self.dut_ADC_all_mp, self.dut_ADC_mean_all_mp, self.dut_ADC_sigma_all_mp, self.dut_ADC_is_ped_all_mp, self.dut_ADC_is_hit_all_mp, self.dut_ADC_is_seed_all_mp, self.dut_ADC_chs_cm_all_mp, self.dut_ADC_cm_all_mp, self.dut_ADC_mean_cmc_all_mp, self.dut_ADC_sigma_cmc_all_mp, self.dut_ADC_is_ped_cmc_all_mp, self.dut_ADC_is_hit_cmc_all_mp, self.dut_ADC_is_seed_cmc_all_mp, -1)
@@ -167,7 +168,8 @@ class PedestalCalculations(mp.Process):
 
 
     def SetBranches(self):
-        print 'Setting branches in tree...', ; sys.stdout.flush()
+        if self.showprogress:
+            print 'Setting branches in tree...', ; sys.stdout.flush()
         # self.outTree.Branch('diaChPedNoCmc', self.dut_ADC_is_ped, 'diaChPedNoCmc[{chs}]/O'.format(chs=self.chs))
         # self.outTree.Branch('diaChHitsNoCmc', self.dut_ADC_is_hit, 'diaChHitsNoCmc[{chs}]/O'.format(chs=self.chs))
         # self.outTree.Branch('diaChSeedNoCmc', self.dut_ADC_is_seed, 'diaChSeedNoCmc[{chs}]/O'.format(chs=self.chs))
@@ -195,11 +197,11 @@ class PedestalCalculations(mp.Process):
         # self.b15 = self.outTree.Branch('diaSeedChsCmc', self.dut_ADC_is_seed_cmc, 'diaSeedChsCmc[{chs}]/O'.format(chs=self.chs))
         # self.b16 = self.outTree.Branch('diaPedestalMeanCmc', self.dut_ADC_mean_cmc, 'diaPedestalMeanCmc[{f}]/F'.format(f=self.chs))
         # self.b17 = self.outTree.Branch('diaPedestalSigmaCmc', self.dut_ADC_sigma_cmc, 'diaPedestalSigmaCmc[{f}]/F'.format(f=self.chs))
-        print 'Done'
+        if self.showprogress: print 'Done'
 
     def FillTree(self):
-        print 'Filling tree...'
         if self.showprogress:
+            print 'Filling tree...'
             nevents = int(self.ev_end - self.ev_ini + 1)
             bar = CreateProgressBarUtils(nevents)
             bar.start()

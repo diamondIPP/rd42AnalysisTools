@@ -251,11 +251,11 @@ class TestAreas:
 		temp0fact = (buffers[-1] - buffers[0]) / (2 * temp0.sum(dtype='float64') - temp0[0] - temp0[-1])
 		xarrayerrs = np.multiply(temp0, temp0fact, dtype='float64')
 
-		yarray = np.array([self.trans_grid.histo['signal_noise_buffer_{b}_{s}_adc'.format(s=suffix, b=buff)].GetRMS() for buff in buffers], dtype='float64')
-		yarrayerrs = np.array([self.trans_grid.histo['signal_noise_buffer_{b}_{s}_adc'.format(s=suffix, b=buff)].GetRMSError() for buff in buffers], dtype='float64')
+		ymeanarray = np.array([self.trans_grid.histo['signal_noise_buffer_{b}_{s}_adc'.format(s=suffix, b=buff)].GetRMS() for buff in buffers], dtype='float64')
+		ymeanarrayerrs = np.array([self.trans_grid.histo['signal_noise_buffer_{b}_{s}_adc'.format(s=suffix, b=buff)].GetRMSError() for buff in buffers], dtype='float64')
 		# maxy = yarray.max() + yarrayerrs.max()
 
-		tgraph = ro.TGraphErrors(int(buffers.size), buffers.astype('float64'), yarray, xarrayerrs, yarrayerrs)
+		tgraph = ro.TGraphErrors(int(buffers.size), buffers.astype('float64'), ymeanarray, xarrayerrs, ymeanarrayerrs)
 		graphname = 'signal_noise_Vs_buffer_sizes_in_adc_{s}'.format(s=suffix)
 		tgraph.SetNameTitle('g_' + graphname, 'g_' + graphname)
 		tgraph.GetXaxis().SetTitle('buffer size')
@@ -265,6 +265,24 @@ class TestAreas:
 		tgraph.SetMarkerColor(ro.kBlack)
 		tgraph.SetLineColor(ro.kBlack)
 		self.trans_grid.graph[graphname] = tgraph
+		self.trans_grid.canvas[graphname] = ro.TCanvas('c_' + graphname, 'c_' + graphname, 1)
+		self.trans_grid.graph[graphname].Draw('ALP')
+		SetDefault1DCanvasSettings(self.trans_grid.canvas[graphname])
+		self.PositionCanvas(graphname)
+		
+		ymeanncarray = np.array([self.trans_grid.histo['signal_noise_NC_chs_buffer_{b}_{s}_adc'.format(b=buff, s=suffix)].GetRMS() for buff in buffers], dtype='float64')
+		ymeanncarrayerrs = np.array([self.trans_grid.histo['signal_noise_NC_chs_buffer_{b}_{s}_adc'.format(b=buff, s=suffix)].GetRMSError() for buff in buffers], dtype='float64')
+
+		tgraphnc = ro.TGraphErrors(int(buffers.size), buffers.astype('float64'), ymeanncarray, xarrayerrs, ymeanncarrayerrs)
+		graphname = 'signal_noise_NC_chs_Vs_buffer_sizes_in_adc_{s}'.format(s=suffix)
+		tgraphnc.SetNameTitle('g_' + graphname, 'g_' + graphname)
+		tgraphnc.GetXaxis().SetTitle('buffer size')
+		tgraphnc.GetYaxis().SetTitle('signal noise [ADC]')
+		# tgraphnc.GetYaxis().SetRangeUser(0, maxy)
+		tgraphnc.SetMarkerStyle(8)
+		tgraphnc.SetMarkerColor(ro.kBlack)
+		tgraphnc.SetLineColor(ro.kBlack)
+		self.trans_grid.graph[graphname] = tgraphnc
 		self.trans_grid.canvas[graphname] = ro.TCanvas('c_' + graphname, 'c_' + graphname, 1)
 		self.trans_grid.graph[graphname].Draw('ALP')
 		SetDefault1DCanvasSettings(self.trans_grid.canvas[graphname])
