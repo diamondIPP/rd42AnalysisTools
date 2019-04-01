@@ -254,7 +254,7 @@ class TestAreas:
 		yarray = np.array([self.trans_grid.histo['signal_noise_buffer_{b}_{s}_adc'.format(s=suffix, b=buff)].GetRMS() for buff in buffers], dtype='float64')
 		yarrayerrs = np.array([self.trans_grid.histo['signal_noise_buffer_{b}_{s}_adc'.format(s=suffix, b=buff)].GetRMSError() for buff in buffers], dtype='float64')
 		# maxy = yarray.max() + yarrayerrs.max()
-		
+
 		tgraph = ro.TGraphErrors(int(buffers.size), buffers.astype('float64'), yarray, xarrayerrs, yarrayerrs)
 		graphname = 'signal_noise_Vs_buffer_sizes_in_adc_{s}'.format(s=suffix)
 		tgraph.SetNameTitle('g_' + graphname, 'g_' + graphname)
