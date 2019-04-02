@@ -50,6 +50,7 @@ class TransparentGrid:
 		self.num_cols = 19 if col_pitch == 50 else 13
 		self.ch_ini = 0
 		self.ch_end = 84
+		self.threshold = 0
 		self.phbins = 200
 		self.phmin = 0
 		self.phmax = 4000
@@ -99,6 +100,7 @@ class TransparentGrid:
 		self.FindDiamondChannelLimits()
 		self.list_neg_cuts_clusters = {}
 		self.list_neg_cuts_noise = {}
+		self.mean_ph_cell_dic = {}
 		self.suffix = {'all': 'all', 'good': 'selected', 'bad': 'not_selected'}
 
 		self.noise_varz = {'adc': 'diaChSignal', 'snr': 'diaChSignal/diaChPedSigmaCmc'}
@@ -744,19 +746,76 @@ class TransparentGrid:
 			SetDefault1DStats(self.histo[name])
 		ro.TFormula.SetMaxima(1000)
 
-	def SelectGoodAndBadByThreshold(self, val=500, var='clusterChargeN'):
+	def GetMeanPHPerCell(self, var='clusterChargeN'):
+		print 'Calculating the mean PH2_H for each cel:'
+		numcells = int(self.num_cols * self.row_info_diamond['num'])
+		tempbar = CreateProgressBarUtils(numcells)
+		tempbar.start()
 		for col in xrange(self.num_cols):
+			self.mean_ph_cell_dic[col] = {}
 			for row in xrange(self.row_info_diamond['num']):
-				# self.temph = ro.TH1F('temphrc', 'temphrc', 200, 0, 4000)
 				self.trans_tree.Draw(var+'>>temphrc(200,0,4000)', 'transparentEvent&&({n})'.format(n=self.tcutgs_diamond[col][row].GetName()), 'goff')
 				temph = ro.gDirectory.Get('temphrc')
-				if temph.GetMean() > val:
-					self.gridAreas.AddGoodAreas(col, row, self.tcutgs_diamond, self.tcutgs_diamond_center)
-				else:
-					self.gridAreas.AddBadAreas(col, row, self.tcutgs_diamond, self.tcutgs_diamond_center)
+				self.mean_ph_cell_dic[col][row] = temph.GetMean()
 				temph.Reset('ICES')
 				temph.Delete()
 				del temph
+				tempbar.update(col * self.row_info_diamond['num'] + row + 1)
+		tempbar.finish()
+
+	def SelectGoodAndBadByThreshold(self, val=500, var='clusterChargeN'):
+		if len(self.mean_ph_cell_dic.keys()) > 0:
+			for col in xrange(self.num_cols):
+				for row in xrange(self.row_info_diamond['num']):
+					if self.mean_ph_cell_dic[col][row] > val:
+						self.gridAreas.AddGoodAreas(col, row, self.tcutgs_diamond, self.tcutgs_diamond_center)
+					else:
+						self.gridAreas.AddBadAreas(col, row, self.tcutgs_diamond, self.tcutgs_diamond_center)
+		else:
+			self.GetMeanPHPerCell(var)
+			self.SelectGoodAndBadByThreshold(val, var)
+
+	def FindThresholdCutFromCells(self, var='clusterChargeN', xmin=0, xmax=4000, deltax=50):
+		if len(self.mean_ph_cell_dic.keys()) > 0:
+			self.DrawMeanPHCellsHisto('clusterCharge2', xmin, xmax, deltax)
+			self.FitGaus('mean_ph_per_cell', 2, 5)
+			if self.fits['mean_ph_per_cell'].Ndf() < 2:
+				self.FindThresholdCutFromCells(var, xmin, xmax, deltax * 0.8)
+			elif self.fits['mean_ph_per_cell'].Chi2() / self.fits['mean_ph_per_cell'].Ndf() < 0.9:
+				self.FindThresholdCutFromCells(var, xmin, xmax, deltax * 0.8)
+		else:
+			self.GetMeanPHPerCell(var)
+			self.FindThresholdCutFromCells(var)
+		self.threshold = self.fits['mean_ph_per_cell'].Parameter(1) - 2 * self.fits['mean_ph_per_cell'].Parameter(2)
+		self.line['threshold'] = ro.TLine(self.threshold, 0, self.threshold, self.histo['mean_ph_per_cell'].GetMaximum())
+		self.line['threshold'].SetLineColor(ro.kBlue)
+		self.line['threshold'].SetLineWidth(2)
+		self.line['threshold'].SetLineStyle(2)
+		self.line['threshold'].Draw('same')
+
+	def DrawMeanPHCellsHisto(self, var='clusterChargeN', xmin=0, xmax=4000, deltax=50, draw_opt='e hist'):
+		if len(self.mean_ph_cell_dic.keys()) > 0:
+			nameh = 'mean_ph_per_cell'
+			if nameh in self.histo.keys():
+				self.histo[nameh].Reset('ICES')
+				self.histo[nameh].Delete()
+				del self.histo[nameh]
+			limsh = Get1DLimits(xmin, xmax, deltax)
+			self.histo[nameh] = ro.TH1F('h_' + nameh, 'h_' + nameh, int(RoundInt((limsh['max'] - limsh['min']) / deltax)), limsh['min'], limsh['max'])
+			for col, rowMean in self.mean_ph_cell_dic.iteritems():
+				for row, meanh in rowMean.iteritems():
+					self.histo[nameh].Fill(meanh)
+			if 'goff' not in draw_opt.lower():
+				if nameh not in self.canvas.keys():
+					self.canvas[nameh] = ro.TCanvas('c_' + nameh, 'c_' + nameh, 1)
+				self.canvas[nameh].cd()
+				self.histo[nameh].Draw(draw_opt)
+				SetDefault1DCanvasSettings(self.canvas[nameh])
+				ro.gPad.Update()
+			SetDefault1DStats(self.histo[nameh])
+		else:
+			self.GetMeanPHPerCell(var)
+			self.DrawMeanPHCellsHisto(var)
 
 	def DrawCentralArea(self, name, percent):
 		self.canvas[name].cd()
@@ -1222,24 +1281,25 @@ class TransparentGrid:
 			sums2 += fland2 * ro.TMath.Gaus(x[0], xx2, params[7])
 		return params[2] * step1 * sums1 / (np.sqrt(2 * np.pi, dtype='f8') * params[3]) + params[6] * step2 * sums2 / (np.sqrt(2 * np.pi, dtype='f8') * params[7])
 
-	def FitGaus(self, name):
+	def FitGaus(self, name, num_sigma=2, iterations=2):
 		if name in self.histo.keys():
 			if name in self.canvas.keys():
 				self.canvas[name].cd()
 			# histo = self.histo[name]
 			xmean, xrms = self.histo[name].GetMean(), self.histo[name].GetRMS()
-			xmin, xmax = xmean - 2 * xrms, xmean + 2 * xrms
-			func = ro.TF1('f_gaus_' + name, 'gaus', xmean - 3 * xrms, xmean + 3 * xrms)
+			xmin, xmax = xmean - num_sigma * xrms, xmean + num_sigma * xrms
+			func = ro.TF1('f_gaus_' + name, 'gaus', xmean - (num_sigma + 1) * xrms, xmean + (num_sigma + 1) * xrms)
 			func.SetNpx(1000)
 			func.SetLineStyle(1)
 			func.SetLineColor(ro.kRed)
 			func.SetLineWidth(2)
-			params = np.array((self.histo[name].GetBinContent(self.histo[name].GetXaxis().FindBin(0)), xmean, xrms), 'float64')
+			params = np.array((self.histo[name].GetBinContent(self.histo[name].GetXaxis().FindBin(xmean)), xmean, xrms), 'float64')
 			func.SetParameters(params)
-			temp = self.histo[name].Fit('f_gaus_' + name, 'QIEBMSN', 'goff', xmin, xmax)
-			params = np.array((temp.Parameter(0), temp.Parameter(1), temp.Parameter(2)), 'float64')
-			func.SetParameters(params)
-			self.fits[name] = self.histo[name].Fit('f_gaus_' + name, 'QIEBMS', 'goff', params[1] - 2 * params[2], params[1] + 2 * params[2])
+			for it in xrange(iterations):
+				temp = self.histo[name].Fit('f_gaus_' + name, 'QIEBMSN', 'goff', xmin, xmax)
+				params = np.array((temp.Parameter(0), temp.Parameter(1), temp.Parameter(2)), 'float64')
+				func.SetParameters(params)
+			self.fits[name] = self.histo[name].Fit('f_gaus_' + name, 'QIEBMS', 'goff', params[1] - num_sigma * params[2], params[1] + num_sigma * params[2])
 			self.histo[name].GetFunction('f_gaus_' + name).Draw('same')
 			ro.gPad.Update()
 

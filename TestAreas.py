@@ -138,6 +138,9 @@ class TestAreas:
 
 	def SetTest(self):
 		if self.do_threshold:
+			if self.threshold == 0:
+				self.trans_grid.FindThresholdCutFromCells('clusterCharge2', 0, 4000, 20)
+				self.threshold = self.trans_grid.threshold
 			self.trans_grid.ResetAreas()
 			print 'Selecting areas with a ph2 greater or equal than', self.threshold, '...', ; sys.stdout.flush()
 			self.trans_grid.SelectGoodAndBadByThreshold(self.threshold, 'clusterCharge2')
