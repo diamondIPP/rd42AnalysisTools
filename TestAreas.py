@@ -188,6 +188,7 @@ class TestAreas:
 
 	def SetCutsInCutManager(self):
 		print 'Setting cuts in cut manager...', ; sys.stdout.flush()
+		self.trans_grid.cuts_man.SetChs(self.trans_grid.gridAreas.good_channels, self.trans_grid.gridAreas.bad_channels)
 		self.trans_grid.cuts_man.SetCells(selection=self.trans_grid.gridAreas.goodAreasCutNames_simplified_diamond, not_selection=self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
 		self.trans_grid.cuts_man.SetNoiseCuts()
 		self.trans_grid.cuts_man.SetPHCuts()

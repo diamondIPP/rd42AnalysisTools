@@ -213,7 +213,7 @@ class NoiseAnalysis:
 		# self.DoPedestalEventHistograms(False)
 		# self.DoStrips2DHistograms()
 		self.PlotNoiseNotInCluster(cells)
-		self.PlotNoiseNCChannels(cells)
+		self.PlotNoiseNCChannels('all')
 
 	def DoFriendNoiseAnalysis(self, cells='all'):
 		if self.trans_grid.trans_tree.GetFriend('pedTree'):
@@ -223,7 +223,7 @@ class NoiseAnalysis:
 			# self.DoPedestalEventHistograms(True)
 			# self.DoFriendStrips2DHistograms()
 			self.PlotFriendNoiseNotInCluster(cells)
-			self.PlotFriendNoiseNCChannels(cells)
+			self.PlotFriendNoiseNCChannels('all')
 		else:
 			print 'The transparent tree has no pedTree friend. Cannot do these plots'
 

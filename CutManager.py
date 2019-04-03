@@ -18,6 +18,9 @@ class CutManager:
 		self.not_selected_cells_centers = '{ns}'
 		self.no_up_down_borders = '(({l}<=diaChYPred)&&(diaChYPred<={h}))'
 
+		self.good_chs, self.bad_chs, self.only_bad_chs = [], [], []
+		self.good_chs_cut, self.only_bad_chs_cut = '', ''
+
 		self.neg_snr_ph_ch = {}
 		self.neg_snr_ph_h = {}
 		self.not_neg_snr_ph_ch = {}
@@ -41,6 +44,9 @@ class CutManager:
 		self.in_transp_cluster = '((diaChSeed)||(diaChHits))'
 		self.not_in_cluster = '((!diaChSeed)&&(!diaChHits))'
 		self.not_in_transp_cluster = '((!diaChSeed)&&(!diaChHits)&&(!diaChsNoisy)&&(!diaChsScreened)&&(!diaChsNC))'
+		# self.not_in_transp_cluster = '((!diaChSeed)&&(!diaChHits)&&(!diaChsNoisy)&&(!diaChsNC))'
+		# self.not_in_transp_cluster = '((!diaChSeed)&&(!diaChHits)&&(!diaChsNoisy)&&(!diaChsScreened))'
+		# self.not_in_transp_cluster = '((!diaChSeed)&&(!diaChHits)&&(!diaChsNoisy))'
 		self.any_saturated = '(diaChADC=={s})'.format(s=self.sat_adc)
 		self.non_saturated = '(diaChADC!={s})'.format(s=self.sat_adc)
 		self.valid_ped_sigma = '(diaChPedSigmaCmc>0)'
@@ -205,6 +211,14 @@ class CutManager:
 			self.ph_adc_N_h['PH{i}_H'.format(i=ch+1)] = '(' + '&&'.join(list_ph_adc_N_h) + ')' if len(list_ph_adc_N_h) > 0 else ''
 			self.ph_snr_N_h['PH{i}_H'.format(i=ch+1)] = '(' + '&&'.join(list_ph_snr_N_h) + ')' if len(list_ph_snr_N_h) > 0 else ''
 
+	def SetChs(self, goodchs, badchs):
+		self.good_chs = goodchs
+		self.bad_chs = badchs
+		self.only_bad_chs = [bi for bi in self.bad_chs if bi not in self.good_chs]
+
+		self.good_chs_cut = '(' + '||'.join(['(diaChannels=={c})'.format(c=ch) for ch in self.good_chs]) + ')'
+		self.only_bad_chs_cut = '(!' + self.good_chs_cut + ')'
+
 	def SetCells(self, selection, not_selection):
 		self.selected_cells = self.selected_cells.format(s=selection)
 		self.not_selected_cells = self.not_selected_cells.format(ns=not_selection)
@@ -215,8 +229,10 @@ class CutManager:
 		self.not_selected_cells_centers = self.not_selected_cells_centers.format(ns=not_selection)
 
 	def SetNoiseCuts(self):
-		self.noise_cuts = {cells: self.ConcatenateCutWithCells(cut=self.ConcatenateCuts(cut1=self.not_in_transp_cluster, cut2=self.valid_ped_sigma), cells=cells) for cells in ['all', 'good', 'bad']}
-		self.noise_friend_cuts = {cells: self.ConcatenateCutWithCells(cut=self.ConcatenateCuts(cut1=self.not_in_transp_cluster, cut2=self.valid_ped_friend_sigma), cells=cells) for cells in ['all', 'good', 'bad']}
+		# self.noise_cuts = {cells: self.ConcatenateCutWithCells(cut=self.ConcatenateCuts(cut1=self.not_in_transp_cluster, cut2=self.valid_ped_sigma), cells=cells) for cells in ['all', 'good', 'bad']}
+		self.noise_cuts = {'all': self.ConcatenateCuts(self.valid_ped_sigma, self.not_in_transp_cluster), 'good': self.ConcatenateCuts(self.valid_ped_sigma, self.ConcatenateCuts(self.not_in_transp_cluster, self.good_chs_cut)), 'bad': self.ConcatenateCuts(self.valid_ped_sigma, self.ConcatenateCuts(self.not_in_transp_cluster, self.only_bad_chs_cut))}
+		# self.noise_friend_cuts = {cells: self.ConcatenateCutWithCells(cut=self.ConcatenateCuts(cut1=self.not_in_transp_cluster, cut2=self.valid_ped_friend_sigma), cells=cells) for cells in ['all', 'good', 'bad']}
+		self.noise_friend_cuts = {'all': self.ConcatenateCuts(self.valid_ped_friend_sigma, self.not_in_transp_cluster), 'good': self.ConcatenateCuts(self.valid_ped_friend_sigma, self.ConcatenateCuts(self.not_in_transp_cluster, self.good_chs_cut)), 'bad': self.ConcatenateCuts(self.valid_ped_friend_sigma, self.ConcatenateCuts(self.not_in_transp_cluster, self.only_bad_chs_cut))}
 		self.noise_nc_cuts = {cells: self.ConcatenateCutWithCells(cut=self.ConcatenateCuts(cut1=self.nc_chs, cut2=self.valid_ped_sigma), cells=cells) for cells in ['all', 'good', 'bad']}
 		self.noise_nc_friend_cuts = {cells: self.ConcatenateCutWithCells(cut=self.ConcatenateCuts(cut1=self.nc_chs, cut2=self.valid_ped_friend_sigma), cells=cells) for cells in ['all', 'good', 'bad']}
 
