@@ -50,6 +50,7 @@ class TransparentGrid:
 		self.num_cols = 19 if col_pitch == 50 else 13
 		self.ch_ini = 0
 		self.ch_end = 84
+		self.threshold_criteria_in_sigmas = 2
 		self.threshold = 0
 		self.phbins = 200
 		self.phmin = 0
@@ -786,7 +787,7 @@ class TransparentGrid:
 		else:
 			self.GetMeanPHPerCell(var)
 			self.FindThresholdCutFromCells(var)
-		self.threshold = self.fits['mean_ph_per_cell'].Parameter(1) - 2 * self.fits['mean_ph_per_cell'].Parameter(2)
+		self.threshold = self.fits['mean_ph_per_cell'].Parameter(1) - self.threshold_criteria_in_sigmas * self.fits['mean_ph_per_cell'].Parameter(2)
 		self.line['threshold'] = ro.TLine(self.threshold, 0, self.threshold, self.histo['mean_ph_per_cell'].GetMaximum())
 		self.line['threshold'].SetLineColor(ro.kBlue)
 		self.line['threshold'].SetLineWidth(2)
