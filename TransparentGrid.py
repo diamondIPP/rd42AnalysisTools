@@ -387,7 +387,7 @@ class TransparentGrid:
 		iteration = 0
 		min_delta = self.col_pitch
 		x_off_shifted, x_min = 0.0, 0.0
-		while abs(delta_x) > self.delta_offset_threshold and iteration < 100:
+		while (abs(delta_x) > self.delta_offset_threshold and iteration < 100) or iteration < 10:
 			self.row_info_diamond['x_off'] -= np.divide(delta_x, self.col_pitch, dtype='float64') * (np.exp(-iteration) * (1 - factor) + factor)
 			self.SetOverlayVariables()
 			self.DrawProfile2DDiamondCellOverlay('x_off_alignment', 'clusterCharge1', 'good', plot_option=plot_option)
@@ -422,7 +422,7 @@ class TransparentGrid:
 		iteration = 0
 		min_delta = self.row_info_diamond['pitch']
 		y_off_shifted, y_min = 0.0, 0.0
-		while abs(delta_y) > self.delta_offset_threshold and iteration < 100:
+		while (abs(delta_y) > self.delta_offset_threshold and iteration < 100) or iteration < 10:
 			self.row_info_diamond['y_off'] -= delta_y * (np.exp(-iteration) * (1 - factor) + factor)
 			self.SetOverlayVariables()
 			self.DrawProfile2DDiamondCellOverlay('y_off_alignment', 'clusterCharge1', 'good', plot_option=plot_option)

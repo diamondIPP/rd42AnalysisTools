@@ -30,6 +30,9 @@ class GridAreas:
 
 		self.center_rectangles = {}
 
+		self.good_channels = []
+		self.bad_channels = []
+
 	def CreateRectangleSymmetricCentralRegion(self, percentage=80, pitchCol=50, pitchRow=50, xvar='(((diaChXPred-0.5)*(50*10000))%(50*10000))/10000', yvar='(((diaChYPred-25)*10000)%(50*10000))/10000'):
 		xinf = np.divide(pitchCol * (1 - np.sqrt(percentage / 100., dtype='float128')), 2.0, dtype='float128')
 		xsup = np.subtract(pitchCol, xinf, dtype='float128')
@@ -161,6 +164,8 @@ class GridAreas:
 		self.badAreas_simplified_diamond = CreateTCutGDic(bad_polygons_dic, ro.kBlue, ro.kRed)
 		self.badAreasCutNames_simplified_diamond = ReturnNameCutGWithHoles(self.badAreas_simplified_diamond)
 
+		self.GetGoodAndBadChannels()
+
 	def SimplifyAreas(self, area_list, polygon_list=[], name_list=[], prefix='g', num_merged=0, finished=False):
 		def CheckAreas(ai, aj):
 			def DistancePointLine(xa, ya, xb, yb, x0, y0):
@@ -263,6 +268,11 @@ class GridAreas:
 		# if finito:
 		# 	ipdb.set_trace()
 		return self.SimplifyAreas(area_list, new_list, new_names, prefix, num_merged, finito)
+
+	def GetGoodAndBadChannels(self):
+		#  starting point should be the leftmost of the bottomest point of the region!
+		self.good_channels = list({RoundInt((area.GetX()[1] + area.GetX()[area.GetN() - 3]) / 2.0) for area in self.goodAreas_diamond})
+		self.bad_channels = list({RoundInt((area.GetX()[1] + area.GetX()[area.GetN() - 3]) / 2.0) for area in self.badAreas_diamond})
 
 	def ResetAreas(self):
 		self.goodAreas_diamond = []
