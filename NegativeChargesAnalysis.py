@@ -189,7 +189,7 @@ class NegativeChargesAnalysis:
 			self.trans_grid.DrawPHInArea(name, varz, cells, cuts, varname=varzname, xmin=xmin, xmax=xmax, deltax=deltax)
 			self.PosCanvas(name)
 
-		tempcsnr = self.neg_adc_phN_h['PH{c}_H'.format(c=self.cluster_size)]
+		tempcsnr = self.neg_snr_phN_h['PH{c}_H'.format(c=self.cluster_size)]
 		tempcadc = self.neg_adc_phN_h['PH{c}_H'.format(c=self.cluster_size)]
 		minsnr, maxsnr = int(RoundInt(self.trans_grid.phmin / sigm)), int(RoundInt(self.trans_grid.phmax / sigm))
 		deltsnr = float(maxsnr - minsnr) / float(self.trans_grid.phbins)
@@ -204,12 +204,27 @@ class NegativeChargesAnalysis:
 			tempc = tempcadc
 			DrawPHHisto('PH{c}_H_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]', tempc)
 
+	def DoCellMaps(self, cells='all'):
+		def PlotCellsProfiles(name, varz, varname, cut):
+			self.trans_grid.DrawProfile2DDiamondCellOverlay(name, varz, cells, cut, varname=varname)
+			self.PosCanvas(name)
+
+		suffix = self.suffix[cells]
+		tempcsnr = self.neg_snr_phN_h['PH{c}_H'.format(c=self.cluster_size)]
+		tempcadc = self.neg_adc_phN_h['PH{c}_H'.format(c=self.cluster_size)]
+		for ch in xrange(1, self.cluster_size + 1):
+			PlotCellsProfiles('PH{c}_Ch_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [SNR]'.format(c=ch), tempcsnr)
+			PlotCellsProfiles('PH{c}_Ch_cell_map_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [ADC]'.format(c=ch), tempcadc)
+			PlotCellsProfiles('PH{c}_H_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]'.format(c=ch), tempcsnr)
+			PlotCellsProfiles('PH{c}_H_cell_map_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]'.format(c=ch), tempcadc)
+
 	def DoNegativeAnalysis(self, cells='all'):
 		self.GetCutsFromCutManager(cells)
 		self.GetVarzFromTranspGrid()
 		self.Do1DChSignalHistos(cells, False)
 		self.DoProfileMaps()
 		self.Do1DPHHistos(cells)
+		self.DoCellMaps(cells)
 		# self.DoProfileMaps()
 		# self.DoPedestalEventHistograms(False)
 		# self.DoStrips2DHistograms()

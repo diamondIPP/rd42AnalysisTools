@@ -205,8 +205,10 @@ class TestAreas:
 
 	def DoBorderPlots(self):
 		self.trans_grid.DrawProfile2DDiamond('PH2_H_map_with_borders', self.trans_grid.phN_adc_h_varz['PH2_H'], draw_top_borders=True)
-		self.trans_grid.DrawGoodAreasDiamond('PH2_H_map_with_borders')
-		self.trans_grid.DrawBadAreasDiamond('PH2_H_map_with_borders')
+		self.trans_grid.DrawTCutGs('PH2_H_map_with_borders', 'diamond')
+		self.trans_grid.DrawGoodAreasDiamondCenters('PH2_H_map_with_borders')
+		# self.trans_grid.DrawGoodAreasDiamond('PH2_H_map_with_borders')
+		# self.trans_grid.DrawBadAreasDiamond('PH2_H_map_with_borders')
 		xbinmin, xbinmax = self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5), self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5) + self.trans_grid.num_cols * self.trans_grid.bins_per_ch_x - 1
 		self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().SetRange(xbinmin - 1, xbinmax + 1)
 		self.PositionCanvas('PH2_H_map_with_borders')

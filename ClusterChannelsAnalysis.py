@@ -127,6 +127,7 @@ class ClusterChannelsAnalysis:
 			self.trans_grid.DrawProfile2DDiamondChannel(name, varx, xname, varz, cuts)
 			self.trans_grid.profile[name].SetMaximum(zmax)
 			self.trans_grid.profile[name].SetMinimum(zmin)
+			self.trans_grid.DrawTCutGs(name, 'diamond')
 			self.PosCanvas(name)
 
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
