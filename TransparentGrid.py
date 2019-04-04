@@ -172,7 +172,7 @@ class TransparentGrid:
 		object_dic['phmin_neg'] = self.phmin_neg
 		object_dic['phmax_neg'] = self.phmax_neg
 		object_dic['neg_cut'] = self.neg_cut
-		object_dic['neg_cut_adc'] = self.neg_cut
+		object_dic['neg_cut_adc'] = self.neg_cut_adc
 		object_dic['col_pitch'] = self.col_pitch
 		object_dic['cell_resolution'] = self.cell_resolution
 		object_dic['bins_per_ch_x'] = self.bins_per_ch_x
@@ -897,37 +897,46 @@ class TransparentGrid:
 	def ResetAreas(self):
 		self.gridAreas.ResetAreas()
 
-	def DrawPHInArea(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, varname='PH[ADC]'):
+	def DrawPHInArea(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1):
 		if cells == 'good':
-			self.DrawPHGoodAreas(name, var, cuts, varname=varname)
+			self.DrawPHGoodAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax)
 		elif cells == 'bad':
-			self.DrawPHBadAreas(name, var, cuts, varname=varname)
+			self.DrawPHBadAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax)
 		else:
-			self.DrawPHAllAreas(name, var, cuts, varname=varname)
+			self.DrawPHAllAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax)
 
-	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]'):
+	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1):
 		list_cuts = [self.cuts_man.selected_cells]
 		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
-		self.DrawHisto1D(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cut, transp_ev)
+		phmin = xmin if xmin != 10000 else self.phmin
+		phmax = xmax if xmax != -10000 else self.phmax
+		deltx = deltax if deltax != -1 else float(self.phmax - self.phmin) / float(self.phbins)
+		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev)
 
-	def DrawPHAllAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]'):
+	def DrawPHAllAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1):
 		list_cuts = [self.cuts_man.all_cells]
 		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
-		self.DrawHisto1D(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cut, transp_ev)
+		phmin = xmin if xmin != 10000 else self.phmin
+		phmax = xmax if xmax != -10000 else self.phmax
+		deltx = deltax if deltax != -1 else float(self.phmax - self.phmin) / float(self.phbins)
+		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev)
 
-	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]'):
+	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1):
 		list_cuts = [self.cuts_man.not_selected_cells]
 		# list_cuts = ['{n}'.format(n=self.gridAreas.badAreasCutNames_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
-		self.DrawHisto1D(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cut, transp_ev)
+		phmin = xmin if xmin != 10000 else self.phmin
+		phmax = xmax if xmax != -10000 else self.phmax
+		deltx = deltax if deltax != -1 else float(self.phmax - self.phmin) / float(self.phbins)
+		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev)
 
 	def DrawPHCentralRegion(self, name, var='clusterChargeN', cells='good', cuts='', transp_ev=True, varname='PH[ADC]'):
 		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond_centers) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_diamond_centers) if cells == 'bad' else '({n}||{m})'.format(n=self.gridAreas.goodAreasCutNames_diamond_centers, m=self.gridAreas.badAreasCutNames_diamond_centers)]

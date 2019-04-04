@@ -13,7 +13,8 @@ class NegativeChargesAnalysis:
 	def __init__(self, trans_grid, numstrips, clustersize):
 		self.phdelta = 0
 		self.window_shift = 3
-		# self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.125
+		self.min_snr_neg, self.max_snr_neg = -64, 0
+		self.min_adc_neg, self.max_adc_neg = -650, 0
 		self.delta_ev = 100
 		self.min_snr, self.max_snr = -650, 650
 		self.min_adc, self.max_adc = -6500, 6500
@@ -37,6 +38,37 @@ class NegativeChargesAnalysis:
 
 		self.noise_varz = {}
 		self.noise_friend_varz = {}
+		
+		self.neg_snr_ph_ch = {}
+		self.neg_snr_ph_h = {}
+		self.not_neg_snr_ph_ch = {}
+		self.not_neg_snr_ph_h = {}
+
+		self.neg_adc_ph_ch = {}
+		self.neg_adc_ph_h = {}
+		self.not_neg_adc_ph_ch = {}
+		self.not_neg_adc_ph_h = {}
+
+		self.neg_snr_phN_ch = {}
+		self.neg_snr_phN_h = {}
+		self.not_neg_snr_phN_ch = {}
+		self.not_neg_snr_phN_h = {}
+
+		self.neg_adc_phN_ch = {}
+		self.neg_adc_phN_h = {}
+		self.not_neg_adc_phN_ch = {}
+		self.not_neg_adc_phN_h = {}
+
+		self.noise_varz = {}
+		self.ph_adc_h_varz = {}
+		self.ph_adc_ch_varz = {}
+		self.ph_snr_h_varz = {}
+		self.ph_snr_ch_varz = {}
+
+		self.phN_adc_h_varz = {}
+		self.phN_adc_ch_varz = {}
+		self.phN_snr_h_varz = {}
+		self.phN_snr_ch_varz = {}
 
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
@@ -70,162 +102,119 @@ class NegativeChargesAnalysis:
 			self.trans_grid.histo[noise_name_new].Draw('same')
 			ro.gPad.Update()
 
-	def PlotNoise1D(self, varzdic, name, cut):
-		temp_cut_noise = cut
-		temph = ro.TH1F('temph0', 'temph0', int(RoundInt((self.max_adc_noise - self.min_adc_noise) / float(self.delta_adc_noise))), self.min_adc_noise, self.max_adc_noise)
-		self.trans_grid.trans_tree.Draw('{v}>>temph0'.format(v=varzdic['adc']), temp_cut_noise, 'goff')
-		mean, sigma = temph.GetMean(), temph.GetRMS()
-		temph.Delete()
-		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = (ni / float(sigma) for ni in [self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise])
-		self.trans_grid.DrawHisto1D(name + '_snr', self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, varzdic['snr'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
-		self.trans_grid.FitGaus(name + '_snr')
-		self.trans_grid.histo[name + '_snr'].GetXaxis().SetRangeUser(-3.2, 3.2)
-		self.PosCanvas(name + '_snr')
-		self.trans_grid.DrawHisto1D(name + '_adc', self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, varzdic['adc'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
-		self.trans_grid.FitGaus(name + '_adc')
-		self.trans_grid.histo[name + '_adc'].GetXaxis().SetRangeUser(-32, 32)
-		self.PosCanvas(name + '_adc')
+	def Do1DChSignalHistos(self, cells='all', doLog=False):
+		def DrawHisto(name, histo_limits, plot_lims, deltax, varz, varname, cuts):
+			self.trans_grid.DrawHisto1D(name, histo_limits['min'], histo_limits['max'], deltax, varz, varname, cuts)
+			self.trans_grid.histo[name].GetXaxis().SetRangeUser(plot_lims['min'], plot_lims['max'])
+			SetX1X2NDC(self.trans_grid.histo[name], 0.15, 0.45, 'stats')
+			self.OverlayNoiseDistribution(self.trans_grid.histo[name], cells)
+			if doLog: self.trans_grid.canvas[name].SetLogy()
+			legend = self.trans_grid.canvas[name].BuildLegend()
+			ro.gPad.Update()
+			SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
+			self.PosCanvas(name)
 
-	def PlotNoiseNotInCluster(self, cells='all'):
-		suffix = self.suffix[cells]
-		nameh = 'signal_noise_{c}'.format(c=suffix)
-		temp_cut_noise = self.noise_cuts[cells]
-		self.PlotNoise1D(self.noise_varz, nameh, temp_cut_noise)
+		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
+		suffix = suffix + '_logScale' if doLog else suffix
 
-	def PlotFriendNoiseNotInCluster(self, cells='all'):
-		if self.trans_grid.trans_tree.GetFriend('pedTree'):
-			optending = 'buffer_{v}'.format(v=int(RoundInt(self.trans_grid.trans_tree.GetMaximum('pedTree.slidingLength'))))
-			suffix = self.suffix[cells]
-			nameh = 'signal_noise_{s}_{c}'.format(c=suffix, s=optending)
-			temp_cut_noise = self.noise_friend_cuts[cells]
-			self.PlotNoise1D(self.noise_friend_varz, nameh, temp_cut_noise)
-		else:
-			print 'The transparent tree has no pedTree friend. Cannot do these plots'
+		tempcutsadc = self.neg_adc_phN_h['PH{c}_H'.format(c=self.cluster_size)]
+		tempcutssnr = self.neg_snr_phN_h['PH{c}_H'.format(c=self.cluster_size)]
+		for ch in xrange(self.cluster_size):
+			if 'PH_Ch' + str(ch) in self.ph_snr_ch_varz.keys():
+				tempcuts = tempcutssnr
+				minz, maxz = self.min_snr_neg, self.max_snr_neg
+				hist_limits = Get1DLimits(minz, maxz, self.delta_snr, 2)
+				plot_limits = Get1DLimits(minz, maxz, self.delta_snr, 1)
+				DrawHisto('PH_Ch{c}_snr_neg_evts_{s}'.format(c=ch, s=suffix), hist_limits, plot_limits, self.delta_snr, self.ph_snr_ch_varz['PH_Ch{c}'.format(c=ch)], 'PH cluster ch{c} neg events [SNR]'.format(c=ch), tempcuts)
 
-	def PlotNoiseNCChannels(self, cells='all'):
-		suffix = self.suffix[cells]
-		temp_cut_noise = self.noise_nc_cuts[cells]
-		nameh = 'signal_noise_NC_chs_{c}'.format(c=suffix)
-		self.PlotNoise1D(self.noise_varz, nameh, temp_cut_noise)
+			if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
+				tempcuts = tempcutsadc
+				minz, maxz = self.min_adc_neg, self.max_adc_neg
+				hist_limits = Get1DLimits(minz, maxz, self.delta_adc, 2)
+				plot_limits = Get1DLimits(minz, maxz, self.delta_adc, 1)
+				DrawHisto('PH_Ch{c}_adc_neg_evts_{s}'.format(c=ch, s=suffix), hist_limits, plot_limits, self.delta_adc, self.ph_adc_ch_varz['PH_Ch{c}'.format(c=ch)], 'PH cluster ch{c} neg events [ADC]'.format(c=ch), tempcuts)
 
-	def PlotFriendNoiseNCChannels(self, cells='all'):
-		if self.trans_grid.trans_tree.GetFriend('pedTree'):
-			optending = 'buffer_{v}'.format(v=int(RoundInt(self.trans_grid.trans_tree.GetMaximum('pedTree.slidingLength'))))
-			suffix = self.suffix[cells]
-			nameh = 'signal_noise_NC_chs_{s}_{c}'.format(c=suffix, s=optending)
-			temp_cut_noise = self.noise_nc_friend_cuts[cells]
-			self.PlotNoise1D(self.noise_friend_varz, nameh, temp_cut_noise)
-		else:
-			print 'The transparent tree has no pedTree friend. Cannot do these plots'
+			if 'PH_H' + str(ch+1) in self.ph_snr_h_varz.keys():
+				tempcuts = tempcutssnr
+				minz, maxz = self.min_snr_neg, self.max_snr_neg
+				hist_limits = Get1DLimits(minz, maxz, self.delta_snr, 2)
+				plot_limits = Get1DLimits(minz, maxz, self.delta_snr, 1)
+				DrawHisto('PH_H{c}_snr_neg_evts_{s}'.format(c=ch+1, s=suffix), hist_limits, plot_limits, self.delta_snr, self.ph_snr_h_varz['PH_H{c}'.format(c=ch+1)], 'PH highest {c}{sf} ch neg events [SNR]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
+
+			if 'PH_H' + str(ch+1) in self.ph_adc_h_varz.keys():
+				tempcuts = tempcutsadc
+				minz, maxz = self.min_adc_neg, self.max_adc_neg
+				hist_limits = Get1DLimits(minz, maxz, self.delta_adc, 2)
+				plot_limits = Get1DLimits(minz, maxz, self.delta_adc, 1)
+				DrawHisto('PH_H{c}_adc_neg_evts_{s}'.format(c=ch+1, s=suffix), hist_limits, plot_limits, self.delta_adc, self.ph_adc_h_varz['PH_H{c}'.format(c=ch+1)], 'PH highest {c}{sf} ch neg events [ADC]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
 
 	def DoProfileMaps(self):
-		minev, maxev = self.trans_grid.trans_tree.GetMinimum('event'), self.trans_grid.trans_tree.GetMaximum('event')
+		xmin, xmax, deltax, xname = self.trans_grid.ch_ini - 1.5, self.trans_grid.ch_end + 1.5, 1.0/self.trans_grid.bins_per_ch_x, 'pred dia hit ch',
+		ymin, ymax, deltay, yname = self.trans_grid.row_info_diamond['0'] - RoundInt(float(self.trans_grid.row_info_diamond['0']) / self.trans_grid.row_info_diamond['pitch'], 'f8') * self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['0'] + (256 - RoundInt(float(self.trans_grid.row_info_diamond['0']) / self.trans_grid.row_info_diamond['pitch'], 'f8')) * self.trans_grid.row_info_diamond['pitch'], float(self.trans_grid.row_info_diamond['pitch'])/self.trans_grid.bins_per_ch_y, 'sil pred dia hit in Y [#mum]'
 
-		self.trans_grid.DrawProfile1D('cm_event_profile', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 'event', 'cmn', 'cm [ADC]', self.trans_grid.cuts_man.transp_ev)
-		self.PosCanvas('cm_event_profile')
-
-		# self.trans_grid.DrawProfile2D('adc_channel_event_profile', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChADC', 'ADC', self.trans_grid.cuts_man.transp_ev)
-		# self.PosCanvas('adc_channel_event_profile')
-		# self.trans_grid.DrawProfile2D('signal_channel_event_profile', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChSignal', 'Signal [ADC]', self.trans_grid.cuts_man.transp_ev)
-		# self.PosCanvas('signal_channel_event_profile')
-		# self.trans_grid.DrawProfile2D('noise_cmc_channel_event_profile_all', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChPedSigmaCmc', 'Noise [ADC]', self.trans_grid.cuts_man.transp_ev)
-		# self.PosCanvas('noise_cmc_channel_event_profile_all')
-
-	def DoFriendProfileMaps(self):
-		optending = 'buffer_{v}'.format(v=int(RoundInt(self.trans_grid.trans_tree.GetMaximum('pedTree.slidingLength'))))
-		minev, maxev = self.trans_grid.trans_tree.GetMinimum('event'), self.trans_grid.trans_tree.GetMaximum('event')
-
-		self.trans_grid.DrawProfile1D('cm_event_profile_{s}'.format(s=optending), minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 'event', 'pedTree.cmn', 'cm [ADC]', self.trans_grid.cuts_man.transp_ev)
-		self.PosCanvas('cm_event_profile_{s}'.format(s=optending))
-
-		# self.trans_grid.DrawProfile2D('adc_channel_event_profile_{s}'.format(s=optending), minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChADC', 'ADC', self.trans_grid.cuts_man.transp_ev)
-		# self.PosCanvas('adc_channel_event_profile_{s}'.format(s=optending))
-		# self.trans_grid.DrawProfile2D('signal_channel_event_profile_{s}'.format(s=optending), minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'pedTree.diaChSignal', 'Signal [ADC]', self.trans_grid.cuts_man.transp_ev)
-		# self.PosCanvas('signal_channel_event_profile_{s}'.format(s=optending))
-		# self.trans_grid.DrawProfile2D('noise_cmc_channel_event_profile_all_{s}'.format(s=optending), minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'pedTree.diaChPedSigmaCmc', 'Noise [ADC]', self.trans_grid.cuts_man.transp_ev)
-		# self.PosCanvas('noise_cmc_channel_event_profile_all_{s}'.format(s=optending))
-
-	def DoStrips2DHistograms(self):
-		minch, maxch, deltach, xname, xvar = -0.5, 127.5, 1, 'VA channel', 'diaChannels'
-		minch_plot, maxch_plot = int(self.trans_grid.ch_ini - np.ceil((self.cluster_size - 1) / 2.0)), int(self.trans_grid.ch_end + np.ceil((self.cluster_size - 1) / 2.0))
-
-		def DrawHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
-			histo_limits = Get1DLimits(zmin, zmax, self.delta_adc_noise) if typ == 'adc' else Get1DLimits(zmin, zmax, self.delta_snr_noise)
-			deltay = self.delta_adc_noise if typ == 'adc' else self.delta_snr_noise
-			miny_plot, maxy_plot = (-50, 50) if typ == 'adc' else (-5, 5)
-			self.trans_grid.DrawHisto2D(name, minch, maxch, deltach, xname, histo_limits['min'], histo_limits['max'], deltay, yname, xvar, yvar, cuts)
-			self.trans_grid.histo[name].GetXaxis().SetRangeUser(minch_plot, maxch_plot)
-			self.trans_grid.histo[name].GetYaxis().SetRangeUser(miny_plot, maxy_plot)
+		def DrawProfile2D(name, varz, varzname, cut, xdelt=deltax, namex=xname, varx='diaChXPred'):
+			self.trans_grid.DrawProfile2D(name, xmin, xmax, xdelt, namex, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, varzname, cut)
+			self.trans_grid.profile[name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
+			self.trans_grid.profile[name].GetYaxis().SetRangeUser(self.trans_grid.row_info_diamond['0'] - int(self.trans_grid.row_info_diamond['pitch'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_info_diamond['up'] + int(self.trans_grid.row_info_diamond['pitch'] / self.trans_grid.bins_per_ch_y))
+			self.trans_grid.DrawTCutGs(name, 'diamond')
+			self.trans_grid.DrawGoodAreasDiamondCenters(name)
 			self.PosCanvas(name)
 
-		tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.not_in_cluster, self.trans_grid.cuts_man.valid_ped_sigma)
-		minz, maxz = -322.5, 322.5
-		DrawHistogram('noise_Vs_channel_adc', minz, maxz, 'signal noise [ADC]', self.noise_varz['adc'], tempcuts, 'adc')
-		minz, maxz = -32.25, 32.25
-		DrawHistogram('noise_Vs_channel_snr', minz, maxz, 'signal noise [SNR]', self.noise_varz['snr'], tempcuts, 'snr')
+		for ch in xrange(self.cluster_size):
+			tempc = self.neg_snr_ph_ch['PH_Ch' + str(ch)]
+			DrawProfile2D('PH_Ch{c}_neg_map_pred_hit_snr'.format(c=ch), self.ph_snr_ch_varz['PH_Ch' + str(ch)], 'PH cluster ch{c} [SNR]'.format(c=ch), tempc)
+			tempc = self.neg_adc_ph_ch['PH_Ch' + str(ch)]
+			DrawProfile2D('PH_Ch{c}_neg_map_pred_hit_adc'.format(c=ch), self.ph_adc_ch_varz['PH_Ch' + str(ch)], 'PH cluster ch{c} [ADC]'.format(c=ch), tempc)
 
-	def DoFriendStrips2DHistograms(self):
-		optending = 'buffer_{v}'.format(v=int(RoundInt(self.trans_grid.trans_tree.GetMaximum('pedTree.slidingLength'))))
-		minch, maxch, deltach, xname, xvar = -0.5, 127.5, 1, 'VA channel', 'diaChannels'
-		minch_plot, maxch_plot = int(self.trans_grid.ch_ini - np.ceil((self.cluster_size - 1) / 2.0)), int(self.trans_grid.ch_end + np.ceil((self.cluster_size - 1) / 2.0))
+			tempc = self.neg_snr_ph_h['PH_H' + str(ch+1)]
+			DrawProfile2D('PH_H{c}_neg_map_pred_hit_snr'.format(c=ch+1), self.ph_snr_h_varz['PH_H' + str(ch+1)], 'PH highest {c}{sf} ch [SNR]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc)
+			tempc = self.neg_adc_ph_h['PH_H' + str(ch+1)]
+			DrawProfile2D('PH_H{c}_neg_map_pred_hit_adc'.format(c=ch+1), self.ph_adc_h_varz['PH_H' + str(ch+1)], 'PH highest {c}{sf} ch [ADC]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc)
 
-		def DrawHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
-			histo_limits = Get1DLimits(zmin, zmax, self.delta_adc_noise) if typ == 'adc' else Get1DLimits(zmin, zmax, self.delta_snr_noise)
-			deltay = self.delta_adc_noise if typ == 'adc' else self.delta_snr_noise
-			miny_plot, maxy_plot = (-50, 50) if typ == 'adc' else (-5, 5)
-			self.trans_grid.DrawHisto2D(name, minch, maxch, deltach, xname, histo_limits['min'], histo_limits['max'], deltay, yname, xvar, yvar, cuts)
-			self.trans_grid.histo[name].GetXaxis().SetRangeUser(minch_plot, maxch_plot)
-			self.trans_grid.histo[name].GetYaxis().SetRangeUser(miny_plot, maxy_plot)
+			tempc = self.neg_snr_ph_ch['PH_Ch' + str(ch)]
+			DrawProfile2D('PH_Ch{c}_neg_map_pred_ch_snr'.format(c=ch), self.ph_snr_ch_varz['PH_Ch' + str(ch)], 'PH cluster ch{c} [SNR]'.format(c=ch), tempc, 1, 'cluster ch{c}'.format(c=ch), 'clusterChannel{c}'.format(c=ch))
+			tempc = self.neg_adc_ph_ch['PH_Ch' + str(ch)]
+			DrawProfile2D('PH_Ch{c}_neg_map_pred_ch_adc'.format(c=ch), self.ph_adc_ch_varz['PH_Ch' + str(ch)], 'PH cluster ch{c} [ADC]'.format(c=ch), tempc, 1, 'cluster ch{c}'.format(c=ch), 'clusterChannel{c}'.format(c=ch))
+
+			tempc = self.neg_snr_ph_h['PH_H' + str(ch+1)]
+			DrawProfile2D('PH_H{c}_neg_map_pred_ch_snr'.format(c=ch+1), self.ph_snr_h_varz['PH_H' + str(ch+1)], 'PH highest {c}{sf} ch [SNR]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc, 1, 'highest {c}{sf} ch'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), 'clusterChannelHighest{c}'.format(c=ch+1))
+			tempc = self.neg_adc_ph_h['PH_H' + str(ch+1)]
+			DrawProfile2D('PH_H{c}_neg_map_pred_ch_adc'.format(c=ch+1), self.ph_adc_h_varz['PH_H' + str(ch+1)], 'PH highest {c}{sf} ch [ADC]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc, 1, 'highest {c}{sf} ch'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), 'clusterChannelHighest{c}'.format(c=ch+1))
+
+	def Do1DPHHistos(self, cells='all'):
+		suffix = self.suffix[cells]
+		noise_name0 = 'signal_noise_{s}_{t}'.format(s=suffix, t='adc')
+		sigm = self.trans_grid.histo[noise_name0].GetRMS()
+		def DrawPHHisto(name, varz, varzname, cuts, xmin=10000, xmax=-10000, deltax=-1):
+			self.trans_grid.DrawPHInArea(name, varz, cells, cuts, varname=varzname, xmin=xmin, xmax=xmax, deltax=deltax)
 			self.PosCanvas(name)
 
-		tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.not_in_cluster, self.trans_grid.cuts_man.valid_ped_friend_sigma)
-		minz, maxz = -322.5, 322.5
-		DrawHistogram('noise_Vs_channel_adc_{s}'.format(s=optending), minz, maxz, 'signal noise [ADC]', self.noise_friend_varz['adc'], tempcuts, 'adc')
-		minz, maxz = -32.25, 32.25
-		DrawHistogram('noise_Vs_channel_snr_{s}'.format(s=optending), minz, maxz, 'signal noise [SNR]', self.noise_friend_varz['snr'], tempcuts, 'snr')
+		tempcsnr = self.neg_adc_phN_h['PH{c}_H'.format(c=self.cluster_size)]
+		tempcadc = self.neg_adc_phN_h['PH{c}_H'.format(c=self.cluster_size)]
+		minsnr, maxsnr = int(RoundInt(self.trans_grid.phmin / sigm)), int(RoundInt(self.trans_grid.phmax / sigm))
+		deltsnr = float(maxsnr - minsnr) / float(self.trans_grid.phbins)
+		for ch in xrange(1, self.cluster_size + 1):
+			tempc = tempcsnr
+			DrawPHHisto('PH{c}_Ch_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} cluster chs [SNR]', tempc, minsnr, maxsnr, deltsnr)
+			tempc = tempcadc
+			DrawPHHisto('PH{c}_Ch_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} cluster chs [ADC]', tempc)
 
-	def DoPedestalEventHistograms(self, doFriend=False):
-		tempcuts = self.in_transp_cluster
-		minev, maxev = self.trans_grid.trans_tree.GetMinimum('event'), self.trans_grid.trans_tree.GetMaximum('event')
-		deltaev = 100.
-		if not doFriend:
-			varz = 'diaChPedMeanCmc'
-			maxy = GetMaximumFromTree(self.trans_grid.trans_tree, 'diaChPedMeanCmc', tempcuts)
-			miny = GetMinimumFromTree(self.trans_grid.trans_tree, 'diaChPedMeanCmc', tempcuts)
-			nameh = 'pedestal_mean_vs_event'
-		else:
-			if not self.trans_grid.trans_tree.GetFriend('pedTree'):
-				print 'The transparent tree has no pedTree friend. Cannot do these plots'
-				return
-			optending = 'buffer_{v}'.format(v=int(RoundInt(self.trans_grid.trans_tree.GetMaximum('pedTree.slidingLength'))))
-			varz = 'pedTree.diaChPedMeanCmc'
-			maxy = GetMaximumFromTree(self.trans_grid.trans_tree, 'pedTree.diaChPedMeanCmc', tempcuts)
-			miny = GetMinimumFromTree(self.trans_grid.trans_tree, 'pedTree.diaChPedMeanCmc', tempcuts)
-			nameh = 'pedestal_mean_{s}_vs_event'.format(s=optending)
+			tempc = tempcsnr
+			DrawPHHisto('PH{c}_H_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]', tempc, minsnr, maxsnr, deltsnr)
+			tempc = tempcadc
+			DrawPHHisto('PH{c}_H_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]', tempc)
 
-		self.trans_grid.DrawHisto2D(nameh, minev, maxev, deltaev, 'event', miny, maxy, 1.0, 'pedestal mean cluster chs [ADC]', 'event', varz, tempcuts)
-		self.PosCanvas(nameh)
-
-	def DoNoiseAnalysis(self, cells='all'):
+	def DoNegativeAnalysis(self, cells='all'):
 		self.GetCutsFromCutManager(cells)
 		self.GetVarzFromTranspGrid()
+		self.Do1DChSignalHistos(cells, False)
 		self.DoProfileMaps()
+		self.Do1DPHHistos(cells)
+		# self.DoProfileMaps()
 		# self.DoPedestalEventHistograms(False)
 		# self.DoStrips2DHistograms()
-		self.PlotNoiseNotInCluster(cells)
-		self.PlotNoiseNCChannels('all')
-
-	def DoFriendNoiseAnalysis(self, cells='all'):
-		if self.trans_grid.trans_tree.GetFriend('pedTree'):
-			self.GetCutsFromCutManager(cells)
-			self.GetVarzFromTranspGrid()
-			self.DoFriendProfileMaps()
-			# self.DoPedestalEventHistograms(True)
-			# self.DoFriendStrips2DHistograms()
-			self.PlotFriendNoiseNotInCluster(cells)
-			self.PlotFriendNoiseNCChannels('all')
-		else:
-			print 'The transparent tree has no pedTree friend. Cannot do these plots'
+		# self.PlotNoiseNotInCluster(cells)
+		# self.PlotNoiseNCChannels('all')
 
 	def GetCutsFromCutManager(self, cells):
 		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]
@@ -234,9 +223,36 @@ class NegativeChargesAnalysis:
 		self.noise_nc_cuts[cells] = self.trans_grid.cuts_man.noise_nc_cuts[cells]
 		self.noise_nc_friend_cuts[cells] = self.trans_grid.cuts_man.noise_nc_friend_cuts[cells]
 
+		self.neg_snr_ph_ch = self.trans_grid.cuts_man.neg_snr_ph_ch
+		self.neg_snr_ph_h = self.trans_grid.cuts_man.neg_snr_ph_h
+		self.not_neg_snr_ph_ch = self.trans_grid.cuts_man.not_neg_snr_ph_ch
+		self.not_neg_snr_ph_h = self.trans_grid.cuts_man.not_neg_snr_ph_h
+
+		self.neg_adc_ph_ch = self.trans_grid.cuts_man.neg_adc_ph_ch
+		self.neg_adc_ph_h = self.trans_grid.cuts_man.neg_adc_ph_h
+		self.not_neg_adc_ph_ch = self.trans_grid.cuts_man.not_neg_adc_ph_ch
+		self.not_neg_adc_ph_h = self.trans_grid.cuts_man.not_neg_adc_ph_h
+
+		self.neg_snr_phN_ch = self.trans_grid.cuts_man.neg_snr_phN_ch
+		self.neg_snr_phN_h = self.trans_grid.cuts_man.neg_snr_phN_h
+		self.not_neg_snr_phN_ch = self.trans_grid.cuts_man.not_neg_snr_phN_ch
+		self.not_neg_snr_phN_h = self.trans_grid.cuts_man.not_neg_snr_phN_h
+
+		self.neg_adc_phN_ch = self.trans_grid.cuts_man.neg_adc_phN_ch
+		self.neg_adc_phN_h = self.trans_grid.cuts_man.neg_adc_phN_h
+		self.not_neg_adc_phN_ch = self.trans_grid.cuts_man.not_neg_adc_phN_ch
+		self.not_neg_adc_phN_h = self.trans_grid.cuts_man.not_neg_adc_phN_h
+
 	def GetVarzFromTranspGrid(self):
 		self.noise_varz = self.trans_grid.noise_varz
-		self.noise_friend_varz = self.trans_grid.noise_friend_varz
+		self.ph_adc_ch_varz = self.trans_grid.ph_adc_ch_varz
+		self.ph_snr_ch_varz = self.trans_grid.ph_snr_ch_varz
+		self.ph_adc_h_varz = self.trans_grid.ph_adc_h_varz
+		self.ph_snr_h_varz = self.trans_grid.ph_snr_h_varz
+		self.phN_adc_ch_varz = self.trans_grid.phN_adc_ch_varz
+		self.phN_snr_ch_varz = self.trans_grid.phN_snr_ch_varz
+		self.phN_adc_h_varz = self.trans_grid.phN_adc_h_varz
+		self.phN_snr_h_varz = self.trans_grid.phN_snr_h_varz
 
 if __name__ == '__main__':
 	c = NegativeChargesAnalysis(None, 0, 0)

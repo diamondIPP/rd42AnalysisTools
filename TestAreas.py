@@ -7,6 +7,7 @@ from TransparentGrid import TransparentGrid
 from ClusterChannelsAnalysis import ClusterChannelsAnalysis
 from NoiseAnalysis import NoiseAnalysis
 from CenterCellAnalysis import CenterCellAnalysis
+from NegativeChargesAnalysis import NegativeChargesAnalysis
 from optparse import OptionParser
 from Utils import *
 
@@ -60,6 +61,7 @@ class TestAreas:
 		self.cluster_ch_ana = None
 		self.noise_ana = None
 		self.center_cells_ana = None
+		self.neg_ana = None
 		self.bias = self.trans_grid.bias
 		self.saturated_ADC = self.trans_grid.saturated_ADC
 		self.num_strips = self.trans_grid.num_strips if self.trans_grid.num_strips != 0 else 3
@@ -185,6 +187,7 @@ class TestAreas:
 		self.noise_ana = NoiseAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 		self.trans_grid.FindMaxMinVarz()
 		self.center_cells_ana = CenterCellAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
+		self.neg_ana = NegativeChargesAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 
 	def SetCutsInCutManager(self):
 		print 'Setting cuts in cut manager...', ; sys.stdout.flush()
@@ -307,6 +310,12 @@ class TestAreas:
 		self.cluster_ch_ana.noise_ana = self.noise_ana
 		self.cluster_ch_ana.DoClusterStudies(cells)
 		self.w, self.window_shift = self.cluster_ch_ana.w, self.cluster_ch_ana.window_shift
+
+	def DoNegativeEventsStudies(self, cells='all'):
+		self.neg_ana.w, self.neg_ana.window_shift = self.w, self.window_shift
+		self.neg_ana.noise_ana = self.noise_ana
+		self.neg_ana.DoNegativeAnalysis(cells)
+		self.w, self.window_shift = self.neg_ana.w, self.neg_ana.window_shift
 
 	def DoCenterCellStudies(self, cells='all'):
 		suffix = self.suffix[cells]
