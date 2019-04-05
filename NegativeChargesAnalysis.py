@@ -218,6 +218,27 @@ class NegativeChargesAnalysis:
 			PlotCellsProfiles('PH{c}_H_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]'.format(c=ch), tempcsnr)
 			PlotCellsProfiles('PH{c}_H_cell_map_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]'.format(c=ch), tempcadc)
 
+	def PlotStripHistogram(self, cells='all'):
+		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_info_diamond['pitch']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
+		def DrawHistograms(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
+			histo_limits = Get1DLimits(zmin, zmax, 4 * self.delta_adc) if typ == 'adc' else Get1DLimits(zmin, zmax, 4 * self.delta_snr)
+			deltay = 4 * self.delta_adc if typ == 'adc' else 4 * self.delta_snr
+			self.trans_grid.DrawHisto2D(name, minx, maxx, deltax, xname, histo_limits['min'], histo_limits['max'], deltay, yname, xvar, yvar, cuts)
+			self.PosCanvas(name)
+			self.trans_grid.DrawHisto1D(name.strip('_Vs_')[-1], minx, maxx, deltax, xvar, xname, cut)
+			self.PosCanvas(name.strip('_Vs_')[-1])
+
+		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
+
+		tempcutadc = self.neg_adc_phN_h['PH{c}_H'.format(c=self.cluster_size)]
+		tempcutsnr = self.neg_snr_phN_h['PH{c}_H'.format(c=self.cluster_size)]
+
+		for ch in xrange(1, self.cluster_size + 1):
+			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_snr'.format(c=ch)]
+			DrawHistograms('PH{c}_H_Vs_strip_location_neg_events_snr_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH{c} highest chs [SNR]', self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], tempcutsnr, 'snr')
+			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_adc'.format(c=ch)]
+			DrawHistograms('PH{c}_H_Vs_strip_location_neg_events_adc_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH{c} highest chs [ADC]', self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], tempcutadc, 'adc')
+
 	def DoNegativeAnalysis(self, cells='all'):
 		self.GetCutsFromCutManager(cells)
 		self.GetVarzFromTranspGrid()
@@ -225,6 +246,7 @@ class NegativeChargesAnalysis:
 		self.DoProfileMaps()
 		self.Do1DPHHistos(cells)
 		self.DoCellMaps(cells)
+		self.PlotStripHistogram(cells)
 		# self.DoProfileMaps()
 		# self.DoPedestalEventHistograms(False)
 		# self.DoStrips2DHistograms()
