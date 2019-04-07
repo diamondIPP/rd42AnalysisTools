@@ -10,7 +10,7 @@ from Utils import *
 color_index = 10000
 
 class NegativeChargesAnalysis:
-	def __init__(self, trans_grid, numstrips, clustersize):
+	def __init__(self, trans_grid, numstrips, clustersize, noise_ana):
 		self.phdelta = 0
 		self.window_shift = 3
 		self.min_snr_neg, self.max_snr_neg = -64, 0
@@ -26,6 +26,7 @@ class NegativeChargesAnalysis:
 		self.trans_grid = trans_grid
 		self.num_strips = numstrips
 		self.cluster_size = clustersize
+		self.noise_ana = noise_ana
 
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 
@@ -74,33 +75,8 @@ class NegativeChargesAnalysis:
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
 
 	def OverlayNoiseDistribution(self, histo, cells='all'):
-		suffix = self.suffix[cells]
-		hname = histo.GetName().split('h_')[1]
-		typ = 'adc' if 'adc' in hname.lower() else 'snr'
-		noise_name0 = 'signal_noise_{s}_{t}'.format(s=suffix, t=typ)
-		if not noise_name0 in self.trans_grid.histo.keys():
-			self.PlotNoiseNotInCluster(cells)
-		elif not self.trans_grid.histo[noise_name0]:
-			del self.trans_grid.histo[noise_name0]
-			self.PlotNoiseNotInCluster(cells)
-
-		noise_name_new = noise_name0 + '_' + hname
-		nbins = histo.GetNbinsX()
-		xbins = np.zeros(nbins, 'float64')
-		histo.GetXaxis().GetLowEdge(xbins)
-		xbins = np.append(xbins, 2 * xbins[-1] - xbins[-2])
-		self.trans_grid.histo[noise_name_new] = self.trans_grid.histo[noise_name0].Rebin(nbins, 'h_' + noise_name_new, xbins)
-		if self.trans_grid.histo[noise_name_new]:
-			self.trans_grid.histo[noise_name_new].SetTitle(noise_name0 + '(scaled)')
-			scale = histo.GetMaximum() / self.trans_grid.histo[noise_name_new].GetMaximum()
-			self.trans_grid.histo[noise_name_new].Scale(scale)
-			self.trans_grid.histo[noise_name_new].SetLineColor(ro.kGray + 1)
-			self.trans_grid.histo[noise_name_new].SetStats(0)
-			self.trans_grid.canvas[hname].cd()
-			if self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0):
-				self.trans_grid.histo[noise_name_new].GetFunction('f_gaus_' + noise_name0).SetBit(ro.TF1.kNotDraw)
-			self.trans_grid.histo[noise_name_new].Draw('same')
-			ro.gPad.Update()
+		if self.noise_ana:
+			self.noise_ana.OverlayNoiseDistribution(histo, cells)
 
 	def Do1DChSignalHistos(self, cells='all', doLog=False):
 		def DrawHisto(name, histo_limits, plot_lims, deltax, varz, varname, cuts):
@@ -259,11 +235,6 @@ class NegativeChargesAnalysis:
 		self.Do1DPHHistos(cells)
 		self.DoCellMaps(cells)
 		self.PlotStripHistogram(cells)
-		# self.DoProfileMaps()
-		# self.DoPedestalEventHistograms(False)
-		# self.DoStrips2DHistograms()
-		# self.PlotNoiseNotInCluster(cells)
-		# self.PlotNoiseNCChannels('all')
 
 	def GetCutsFromCutManager(self, cells):
 		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]

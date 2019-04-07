@@ -10,7 +10,7 @@ from Utils import *
 color_index = 10000
 
 class ClusterChannelsAnalysis:
-	def __init__(self, trans_grid, numstrips, clustersize):
+	def __init__(self, trans_grid, numstrips, clustersize, noise_ana):
 		self.phdelta = 0
 		self.window_shift = 3
 		# self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.125
@@ -27,9 +27,9 @@ class ClusterChannelsAnalysis:
 		self.trash = []
 		self.w = 0
 		self.trans_grid = trans_grid
-		self.noise_ana = None
 		self.num_strips = numstrips
 		self.cluster_size = clustersize
+		self.noise_ana = noise_ana
 
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 
