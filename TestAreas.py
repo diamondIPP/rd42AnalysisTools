@@ -211,7 +211,6 @@ class TestAreas:
 		# self.trans_grid.DrawBadAreasDiamond('PH2_H_map_with_borders')
 		xbinmin, xbinmax = self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5), self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5) + self.trans_grid.num_cols * self.trans_grid.bins_per_ch_x - 1
 		self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().SetRange(xbinmin - 1, xbinmax + 1)
-		self.PositionCanvas('PH2_H_map_with_borders')
 		self.trans_grid.canvas['PH2_H_map_with_borders_py'] = ro.TCanvas('c_PH2_H_map_with_borders_py', 'c_PH2_H_map_with_borders_py', 1)
 		self.trans_grid.canvas['PH2_H_map_with_borders_py'].cd()
 		self.trans_grid.histo['PH2_H_map_with_borders_py'] = self.trans_grid.profile['PH2_H_map_with_borders'].ProjectionY('h_PH2_H_map_with_borders_py', xbinmin, xbinmax, 'e hist')
@@ -220,8 +219,11 @@ class TestAreas:
 			if self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinContent(biny) != 0:
 				maxbiny = biny
 		miny, maxy = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinLowEdge(minbiny), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinLowEdge(maxbiny + 1)
+		self.trans_grid.canvas['PH2_H_map_with_borders'].cd()
 		self.trans_grid.profile['PH2_H_map_with_borders'].GetYaxis().SetRangeUser(miny, maxy)
 		ro.gPad.Update()
+		self.PositionCanvas('PH2_H_map_with_borders')
+		self.trans_grid.canvas['PH2_H_map_with_borders_py'].cd()
 		self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().SetRangeUser(miny, maxy)
 		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-({l}))/[1])+1)/2-[2]*(TMath::Erf((x-{u})/[3])+1)/2+[4]'.format(l=self.trans_grid.row_info_diamond['0'], u=self.trans_grid.row_info_diamond['up']), miny, maxy)
 		func.SetNpx(int(self.trans_grid.row_info_diamond['num'] * self.trans_grid.bins_per_ch_y * 10))
@@ -238,6 +240,7 @@ class TestAreas:
 		func.SetParameters(params)
 		self.trans_grid.fits['PH2_H_map_with_borders_py'] = self.trans_grid.histo['PH2_H_map_with_borders_py'].Fit('box_fcn', 'QIEBMS', 'goff', self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((minbiny))), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((maxbiny))))
 		self.PositionCanvas('PH2_H_map_with_borders_py')
+		ro.gPad.Update()
 
 	def DoSaturationStudies(self, cells='all'):
 		pass
