@@ -167,6 +167,8 @@ class NegativeChargesAnalysis:
 	def Do1DPHHistos(self, cells='all'):
 		suffix = self.suffix[cells]
 		noise_name0 = 'signal_noise_{s}_{t}'.format(s=suffix, t='adc')
+		if not noise_name0 in self.trans_grid.histo.keys():
+			self.noise_ana.PlotNoiseNotInCluster(cells)
 		sigm = self.trans_grid.histo[noise_name0].GetRMS()
 		def DrawPHHisto(name, varz, varzname, cuts, xmin=10000, xmax=-10000, deltax=-1):
 			self.trans_grid.DrawPHInArea(name, varz, cells, cuts, varname=varzname, xmin=xmin, xmax=xmax, deltax=deltax)
@@ -206,11 +208,13 @@ class NegativeChargesAnalysis:
 		def Draw2DHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
 			histo_limits = Get1DLimits(zmin, zmax, 4 * self.delta_adc) if typ == 'adc' else Get1DLimits(zmin, zmax, 4 * self.delta_snr)
 			deltay = 4 * self.delta_adc if typ == 'adc' else 4 * self.delta_snr
-			self.trans_grid.DrawHisto2D(name, minx, maxx, deltax, xname, histo_limits['min'], histo_limits['max'], deltay, yname, xvar, yvar, cuts)
+			self.trans_grid.DrawHisto2D(name, minx, maxx, deltax, xname, min(0, histo_limits['min']), histo_limits['max'], deltay, yname, xvar, yvar, cuts)
 			self.PosCanvas(name)
 
 		def Draw1DHistogram(name, cuts):
 			self.trans_grid.DrawHisto1D(name, minx, maxx, deltax, xvar, xname, cuts)
+			maxbin = self.trans_grid.histo[name].GetMaximumBin()
+			self.trans_grid.histo[name].GetYaxis().SetRangeUser(0, self.trans_grid.histo[name].GetBinContent(maxbin) + self.trans_grid.histo[name].GetBinError(maxbin))
 			self.PosCanvas(name)
 
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
@@ -224,9 +228,9 @@ class NegativeChargesAnalysis:
 			minz, maxz = self.trans_grid.minz[cells]['PH_Ch[{c}_adc'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch[{c}_adc'.format(c=ch-1)]
 			Draw2DHistogram('PH_Ch{c}_Vs_strip_location_neg_events_adc_{s}'.format(c=ch-1, s=suffix), minz, maxz, 'PH cluster ch{c} [ADC]'.format(c=ch-1), self.ph_adc_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcutadc)
 			minz, maxz = self.trans_grid.minz[cells]['PH_H[{c}_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H[{c}_snr'.format(c=ch)]
-			Draw2DHistogram('PH_H{c}_Vs_strip_location_neg_events_snr_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH highest {c}{sf} ch [SNR]'.format(c=ch, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_snr_h_varz['PH_H{c}'.format(c=ch)], tempcutsnr)
+			Draw2DHistogram('PH_H{c}_Vs_strip_location_neg_events_snr_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH highest {c}{sf} ch [SNR]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_snr_h_varz['PH_H{c}'.format(c=ch)], tempcutsnr)
 			minz, maxz = self.trans_grid.minz[cells]['PH_H[{c}_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H[{c}_adc'.format(c=ch)]
-			Draw2DHistogram('PH_H{c}_Vs_strip_location_neg_events_adc_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH highest {c}{sf} ch [ADC]'.format(c=ch, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_adc_h_varz['PH_H{c}'.format(c=ch)], tempcutadc)
+			Draw2DHistogram('PH_H{c}_Vs_strip_location_neg_events_adc_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH highest {c}{sf} ch [ADC]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_adc_h_varz['PH_H{c}'.format(c=ch)], tempcutadc)
 			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_snr'.format(c=ch)]
 			Draw2DHistogram('PH{c}_H_Vs_strip_location_neg_events_snr_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH{c} highest chs [SNR]', self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], tempcutsnr, 'snr')
 			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_adc'.format(c=ch)]

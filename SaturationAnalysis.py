@@ -10,7 +10,7 @@ from Utils import *
 color_index = 10000
 
 class SaturationAnalysis:
-	def __init__(self, trans_grid, numstrips, clustersize):
+	def __init__(self, trans_grid, numstrips, clustersize, noise_ana=None):
 		self.phdelta = 0
 		self.window_shift = 3
 		self.min_snr_neg, self.max_snr_neg = -64, 0
@@ -26,6 +26,7 @@ class SaturationAnalysis:
 		self.trans_grid = trans_grid
 		self.num_strips = numstrips
 		self.cluster_size = clustersize
+		self.noise_ana = noise_ana
 
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 
@@ -132,28 +133,30 @@ class SaturationAnalysis:
 		DrawProfile2D('PH_sat_ch_map_{b}_before_{a}_after_adc'.format(b=before, a=after), self.phN_adc_h_varz['PH1_H'], minz, maxz, 'PH sat ch [ADC]', tempc, 1, 'highest ch', 'clusterChannelHighest1')
 
 	def Do1DPHHistos(self, cells='all', before=0, after=1):
-		self.DefineRegion(before, after)
+		self.DefineRegion(before=before, after=after)
 		suffix = self.suffix[cells]
 		noise_name0 = 'signal_noise_{s}_{t}'.format(s=suffix, t='adc')
+		if not noise_name0 in self.trans_grid.histo.keys():
+			self.noise_ana.PlotNoiseNotInCluster(cells)
 		sigm = self.trans_grid.histo[noise_name0].GetRMS()
 		def DrawPHHisto(name, varz, varzname, cuts, xmin=10000, xmax=-10000, deltax=-1):
 			self.trans_grid.DrawPHInArea(name, varz, cells, cuts, varname=varzname, xmin=xmin, xmax=xmax, deltax=deltax)
 			self.PosCanvas(name)
-
-		tempcsnr = self.neg_snr_phN_h['PH{c}_H'.format(c=self.cluster_size)]
-		tempcadc = self.neg_adc_phN_h['PH{c}_H'.format(c=self.cluster_size)]
+		if before != 0 or after != 1: ipdb.set_trace()
+		tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)])
+		tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)])
 		minsnr, maxsnr = int(RoundInt(self.trans_grid.phmin / sigm)), int(RoundInt(self.trans_grid.phmax / sigm))
 		deltsnr = float(maxsnr - minsnr) / float(self.trans_grid.phbins)
 		for ch in xrange(1, self.cluster_size + 1):
-			tempc = tempcsnr
-			DrawPHHisto('PH{c}_Ch_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} cluster chs [SNR]', tempc, minsnr, maxsnr, deltsnr)
-			tempc = tempcadc
-			DrawPHHisto('PH{c}_Ch_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} cluster chs [ADC]', tempc)
+			tempc = tempcsat
+			DrawPHHisto('PH{c}_Ch_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch, s=suffix, b=before, a=after), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} cluster chs [SNR]', tempc, minsnr, maxsnr, deltsnr)
+			tempc = tempcnosat
+			DrawPHHisto('PH{c}_Ch_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} cluster chs [ADC]', tempc)
 
-			tempc = tempcsnr
-			DrawPHHisto('PH{c}_H_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]', tempc, minsnr, maxsnr, deltsnr)
-			tempc = tempcadc
-			DrawPHHisto('PH{c}_H_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]', tempc)
+			tempc = tempcsat
+			DrawPHHisto('PH{c}_H_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch, s=suffix, b=before, a=after), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]', tempc, minsnr, maxsnr, deltsnr)
+			tempc = tempcnosat
+			DrawPHHisto('PH{c}_H_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]', tempc)
 
 	def DoCellMaps(self, cells='all', before=0, after=1):
 		self.DefineRegion(before=before, after=after)
@@ -186,38 +189,56 @@ class SaturationAnalysis:
 			PlotCellsProfiles('PH{c}_H_cell_map_not_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], minzadc, maxzadc, 'PH{c} highest chs [ADC]'.format(c=ch), tempcnosat, True)
 
 	def PlotStripHistograms(self, cells='all', before=0, after=1):
+		self.DefineRegion(before=before, after=after)
 		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_info_diamond['pitch']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
 
 		def Draw2DHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
 			histo_limits = Get1DLimits(zmin, zmax, 4 * self.delta_adc) if typ == 'adc' else Get1DLimits(zmin, zmax, 4 * self.delta_snr)
 			deltay = 4 * self.delta_adc if typ == 'adc' else 4 * self.delta_snr
-			self.trans_grid.DrawHisto2D(name, minx, maxx, deltax, xname, histo_limits['min'], histo_limits['max'], deltay, yname, xvar, yvar, cuts)
+			self.trans_grid.DrawHisto2D(name, minx, maxx, deltax, xname, min(0, histo_limits['min']), histo_limits['max'], deltay, yname, xvar, yvar, cuts)
 			self.PosCanvas(name)
 
 		def Draw1DHistogram(name, cuts):
 			self.trans_grid.DrawHisto1D(name, minx, maxx, deltax, xvar, xname, cuts)
+			maxbin = self.trans_grid.histo[name].GetMaximumBin()
+			self.trans_grid.histo[name].GetYaxis().SetRangeUser(0, self.trans_grid.histo[name].GetBinContent(maxbin) + self.trans_grid.histo[name].GetBinError(maxbin))
 			self.PosCanvas(name)
 
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
 
+		tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)])
+		tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)])
 		for ch in xrange(1, self.cluster_size + 1):
-			tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.ph_snr_ch_cuts[cells]['PH_Ch{c}'.format(c=ch-1)])
-			tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.ph_snr_ch_cuts[cells]['PH_Ch{c}'.format(c=ch-1)])
-			minz, maxz = self.trans_grid.minz[cells]['PH_Ch[{c}_snr'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch[{c}_snr'.format(c=ch-1)]
-			Draw2DHistogram('PH_Ch{c}_Vs_strip_location_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch-1, s=suffix, b=before, a=after), minz, maxz, 'PH cluster ch{c} [SNR]'.format(c=ch-1), self.ph_snr_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcsat)
-			minz, maxz = self.trans_grid.minz[cells]['PH_Ch[{c}_adc'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch[{c}_adc'.format(c=ch-1)]
-			Draw2DHistogram('PH_Ch{c}_Vs_strip_location_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch-1, s=suffix, b=before, a=after), minz, maxz, 'PH cluster ch{c} [ADC]'.format(c=ch-1), self.ph_adc_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcsat)
-			minz, maxz = self.trans_grid.minz[cells]['PH_H[{c}_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H[{c}_snr'.format(c=ch)]
-			Draw2DHistogram('PH_H{c}_Vs_strip_location_neg_events_snr_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH highest {c}{sf} ch [SNR]'.format(c=ch, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_snr_h_varz['PH_H{c}'.format(c=ch)], tempcutsnr)
-			minz, maxz = self.trans_grid.minz[cells]['PH_H[{c}_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H[{c}_adc'.format(c=ch)]
-			Draw2DHistogram('PH_H{c}_Vs_strip_location_neg_events_adc_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH highest {c}{sf} ch [ADC]'.format(c=ch, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_adc_h_varz['PH_H{c}'.format(c=ch)], tempcutadc)
-			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_snr'.format(c=ch)]
-			Draw2DHistogram('PH{c}_H_Vs_strip_location_neg_events_snr_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH{c} highest chs [SNR]', self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], tempcutsnr, 'snr')
-			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_adc'.format(c=ch)]
-			Draw2DHistogram('PH{c}_H_Vs_strip_location_neg_events_adc_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH{c} highest chs [ADC]', self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], tempcutadc, 'adc')
+			minzsnr, maxzsnr = self.trans_grid.minz[cells]['PH_Ch{c}_snr'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch{c}_snr'.format(c=ch-1)]
+			minzadc, maxzadc = self.trans_grid.minz[cells]['PH_Ch{c}_adc'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch{c}_adc'.format(c=ch-1)]
+			Draw2DHistogram('PH_Ch{c}_Vs_strip_location_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch-1, s=suffix, b=before, a=after), minzsnr, maxzsnr, 'PH cluster ch{c} [SNR]'.format(c=ch-1), self.ph_snr_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcsat)
+			Draw2DHistogram('PH_Ch{c}_Vs_strip_location_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch-1, s=suffix, b=before, a=after), minzadc, maxzadc, 'PH cluster ch{c} [ADC]'.format(c=ch-1), self.ph_adc_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcsat)
+			Draw2DHistogram('PH_Ch{c}_Vs_strip_location_not_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch-1, s=suffix, b=before, a=after), minzsnr, maxzsnr, 'PH cluster ch{c} [SNR]'.format(c=ch-1), self.ph_snr_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcnosat)
+			Draw2DHistogram('PH_Ch{c}_Vs_strip_location_not_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch-1, s=suffix, b=before, a=after), minzadc, maxzadc, 'PH cluster ch{c} [ADC]'.format(c=ch-1), self.ph_adc_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcnosat)
 
-		tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)])
-		tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)])
+			minzsnr, maxzsnr = self.trans_grid.minz[cells]['PH_H{c}_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H{c}_snr'.format(c=ch)]
+			minzadc, maxzadc = self.trans_grid.minz[cells]['PH_H{c}_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H{c}_adc'.format(c=ch)]
+			Draw2DHistogram('PH_H{c}_Vs_strip_location_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch, s=suffix, b=before, a=after), minzsnr, maxzsnr, 'PH highest {c}{sf} ch [SNR]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_snr_h_varz['PH_H{c}'.format(c=ch)], tempcsat)
+			Draw2DHistogram('PH_H{c}_Vs_strip_location_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), minzadc, maxzadc, 'PH highest {c}{sf} ch [ADC]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_adc_h_varz['PH_H{c}'.format(c=ch)], tempcsat)
+			Draw2DHistogram('PH_H{c}_Vs_strip_location_not_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch, s=suffix, b=before, a=after), minzsnr, maxzsnr, 'PH highest {c}{sf} ch [SNR]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_snr_h_varz['PH_H{c}'.format(c=ch)], tempcnosat)
+			Draw2DHistogram('PH_H{c}_Vs_strip_location_not_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), minzadc, maxzadc, 'PH highest {c}{sf} ch [ADC]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_adc_h_varz['PH_H{c}'.format(c=ch)], tempcnosat)
+
+			minzsnr, maxzsnr = self.trans_grid.minz[cells]['PH{c}_Ch_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_Ch_snr'.format(c=ch)]
+			minzadc, maxzadc = self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_Ch_adc'.format(c=ch)]
+			Draw2DHistogram('PH{c}_Ch_Vs_strip_location_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch, s=suffix, b=before, a=after), minzsnr, maxzsnr, 'PH{c} cluster chs [SNR]'.format(c=ch), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], tempcsat)
+			Draw2DHistogram('PH{c}_Ch_Vs_strip_location_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), minzadc, maxzadc, 'PH{c} cluster chs [ADC]'.format(c=ch), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], tempcsat)
+			Draw2DHistogram('PH{c}_Ch_Vs_strip_location_not_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch, s=suffix, b=before, a=after), minzsnr, maxzsnr, 'PH{c} cluster chs [SNR]'.format(c=ch), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], tempcnosat)
+			Draw2DHistogram('PH{c}_Ch_Vs_strip_location_not_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), minzadc, maxzadc, 'PH{c} cluster chs [ADC]'.format(c=ch), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], tempcnosat)
+
+			minzsnr, maxzsnr = self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_snr'.format(c=ch)]
+			minzadc, maxzadc = self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_adc'.format(c=ch)]
+			Draw2DHistogram('PH{c}_H_Vs_strip_location_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch, s=suffix, b=before, a=after), minzsnr, maxzsnr, 'PH{c} highest chs [SNR]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], tempcsat)
+			Draw2DHistogram('PH{c}_H_Vs_strip_location_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), minzadc, maxzadc, 'PH{c} highest chs [ADC]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], tempcsat)
+			Draw2DHistogram('PH{c}_H_Vs_strip_location_not_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch, s=suffix, b=before, a=after), minzsnr, maxzsnr, 'PH{c} highest chs [SNR]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], tempcnosat)
+			Draw2DHistogram('PH{c}_H_Vs_strip_location_not_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), minzadc, maxzadc, 'PH{c} highest chs [ADC]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], tempcnosat)
+
+		Draw1DHistogram('strip_location_sat_events_{b}_before_{a}_after_snr_{s}'.format(b=before, a=after, s=suffix), tempcsat)
+		Draw1DHistogram('strip_location_not_sat_events_{b}_before_{a}_after_snr_{s}'.format(b=before, a=after, s=suffix), tempcnosat)
 
 	def DoSaturationAnalysis(self, cells='all', before=0, after=1):
 		self.minz = self.trans_grid.minz
@@ -226,9 +247,13 @@ class SaturationAnalysis:
 		self.GetVarzFromTranspGrid()
 		self.DoProfileMaps(before=0, after=1)
 		self.DoCellMaps(cells, before=0, after=1)
+		self.PlotStripHistograms(cells, before=0, after=1)
+		self.Do1DPHHistos(cells, before=0, after=1)
+		if before != 0 or after != 1:
+			self.PlotStripHistograms(cells, before=before, after=after)
+			self.Do1DPHHistos(cells, before=before, after=after)
 		# self.Do1DChSignalHistos(cells, False)
 		# self.DoProfileMaps()
-		# self.Do1DPHHistos(cells)
 		# self.DoCellMaps(cells)
 		# self.PlotStripHistogram(cells)
 

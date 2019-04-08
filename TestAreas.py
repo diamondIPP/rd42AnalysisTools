@@ -189,7 +189,7 @@ class TestAreas:
 		self.trans_grid.FindMaxMinVarz()
 		self.center_cells_ana = CenterCellAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 		self.neg_ana = NegativeChargesAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
-		self.sat_ana = SaturationAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
+		self.sat_ana = SaturationAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
 
 	def SetCutsInCutManager(self):
 		print 'Setting cuts in cut manager...', ; sys.stdout.flush()

@@ -148,7 +148,7 @@ class ClusterChannelsAnalysis:
 		def DrawHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
 			histo_limits = Get1DLimits(zmin, zmax, 4 * self.delta_adc) if typ == 'adc' else Get1DLimits(zmin, zmax, 4 * self.delta_snr)
 			deltay = 4 * self.delta_adc if typ == 'adc' else 4 * self.delta_snr
-			self.trans_grid.DrawHisto2D(name, minx, maxx, deltax, xname, histo_limits['min'], histo_limits['max'], deltay, yname, xvar, yvar, cuts)
+			self.trans_grid.DrawHisto2D(name, minx, maxx, deltax, xname, min(0, histo_limits['min']), histo_limits['max'], deltay, yname, xvar, yvar, cuts)
 			self.PosCanvas(name)
 
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''

@@ -1400,8 +1400,6 @@ class TransparentGrid:
 		bar.finish()
 		# self.CloseInputROOTFiles()
 		# self.OpenFileAndGetTree('UPDATE')
-		if not self.trans_tree.GetFriend('satRegions'):
-			self.trans_tree.AddFriend('satRegions', '{d}/{r}/satRegions{s}.{r}.root'.format(d=self.dir, s=suffix, r=self.run))
 
 	def AddFriendWithSaturationRegions(self, skipAfter=100, skipBefore=0):
 		suffix = '{sb}b{sa}a'.format(sb=skipBefore, sa=skipAfter)
@@ -1410,6 +1408,7 @@ class TransparentGrid:
 				self.trans_tree.AddFriend('satRegions', '{d}/{r}/satRegions{s}.{r}.root'.format(d=self.dir, s=suffix, r=self.run))
 			else:
 				self.CreateFriendWithSaturationRegions(suffix, skipAfter, skipBefore)
+				self.AddFriendWithSaturationRegions(skipAfter=skipAfter, skipBefore=skipBefore)
 
 	def CreateFriendWithNewPedestalBuffer(self, slide_length=50, hit_factor=0, seed_factor=0):
 		hit_fact = hit_factor if hit_factor != 0 else self.hit_factor
