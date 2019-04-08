@@ -223,13 +223,13 @@ class NegativeChargesAnalysis:
 		tempcutsnr = self.neg_snr_phN_h['PH{c}_H'.format(c=self.cluster_size)]
 
 		for ch in xrange(1, self.cluster_size + 1):
-			minz, maxz = self.trans_grid.minz[cells]['PH_Ch[{c}_snr'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch[{c}_snr'.format(c=ch-1)]
+			minz, maxz = self.trans_grid.minz[cells]['PH_Ch{c}_snr'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch{c}_snr'.format(c=ch-1)]
 			Draw2DHistogram('PH_Ch{c}_Vs_strip_location_neg_events_snr_{s}'.format(c=ch-1, s=suffix), minz, maxz, 'PH cluster ch{c} [SNR]'.format(c=ch-1), self.ph_snr_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcutsnr)
-			minz, maxz = self.trans_grid.minz[cells]['PH_Ch[{c}_adc'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch[{c}_adc'.format(c=ch-1)]
+			minz, maxz = self.trans_grid.minz[cells]['PH_Ch{c}_adc'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch{c}_adc'.format(c=ch-1)]
 			Draw2DHistogram('PH_Ch{c}_Vs_strip_location_neg_events_adc_{s}'.format(c=ch-1, s=suffix), minz, maxz, 'PH cluster ch{c} [ADC]'.format(c=ch-1), self.ph_adc_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcutadc)
-			minz, maxz = self.trans_grid.minz[cells]['PH_H[{c}_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H[{c}_snr'.format(c=ch)]
+			minz, maxz = self.trans_grid.minz[cells]['PH_H{c}_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H{c}_snr'.format(c=ch)]
 			Draw2DHistogram('PH_H{c}_Vs_strip_location_neg_events_snr_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH highest {c}{sf} ch [SNR]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_snr_h_varz['PH_H{c}'.format(c=ch)], tempcutsnr)
-			minz, maxz = self.trans_grid.minz[cells]['PH_H[{c}_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H[{c}_adc'.format(c=ch)]
+			minz, maxz = self.trans_grid.minz[cells]['PH_H{c}_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H{c}_adc'.format(c=ch)]
 			Draw2DHistogram('PH_H{c}_Vs_strip_location_neg_events_adc_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH highest {c}{sf} ch [ADC]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_adc_h_varz['PH_H{c}'.format(c=ch)], tempcutadc)
 			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_snr'.format(c=ch)]
 			Draw2DHistogram('PH{c}_H_Vs_strip_location_neg_events_snr_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH{c} highest chs [SNR]', self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], tempcutsnr, 'snr')

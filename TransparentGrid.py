@@ -759,7 +759,7 @@ class TransparentGrid:
 						return
 					else:
 						print 'The existing file has info for {v} but the requested variable is {v2}. Will recalculate!'.format(v=means_temp['var'], v2=var)
-		print 'Calculating the mean PH value for each cel:'
+		print 'Calculating the mean PH value for each cell:'
 		numcells = int(self.num_cols * self.row_info_diamond['num'])
 		tempbar = CreateProgressBarUtils(numcells)
 		tempbar.start()

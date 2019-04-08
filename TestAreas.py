@@ -383,6 +383,7 @@ class TestAreas:
 		self.PositionCanvas(outgraphname)
 
 	def DoCenterCellSaturationStudies(self, cells='all'):
+		self.trans_grid.AddFriendWithSaturationRegions(skipAfter=1, skipBefore=0)
 		suffix = self.suffix[cells]
 		dists = np.arange(0.1, 1, 0.025)
 		percents = np.unique(np.floor(np.power(dists, 2) * 100 + 0.5).astype('int32'))
@@ -797,6 +798,7 @@ class TestAreas:
 		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys())
 
 	def DoAutomatic(self, cells='good', do_save=True):
+		self.window_shift = 1
 		self.DoBorderPlots()
 		self.DoCellHistograms()
 		self.DoNoiseStudies(cells)
@@ -852,7 +854,7 @@ if __name__ == '__main__':
 	if t.trans_grid.loaded_pickle:
 		t.trans_grid.LoadPickle()
 	else:
-		t.trans_grid.FindPickleValues()
+		t.trans_grid.FindPickleValues(False)
 		ExitMessage('Run it again to load the generated pickle :)', os.EX_OK)
 	if t.trans_grid.loaded_default_pickle:
 		t.trans_grid.FindBinningAndResolution()
