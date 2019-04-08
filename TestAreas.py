@@ -8,6 +8,7 @@ from ClusterChannelsAnalysis import ClusterChannelsAnalysis
 from NoiseAnalysis import NoiseAnalysis
 from CenterCellAnalysis import CenterCellAnalysis
 from NegativeChargesAnalysis import NegativeChargesAnalysis
+from SaturationAnalysis import SaturationAnalysis
 from optparse import OptionParser
 from Utils import *
 
@@ -29,8 +30,8 @@ class TestAreas:
 		self.binsperx = 0
 		self.binspery = 0
 		self.threshold = 800
-		self.skip_before_sat = 0
-		self.skip_after_sat = 1
+		self.skip_before_sat = 5
+		self.skip_after_sat = 95
 		self.do_threshold = False
 		self.window_shift = 3
 		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -65, 1, 2
@@ -62,6 +63,7 @@ class TestAreas:
 		self.noise_ana = None
 		self.center_cells_ana = None
 		self.neg_ana = None
+		self.sat_ana = None
 		self.bias = self.trans_grid.bias
 		self.saturated_ADC = self.trans_grid.saturated_ADC
 		self.num_strips = self.trans_grid.num_strips if self.trans_grid.num_strips != 0 else 3
@@ -187,6 +189,7 @@ class TestAreas:
 		self.trans_grid.FindMaxMinVarz()
 		self.center_cells_ana = CenterCellAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 		self.neg_ana = NegativeChargesAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
+		self.sat_ana = SaturationAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 
 	def SetCutsInCutManager(self):
 		print 'Setting cuts in cut manager...', ; sys.stdout.flush()
@@ -247,9 +250,6 @@ class TestAreas:
 		self.PositionCanvas('mean_ph_per_cell_snr')
 		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.phN_adc_h_varz['PH2_H'], 'adc', 0, 4000, 50)
 		self.PositionCanvas('mean_ph_per_cell_adc')
-
-	def DoSaturationStudies(self, cells='all'):
-		pass
 
 	def DoNoiseStudiesDifferentBuffers(self, cells='good'):
 		suffix = self.suffix[cells]
@@ -318,15 +318,18 @@ class TestAreas:
 
 	def DoClusterStudies(self, cells='all'):
 		self.cluster_ch_ana.w, self.cluster_ch_ana.window_shift = self.w, self.window_shift
-		# self.cluster_ch_ana.noise_ana = self.noise_ana
 		self.cluster_ch_ana.DoClusterStudies(cells)
 		self.w, self.window_shift = self.cluster_ch_ana.w, self.cluster_ch_ana.window_shift
 
 	def DoNegativeEventsStudies(self, cells='all'):
 		self.neg_ana.w, self.neg_ana.window_shift = self.w, self.window_shift
-		# self.neg_ana.noise_ana = self.noise_ana
 		self.neg_ana.DoNegativeAnalysis(cells)
 		self.w, self.window_shift = self.neg_ana.w, self.neg_ana.window_shift
+
+	def DoSaturationStudies(self, cells='all'):
+		self.sat_ana.w, self.sat_ana.window_shift = self.w, self.window_shift
+		self.sat_ana.DoSaturationAnalysis(cells, self.skip_before_sat, self.skip_after_sat)
+		self.w, self.window_shift = self.sat_ana.w, self.sat_ana.window_shift
 
 	def DoCenterCellStudies(self, cells='all'):
 		suffix = self.suffix[cells]
@@ -799,6 +802,7 @@ class TestAreas:
 		self.DoNoiseStudies(cells)
 		self.DoClusterStudies(cells)
 		self.DoNegativeEventsStudies(cells)
+		self.DoSaturationStudies(cells)
 		self.DoCenterCellStudies(cells)
 		self.DoCenterCellSaturationStudies(cells)
 		# self.PlotTestClusterStudies(cells)
