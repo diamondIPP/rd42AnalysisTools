@@ -52,6 +52,7 @@ class TransparentGrid:
 		self.ch_end = 84
 		self.threshold_criteria_in_sigmas = 2
 		self.threshold = 0
+		self.threshold_snr = 0
 		self.phbins = 200
 		self.phmin = 0
 		self.phmax = 4000
@@ -101,7 +102,7 @@ class TransparentGrid:
 		self.FindDiamondChannelLimits()
 		self.list_neg_cuts_clusters = {}
 		self.list_neg_cuts_noise = {}
-		self.mean_ph_cell_dic = {}
+		self.mean_ph_cell_dic = {'snr': {}, 'adc': {}}
 		self.suffix = {'all': 'all', 'good': 'selected', 'bad': 'not_selected'}
 
 		self.noise_varz = {'adc': 'diaChSignal', 'snr': 'diaChSignal/diaChPedSigmaCmc'}
@@ -747,63 +748,86 @@ class TransparentGrid:
 			SetDefault1DStats(self.histo[name])
 		ro.TFormula.SetMaxima(1000)
 
-	def GetMeanPHPerCell(self, var='clusterChargeN'):
-		print 'Calculating the mean PH2_H for each cel:'
+	def GetMeanPHPerCell(self, var='clusterChargeN', typ='adc'):
+		if os.path.isfile('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ)):
+			with open('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ)) as pkl:
+				means_temp = pickle.load(pkl)
+				if 'var' in means_temp.keys():
+					if means_temp['var'] == var:
+						self.mean_ph_cell_dic[typ] = means_temp['dic']
+						print 'Loaded pickle with mean PH info for each cell'
+						return
+					else:
+						print 'The existing file has info for {v} but the requested variable is {v2}. Will recalculate!'.format(v=means_temp['var'], v2=var)
+		print 'Calculating the mean PH value for each cel:'
 		numcells = int(self.num_cols * self.row_info_diamond['num'])
 		tempbar = CreateProgressBarUtils(numcells)
 		tempbar.start()
 		for col in xrange(self.num_cols):
-			self.mean_ph_cell_dic[col] = {}
+			self.mean_ph_cell_dic[typ][col] = {}
 			for row in xrange(self.row_info_diamond['num']):
-				self.trans_tree.Draw(var+'>>temphrc(200,0,4000)', 'transparentEvent&&({n})'.format(n=self.tcutgs_diamond[col][row].GetName()), 'goff')
+				if typ == 'adc':
+					self.trans_tree.Draw(var+'>>temphrc(200,0,4000)', 'transparentEvent&&({n})'.format(n=self.tcutgs_diamond[col][row].GetName()), 'goff')
+				else:
+					self.trans_tree.Draw(var + '>>temphrc(20,0,400)', 'transparentEvent&&({n})'.format(n=self.tcutgs_diamond[col][row].GetName()), 'goff')
 				temph = ro.gDirectory.Get('temphrc')
-				self.mean_ph_cell_dic[col][row] = temph.GetMean()
+				self.mean_ph_cell_dic[typ][col][row] = temph.GetMean()
 				temph.Reset('ICES')
 				temph.Delete()
 				del temph
 				tempbar.update(col * self.row_info_diamond['num'] + row + 1)
 		tempbar.finish()
+		meanph_obj = {'var': var, 'dic': self.mean_ph_cell_dic[typ]}
+		if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
+			os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
+		print 'Saving limits in pickle file', '{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ), '...', ; sys.stdout.flush()
+		pickle.dump(meanph_obj, open('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ), 'wb'))
+		print 'Done'
 
-	def SelectGoodAndBadByThreshold(self, val=500, var='clusterChargeN'):
-		if len(self.mean_ph_cell_dic.keys()) > 0:
+	def SelectGoodAndBadByThreshold(self, val=500, var='clusterChargeN', typ='adc'):
+		if len(self.mean_ph_cell_dic[typ].keys()) > 0:
 			for col in xrange(self.num_cols):
 				for row in xrange(self.row_info_diamond['num']):
-					if self.mean_ph_cell_dic[col][row] > val:
+					if self.mean_ph_cell_dic[typ][col][row] > val:
 						self.gridAreas.AddGoodAreas(col, row, self.tcutgs_diamond, self.tcutgs_diamond_center)
 					else:
 						self.gridAreas.AddBadAreas(col, row, self.tcutgs_diamond, self.tcutgs_diamond_center)
 		else:
-			self.GetMeanPHPerCell(var)
+			self.GetMeanPHPerCell(var, typ)
 			self.SelectGoodAndBadByThreshold(val, var)
 
-	def FindThresholdCutFromCells(self, var='clusterChargeN', xmin=0, xmax=4000, deltax=50):
-		if len(self.mean_ph_cell_dic.keys()) > 0:
-			self.DrawMeanPHCellsHisto('clusterCharge2', xmin, xmax, deltax)
-			self.FitGaus('mean_ph_per_cell', 2, 5)
-			if self.fits['mean_ph_per_cell'].Ndf() < 2:
-				self.FindThresholdCutFromCells(var, xmin, xmax, deltax * 0.8)
-			elif self.fits['mean_ph_per_cell'].Chi2() / self.fits['mean_ph_per_cell'].Ndf() < 0.9:
-				self.FindThresholdCutFromCells(var, xmin, xmax, deltax * 0.8)
+	def FindThresholdCutFromCells(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4000, deltax=50):
+		if len(self.mean_ph_cell_dic[typ].keys()) > 0:
+			self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax)
+			self.FitGaus('mean_ph_per_cell_' + typ, 2, 5)
+			if self.fits['mean_ph_per_cell_' + typ].Ndf() < 2:
+				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8)
+			elif self.fits['mean_ph_per_cell_' + typ].Chi2() / self.fits['mean_ph_per_cell_' + typ].Ndf() < 0.9:
+				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8)
 		else:
-			self.GetMeanPHPerCell(var)
-			self.FindThresholdCutFromCells(var)
-		self.threshold = self.fits['mean_ph_per_cell'].Parameter(1) - self.threshold_criteria_in_sigmas * self.fits['mean_ph_per_cell'].Parameter(2)
-		self.line['threshold'] = ro.TLine(self.threshold, 0, self.threshold, self.histo['mean_ph_per_cell'].GetMaximum())
-		self.line['threshold'].SetLineColor(ro.kBlue)
-		self.line['threshold'].SetLineWidth(2)
-		self.line['threshold'].SetLineStyle(2)
-		self.line['threshold'].Draw('same')
+			self.GetMeanPHPerCell(var, typ)
+			self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax)
+		if typ == 'adc':
+			self.threshold = self.fits['mean_ph_per_cell_' + typ].Parameter(1) - self.threshold_criteria_in_sigmas * self.fits['mean_ph_per_cell_' + typ].Parameter(2)
+		else:
+			self.threshold_snr = self.fits['mean_ph_per_cell_' + typ].Parameter(1) - self.threshold_criteria_in_sigmas * self.fits['mean_ph_per_cell_' + typ].Parameter(2)
+		thresh = self.threshold if typ == 'adc' else self.threshold_snr
+		self.line['threshold_' + typ] = ro.TLine(thresh, 0, thresh, self.histo['mean_ph_per_cell_' + typ].GetMaximum())
+		self.line['threshold_' + typ].SetLineColor(ro.kBlue)
+		self.line['threshold_' + typ].SetLineWidth(2)
+		self.line['threshold_' + typ].SetLineStyle(2)
+		self.line['threshold_' + typ].Draw('same')
 
-	def DrawMeanPHCellsHisto(self, var='clusterChargeN', xmin=0, xmax=4000, deltax=50, draw_opt='e hist'):
-		if len(self.mean_ph_cell_dic.keys()) > 0:
-			nameh = 'mean_ph_per_cell'
+	def DrawMeanPHCellsHisto(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4000, deltax=50, draw_opt='e hist'):
+		if len(self.mean_ph_cell_dic[typ].keys()) > 0:
+			nameh = 'mean_ph_per_cell_' + typ
 			if nameh in self.histo.keys():
 				self.histo[nameh].Reset('ICES')
 				self.histo[nameh].Delete()
 				del self.histo[nameh]
 			limsh = Get1DLimits(xmin, xmax, deltax)
 			self.histo[nameh] = ro.TH1F('h_' + nameh, 'h_' + nameh, int(RoundInt((limsh['max'] - limsh['min']) / deltax)), limsh['min'], limsh['max'])
-			for col, rowMean in self.mean_ph_cell_dic.iteritems():
+			for col, rowMean in self.mean_ph_cell_dic[typ].iteritems():
 				for row, meanh in rowMean.iteritems():
 					self.histo[nameh].Fill(meanh)
 			if 'goff' not in draw_opt.lower():
@@ -815,8 +839,8 @@ class TransparentGrid:
 				ro.gPad.Update()
 			SetDefault1DStats(self.histo[nameh])
 		else:
-			self.GetMeanPHPerCell(var)
-			self.DrawMeanPHCellsHisto(var)
+			self.GetMeanPHPerCell(var, typ)
+			self.DrawMeanPHCellsHisto(var, typ)
 
 	def DrawCentralArea(self, name, percent):
 		self.canvas[name].cd()

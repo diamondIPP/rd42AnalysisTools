@@ -181,7 +181,6 @@ class TestAreas:
 			print 'Enter a correct settings file for the test area in variable config_file and re run ReadConfigFile before setting the test...'
 
 	def SetAnalysis(self):
-		self.trans_grid.SetVarz()
 		self.SetCutsInCutManager()
 		self.noise_ana = NoiseAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 		self.cluster_ch_ana = ClusterChannelsAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
@@ -241,6 +240,13 @@ class TestAreas:
 		self.trans_grid.fits['PH2_H_map_with_borders_py'] = self.trans_grid.histo['PH2_H_map_with_borders_py'].Fit('box_fcn', 'QIEBMS', 'goff', self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((minbiny))), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((maxbiny))))
 		self.PositionCanvas('PH2_H_map_with_borders_py')
 		ro.gPad.Update()
+
+	def DoCellHistograms(self):
+		self.trans_grid.mean_ph_cell_dic = {'adc': {}, 'snr': {}}
+		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.phN_snr_h_varz['PH2_H'], 'snr', 0, 400, 5)
+		self.PositionCanvas('mean_ph_per_cell_snr')
+		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.phN_adc_h_varz['PH2_H'], 'adc', 0, 4000, 50)
+		self.PositionCanvas('mean_ph_per_cell_adc')
 
 	def DoSaturationStudies(self, cells='all'):
 		pass
@@ -789,9 +795,12 @@ class TestAreas:
 
 	def DoAutomatic(self, cells='good', do_save=True):
 		self.DoBorderPlots()
+		self.DoCellHistograms()
 		self.DoNoiseStudies(cells)
 		self.DoClusterStudies(cells)
 		self.DoNegativeEventsStudies(cells)
+		self.DoCenterCellStudies(cells)
+		self.DoCenterCellSaturationStudies(cells)
 		# self.PlotTestClusterStudies(cells)
 		# self.PlotTestForNegative(cells)
 		# self.PlotTest()
@@ -820,6 +829,7 @@ class TestAreas:
 			self.trans_grid.neg_cut_adc = self.trans_grid.neg_cut * self.trans_grid.histo['NoiseAllCells'].GetRMS()
 			print 'Setting neg_cut_adc to', self.trans_grid.neg_cut_adc, '. If you wish to change it, do it and save the pickle again in transparent grid object'
 			self.trans_grid.SavePickle()
+		self.trans_grid.SetVarz()
 
 if __name__ == '__main__':
 	parser = OptionParser()

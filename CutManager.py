@@ -56,9 +56,6 @@ class CutManager:
 		self.valid_ped_sigma_N_ch = {}
 		self.valid_ped_sigma_N_h = {}
 
-		self.sat_regions_skip = '(!satRegion)'
-		self.sat_regions_only = '(satRegion)'
-
 		self.sat_adc_ch = {}
 		self.sat_adc_h = {}
 		self.not_sat_adc_ch = {}
@@ -108,8 +105,8 @@ class CutManager:
 				self.neg_adc_ph_ch['PH_Ch{i}'.format(i=i)] = '(diaChSignal[clusterChannel{i}]<-{th})'.format(i=i, th=neg_cut_adc)
 				self.not_neg_adc_ph_ch['PH_Ch{i}'.format(i=i)] = '(diaChSignal[clusterChannel{i}]>=-{th})'.format(i=i, th=neg_cut_adc)
 
-				self.sat_adc_ch['Ch{i}'.format(i=i)] = '(diaChADC[clusterChannel{i}]>={s})'.format(i=i, s=self.sat_adc)
-				self.not_sat_adc_ch['Ch{i}'.format(i=i)] = '(diaChADC[clusterChannel{i}]<{s})'.format(i=i, s=self.sat_adc)
+				self.sat_adc_ch['Ch{i}'.format(i=i)] = '({sr}&&(diaChADC[clusterChannel{i}]>={s}))'.format(i=i, s=self.sat_adc, sr=self.sat_evts_region)
+				self.not_sat_adc_ch['Ch{i}'.format(i=i)] = '({nsr}&&(diaChADC[clusterChannel{i}]<{s}))'.format(i=i, s=self.sat_adc, nsr=self.not_sat_evts_region)
 
 				self.valid_ped_sigma_ch['Ch{i}'.format(i=i)] = '(diaChPedSigmaCmc[clusterChannel{i}]>0)'.format(i=i)
 
@@ -122,8 +119,8 @@ class CutManager:
 				self.neg_adc_ph_h['PH_H{i}'.format(i=i+1)] = '(diaChSignal[clusterChannelHighest{i}]<-{th})'.format(i=i+1, th=neg_cut_adc)
 				self.not_neg_adc_ph_h['PH_H{i}'.format(i=i+1)] = '(diaChSignal[clusterChannelHighest{i}]>=-{th})'.format(i=i + 1, th=neg_cut_adc)
 
-				self.sat_adc_h['H{i}'.format(i=i+1)] = '(diaChADC[clusterChannelHighest{i}]>={s})'.format(i=i+1, s=self.sat_adc)
-				self.not_sat_adc_h['H{i}'.format(i=i+1)] = '(diaChADC[clusterChannelHighest{i}]<{s})'.format(i=i+1, s=self.sat_adc)
+				self.sat_adc_h['H{i}'.format(i=i+1)] = '({sr}&&(diaChADC[clusterChannelHighest{i}]>={s}))'.format(i=i+1, s=self.sat_adc, sr=self.sat_evts_region)
+				self.not_sat_adc_h['H{i}'.format(i=i+1)] = '({nsr}&&(diaChADC[clusterChannelHighest{i}]<{s}))'.format(i=i+1, s=self.sat_adc, nsr=self.not_sat_evts_region)
 
 				self.valid_ped_sigma_h['H{i}'.format(i=i+1)] = '(diaChPedSigmaCmc[clusterChannelHighest{i}]>0)'.format(i=i+1)
 
