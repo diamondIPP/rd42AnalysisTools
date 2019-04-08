@@ -969,8 +969,16 @@ class TransparentGrid:
 		temp_cuts = '&&'.join(list_cuts)
 		self.DrawHisto1D(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cuts, transp_ev)
 
+	def DrawProfile2DDiamondMap(self, name, var='clusterChargeN', varname='PH[ADC]', cells='all', cuts='', plot_option='prof colz'):
+		list_cuts = [self.cuts_man.selected_cells if cells == 'good' else self.cuts_man.not_selected_cells if cells == 'bad' else self.cuts_man.all_cells if cells == 'all' else '(1)']
+		if cuts != '':
+			list_cuts.append(cuts)
+		temp_cuts = '&&'.join(list_cuts)
+		xmin, xmax, deltax, xname = -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch'
+		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
+		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', var, varname, temp_cuts, plot_option=plot_option)
+
 	def DrawProfile2DDiamondChannelOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
-		list_cuts = [self.cuts_man.selected_cells if cells == 'good' else self.cuts_man.not_selected_cells if cells == 'bad' else self.cuts_man.all_cells]
 		list_cuts = [self.cuts_man.selected_cells if cells == 'good' else self.cuts_man.not_selected_cells if cells == 'bad' else self.cuts_man.all_cells]
 		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_simplified_diamond) if cells == 'bad' else '(1)']
 		if cuts != '':
