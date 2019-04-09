@@ -1051,7 +1051,7 @@ class TransparentGrid:
 		if denominator == 0:
 			print 'The denominator to calculate the efficiencies is 0! Please check!'
 			return
-		xvalues = np.arange(xmin, xmax, deltax, 'float64')
+		xvalues = np.arange(xmin, xmax - (xmax - xmin) * ymin_plot ** 4, deltax, 'float64')
 		print 'Getting efficiencies...', ; sys.stdout.flush()
 		numerator = np.array(map(self.GetEventsForThCut, [var for i in xrange(xvalues.size)], xvalues, [cells for i in xrange(xvalues.size)], [cut for i in xrange(xvalues.size)]), 'float64')
 		efficiency = np.divide(numerator, denominator, dtype='float64')

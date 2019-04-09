@@ -12,7 +12,7 @@ color_index = 10000
 class FinalAnalysis:
 	def __init__(self, trans_grid, numstrips, clustersize, noise_ana=None):
 		self.phdelta = 0
-		self.window_shift = 3
+		self.window_shift = 2
 		self.min_snr_neg, self.max_snr_neg = -64, 0
 		self.min_adc_neg, self.max_adc_neg = -650, 0
 		self.delta_ev = 100
@@ -185,9 +185,30 @@ class FinalAnalysis:
 			self.trans_grid.DrawEfficiencyGraph(name, var, cells, cuts, xmin, xmax, deltax, typ, ymin)
 			self.PosCanvas(name)
 
+		def DrawEfficiencyCellMaps(name, var, cells, cuts, nsigma=[1,2,5,10,20]):
+			self.trans_grid.DrawProfile2DDiamondCellOverlay(name + '_h0_', var=var, cells=cells, cuts=cuts, plot_option='prof colz goff')
+			self.trans_grid.GetOccupancyFromProfile(name + '_h0_', 'colz goff')
+
+			for ns in nsigma:
+				tempcut = '({v}>={th})'.format(v=var, th=ns)
+				cut = tempcut if cuts == '' else self.trans_grid.cuts_man.ConcatenateCuts(cuts, tempcut)
+				self.trans_grid.DrawProfile2DDiamondCellOverlay(name + '_{n}sigma_cut'.format(n=ns), var=var, cells=cells, cuts=cut, plot_option='prof colz goff')
+				self.trans_grid.GetOccupancyFromProfile(name + '_{n}sigma_cut'.format(n=ns), 'colz goff')
+				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)] = self.trans_grid.histo['hit_map_' + name + '_{n}sigma_cut'.format(n=ns)].Clone('h_' + name + '_{n}sigma_cut'.format(n=ns))
+				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)].SetTitle('h_' + name + '_{n}sigma_cut'.format(n=ns))
+				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)].Sumw2()
+				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)].Divide(self.trans_grid.histo['hit_map_' + name + '_h0_'])
+				self.trans_grid.canvas[name + '_{n}sigma_cut'.format(n=ns)] = ro.TCanvas('c_' + name + '_{n}sigma_cut'.format(n=ns), 'c_' + name + '_{n}sigma_cut'.format(n=ns), 1)
+				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)].GetZaxis().SetTitle('Efficiency')
+				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)].GetZaxis().SetRangeUser(0.9, 1)
+				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)].Draw('colz')
+				SetDefault2DStats(self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)])
+				self.PosCanvas(name + '_{n}sigma_cut'.format(n=ns))
+
 		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		for ch in xrange(1, self.cluster_size + 1):
+			DrawEfficiencyCellMaps('PH{c}_H_Efficiency_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], cells, tempcsnr)
 			# DrawEfficiencyGraphs('Eff_PH{c}_Ch_Vs_Threshold_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], cells, tempcsnr, 'snr')
 			# DrawEfficiencyGraphs('Eff_PH{c}_Ch_Vs_Threshold_adc_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], cells, tempcadc, 'adc')
 			DrawEfficiencyGraphs('Eff_PH{c}_H_Vs_Threshold_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], cells, tempcsnr, 'snr')
