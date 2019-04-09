@@ -125,7 +125,7 @@ class FinalAnalysis:
 	def DoCellMaps(self, cells, cuts='', suffix='no_cuts'):
 		def PlotCellsProfiles(name, varz, zmin, zmax, varname, cut, doOccupancy=False):
 			self.trans_grid.DrawProfile2DDiamondCellOverlay(name, varz, cells, cut, varname=varname)
-			self.trans_grid.profile[name].SetMinimum(zmin)
+			self.trans_grid.profile[name].SetMinimum(min(0, zmin))
 			self.trans_grid.profile[name].SetMaximum(zmax)
 			self.PosCanvas(name)
 			if doOccupancy:
@@ -135,7 +135,14 @@ class FinalAnalysis:
 		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else ''
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else ''
 		for ch in xrange(1, self.cluster_size + 1):
-			PlotCellsProfiles('PH{c}_Ch_cell_map_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], )
+			minz, maxz = self.trans_grid.minz[cells]['PH{c}_Ch_snr'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_Ch_snr'.format(c=ch)]
+			PlotCellsProfiles('PH{c}_Ch_cell_map_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], minz, max(maxz, 480), 'PH{c} cluster chs [SNR]', tempcsnr)
+			minz, maxz = self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)]
+			PlotCellsProfiles('PH{c}_Ch_cell_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], minz, max(maxz, 4800), 'PH{c} cluster chs [ADC]', tempcadc)
+			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)]
+			PlotCellsProfiles('PH{c}_H_cell_map_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], minz, max(maxz, 480), 'PH{c} highest chs [SNR]', tempcsnr, ch == self.cluster_size)
+			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)]
+			PlotCellsProfiles('PH{c}_H_cell_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], minz, max(maxz, 4800), 'PH{c} highest chs [ADC]', tempcadc, ch == self.cluster_size)
 
 	def DoFinalAnalysis(self):
 		self.minz = self.trans_grid.minz
@@ -149,6 +156,7 @@ class FinalAnalysis:
 		cells = 'good'
 		for cut in list_cuts:
 			self.DoDeviceMaps(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
+			self.DoCellMaps(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
 
 	def GetCutsFromCutManager(self, cells):
 		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]
