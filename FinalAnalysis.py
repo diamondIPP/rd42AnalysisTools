@@ -177,6 +177,22 @@ class FinalAnalysis:
 		Draw1DHistogram('strip_location_snr_{s}'.format(s=suffix), tempcsnr)
 		Draw1DHistogram('strip_location_adc_{s}'.format(s=suffix), tempcadc)
 
+	def DoEfficiencyPlots(self, cells, cuts='', suffix='no_cuts'):
+
+		def DrawEfficiencyGraphs(name, var, cells, cuts, typ='adc', show_only_95=True):
+			xmin, xmax, deltax = (0, 4800, 50) if typ == 'adc' else (0, 480, 5)
+			ymin = 0.95 if show_only_95 else 0
+			self.trans_grid.DrawEfficiencyGraph(name, var, cells, cuts, xmin, xmax, deltax, typ, ymin)
+			self.PosCanvas(name)
+
+		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
+		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
+		for ch in xrange(1, self.cluster_size + 1):
+			# DrawEfficiencyGraphs('Eff_PH{c}_Ch_Vs_Threshold_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], cells, tempcsnr, 'snr')
+			# DrawEfficiencyGraphs('Eff_PH{c}_Ch_Vs_Threshold_adc_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], cells, tempcadc, 'adc')
+			DrawEfficiencyGraphs('Eff_PH{c}_H_Vs_Threshold_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], cells, tempcsnr, 'snr')
+			DrawEfficiencyGraphs('Eff_PH{c}_H_Vs_Threshold_adc_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_adc_h_varz['PH{c}_H'.format(c=ch)], cells, tempcadc, 'adc')
+
 	def DoFinalAnalysis(self):
 		self.minz = self.trans_grid.minz
 		self.maxz = self.trans_grid.maxz
@@ -186,12 +202,14 @@ class FinalAnalysis:
 		self.DefineSatRegion(before=0, after=1)
 		self.DoDeviceMaps('all', '', 'no_cuts')
 		self.DoStripHistograms('all', '', 'no_cuts')
+		self.DoEfficiencyPlots('all', '', 'no_cuts')
 		list_cuts = ['', 'no_neg', 'no_neg_no_sat']
 		cells = 'good'
 		for cut in list_cuts:
 			self.DoDeviceMaps(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
 			self.DoCellMaps(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
 			self.DoStripHistograms(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
+			self.DoEfficiencyPlots(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
 
 	def GetCutsFromCutManager(self, cells):
 		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]

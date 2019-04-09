@@ -16,6 +16,7 @@ from GridAreas import GridAreas
 from CutManager import CutManager
 from PedestalCalculations import PedestalCalculations
 from array import array
+import time
 
 # ph_bins_options = np.array((1, 2, 4, 5, 10, 16, 20, 25, 32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000), 'uint16')
 # ph_bins_options = np.array((32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000, 4000), 'uint16')
@@ -1043,6 +1044,50 @@ class TransparentGrid:
 			list_cuts.append(cuts_extra)
 		return '&&'.join(list_cuts)
 
+	def DrawEfficiencyGraph(self, name, var, cells, cuts, xmin, xmax, deltax, typ='adc', ymin_plot=0, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2)), subf=4000.0):
+		cut = self.cuts_man.transp_ev if cuts == '' else self.cuts_man.ConcatenateCuts(self.cuts_man.transp_ev, cuts)
+		minimum = min(0, max(GetMinimumFromTree(self.trans_tree, var, cut), -9999))
+		denominator = float(self.GetEventsForThCut(var, minimum, cells, cut))
+		if denominator == 0:
+			print 'The denominator to calculate the efficiencies is 0! Please check!'
+			return
+		xvalues = np.arange(xmin, xmax, deltax, 'float64')
+		print 'Getting efficiencies...', ; sys.stdout.flush()
+		numerator = np.array(map(self.GetEventsForThCut, [var for i in xrange(xvalues.size)], xvalues, [cells for i in xrange(xvalues.size)], [cut for i in xrange(xvalues.size)]), 'float64')
+		efficiency = np.divide(numerator, denominator, dtype='float64')
+		print 'Done'
+		# efficiencyDic = {th: numerator[th] / denominator for th in xvalues}
+		lim_one_side = np.subtract(1, np.power(np.subtract(1, sigma_errbar, dtype='float64'), np.divide(1, denominator + 1, dtype='float64'), dtype='float64'), dtype='float64')
+		(xinf, xsup, yinf, ysup) = (xmin - 10, xmax + 10, 0 - lim_one_side, 1 + lim_one_side) if ymin_plot == 0 else (xmin - 10, xmax + 10, ymin_plot - lim_one_side, 1 + lim_one_side)
+		if ymin_plot != 0:
+			for it, value in enumerate(xvalues):
+				if efficiency[it] <= ymin_plot:
+					xsup = value - deltax / 2.0
+					yinf = ymin_plot - lim_one_side
+					break
+		self.efficiency_subdiv = int(max(RoundInt(subf / denominator), 1))
+		print 'Calculate uncertainties for efficiency plot... the step used is {d}...'.format(d=1.0 / (self.efficiency_subdiv * denominator)), ; sys.stdout.flush()
+		ySigmas = map(self.FindAsymmetricUncertaintiesWithDiscrete, numerator, [denominator for i in xrange(numerator.size)], [sigma_errbar for i in xrange(numerator.size)])
+		print 'Done'
+		yLowerSigmas = np.array([ysigma['lower'] for ysigma in ySigmas], 'float64')
+		yUpperSigmas = np.array([ysigma['upper'] for ysigma in ySigmas], 'float64')
+		self.graph[name] = ro.TGraphAsymmErrors(len(xvalues), xvalues, efficiency, np.ones(xvalues.size, 'float64') * deltax / 2.0, np.ones(xvalues.size, 'float64') * deltax / 2.0, yLowerSigmas, yUpperSigmas)
+		self.graph[name].SetNameTitle('g_' + name, 'g_' + name)
+		self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
+		self.graph[name].SetMarkerStyle(ro.TAttMarker.kFullDotMedium)
+		self.graph[name].SetMarkerColor(ro.kRed)
+		self.graph[name].Draw('AP')
+		xtitle = 'Threshold [ADC]' if typ == 'adc' else 'Threshold [SNR]'
+		self.graph[name].GetXaxis().SetTitle(xtitle)
+		self.graph[name].GetYaxis().SetTitle('Efficiency')
+		self.graph[name].GetXaxis().SetRangeUser(xinf, xsup)
+		self.graph[name].GetYaxis().SetRangeUser(yinf, ysup)
+		ro.gPad.Update()
+		self.canvas[name].SetGridx()
+		self.canvas[name].SetGridy()
+		self.canvas[name].SetTicky()
+		ro.gPad.Update()
+
 	# def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='transparentEvent', xmin=0, xmax=4100, deltax=50, ymin_plot=0, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2)), maxit=100000, tol=0.1, minimizer='SIMPLEX', subdiv=50):
 	def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='transparentEvent', xmin=0, xmax=4100, deltax=50, ymin_plot=0, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2))):
 		minimum = min(0, max(self.GetMinimumBranch(var, cells, cut), -9999))
@@ -1109,6 +1154,10 @@ class TransparentGrid:
 		self.trans_tree.SetEventList(0)
 		event_list.Delete()
 		return val
+
+	def GetEventsForThCut(self, var, threshold, cells, cut):
+		temp_cut = self.cuts_man.GetThCut(var=var, th=threshold, cells=cells, cuts=cut, op='>=')
+		return GetNumberEntriesFromTree(self.trans_tree, temp_cut)
 
 	def GetEventsADCCut(self, var='clusterChargeN', adc_th=50, cells='all', cut=''):
 		temp_cuts = self.ConcatenateDiamondCuts('({v}>={th})'.format(v=var, th=adc_th), cells, cut)

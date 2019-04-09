@@ -251,8 +251,10 @@ class CutManager:
 	def SetUpDownBorderCuts(self, lower, upper):
 		self.no_up_down_borders = self.no_up_down_borders.format(l=lower, h=upper)
 
-	def GetThCut(self, var='clusterChargeN', th=100):
-		return '({v}>={t})'.format(v=var, t=th)
+	def GetThCut(self, var, th, cells, cuts='', op='>='):
+		temp_cuts = '({v}{o}{th})'.format(v=var, o=op, th=th)
+		temp_cuts = temp_cuts if cuts == '' else self.ConcatenateCuts(cuts, temp_cuts, '&&')
+		return self.ConcatenateCutWithCells(temp_cuts, cells, '&&')
 
 	def FindSaturationEvents(self):
 		tempsat = self.ConcatenateCuts(self.transp_ev, self.any_saturated)

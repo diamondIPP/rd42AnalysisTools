@@ -507,6 +507,9 @@ def GetMinimumFromTree(tree, var, cut):
 	temp = Get1DVectorFromTree(tree, var, cut)
 	return temp.min()
 
+def GetNumberEntriesFromTree(tree, cut):
+	return tree.GetEntries(cut)
+
 def GetSymmetric1DLimits(xmin, xmax, deltax, scale=1, oddbins=True):
 	minx, maxx = min(0, np.floor(deltax * RoundInt(xmin / float(deltax)))), max(0, np.ceil(deltax * RoundInt(xmax / float(deltax))))
 	mz = max(abs(minx), abs(maxx))

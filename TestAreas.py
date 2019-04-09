@@ -12,6 +12,7 @@ from SaturationAnalysis import SaturationAnalysis
 from FinalAnalysis import FinalAnalysis
 from optparse import OptionParser
 from Utils import *
+import time
 
 color_index = 10000
 
@@ -73,6 +74,8 @@ class TestAreas:
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 		if self.num_rows != 0:
 			self.trans_grid.row_info_diamond['num'] = self.num_rows
+		self.numerator = None
+		self.xvalues = np.arange(0, 4100, 5, 'float64')
 
 	def ReadConfigFile(self):
 		def unpack_row_col(string):
@@ -715,6 +718,15 @@ class TestAreas:
 			print 'Setting neg_cut_adc to', self.trans_grid.neg_cut_adc, '. If you wish to change it, do it and save the pickle again in transparent grid object'
 			self.trans_grid.SavePickle()
 		self.trans_grid.SetVarz()
+
+	def Test4(self):
+		del self.numerator
+		self.numerator = None
+		t0 = time.time()
+		self.numerator = np.array(map(self.trans_grid.GetEventsForThCut, ['diaChSignal[clusterChannel1]' for i in xrange(self.xvalues.size)], self.xvalues, ['good' for i in xrange(self.xvalues.size)], ['transparentEvent' for i in xrange(self.xvalues.size)]), 'float64')
+		print time.time() - t0
+
+
 
 if __name__ == '__main__':
 	parser = OptionParser()
