@@ -132,8 +132,8 @@ class FinalAnalysis:
 				self.trans_grid.GetOccupancyFromProfile(name)
 				self.PosCanvas('hit_map_' + name)
 
-		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else ''
-		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else ''
+		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
+		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		for ch in xrange(1, self.cluster_size + 1):
 			minz, maxz = self.trans_grid.minz[cells]['PH{c}_Ch_snr'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_Ch_snr'.format(c=ch)]
 			PlotCellsProfiles('PH{c}_Ch_cell_map_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], minz, max(maxz, 480), 'PH{c} cluster chs [SNR]', tempcsnr)
@@ -144,6 +144,39 @@ class FinalAnalysis:
 			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)]
 			PlotCellsProfiles('PH{c}_H_cell_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], minz, max(maxz, 4800), 'PH{c} highest chs [ADC]', tempcadc, ch == self.cluster_size)
 
+	def DoStripHistograms(self, cells, cuts='', suffix='no_cuts'):
+		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_info_diamond['pitch']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
+		def Draw2DHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
+			deltay = 4 * self.delta_adc if typ == 'adc' else 4 * self.delta_snr
+			histo_limits = Get1DLimits(zmin, zmax, deltay)
+			self.trans_grid.DrawHisto2D(name, minx, maxx, deltax, xname, min(0, histo_limits['min']), histo_limits['max'], deltay, yname, xvar, yvar, cuts)
+			self.PosCanvas(name)
+
+		def Draw1DHistogram(name, cuts):
+			self.trans_grid.DrawHisto1D(name, minx, maxx, deltax, xvar, xname, cuts)
+			maxbin = self.trans_grid.histo[name].GetMaximumBin()
+			self.trans_grid.histo[name].GetYaxis().SetRangeUser(0, self.trans_grid.histo[name].GetBinContent(maxbin) + self.trans_grid.histo[name].GetBinError(maxbin))
+			self.PosCanvas(name)
+
+		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
+		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
+		tempcsnr = self.trans_grid.cuts_man.ConcatenateCutWithCells(tempcsnr, cells)
+		tempcadc = self.trans_grid.cuts_man.ConcatenateCutWithCells(tempcadc, cells)
+
+		for ch in xrange(1, self.cluster_size + 1):
+			minzsnr, maxzsnr = min(0, self.trans_grid.minz[cells]['PH{c}_Ch_snr'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_Ch_snr'.format(c=ch)]
+			minzadc, maxzadc = min(0, self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_Ch_adc'.format(c=ch)]
+			Draw2DHistogram('PH{c}_Ch_Vs_strip_location_snr_{s}'.format(c=ch, s=suffix), minzsnr, maxzsnr, 'PH{c} cluster chs [SNR]', self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], tempcsnr, 'snr')
+			Draw2DHistogram('PH{c}_Ch_Vs_strip_location_adc_{s}'.format(c=ch, s=suffix), minzadc, maxzadc, 'PH{c} cluster chs [ADC]', self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], tempcadc, 'adc')
+			
+			minzsnr, maxzsnr = min(0, self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_H_snr'.format(c=ch)]
+			minzadc, maxzadc = min(0, self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_H_adc'.format(c=ch)]
+			Draw2DHistogram('PH{c}_H_Vs_strip_location_snr_{s}'.format(c=ch, s=suffix), minzsnr, maxzsnr, 'PH{c} highest chs [SNR]', self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], tempcsnr, 'snr')
+			Draw2DHistogram('PH{c}_H_Vs_strip_location_adc_{s}'.format(c=ch, s=suffix), minzadc, maxzadc, 'PH{c} highest chs [ADC]', self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], tempcadc, 'adc')
+			
+		Draw1DHistogram('strip_location_snr_{s}'.format(s=suffix), tempcsnr)
+		Draw1DHistogram('strip_location_adc_{s}'.format(s=suffix), tempcadc)
+
 	def DoFinalAnalysis(self):
 		self.minz = self.trans_grid.minz
 		self.maxz = self.trans_grid.maxz
@@ -152,11 +185,13 @@ class FinalAnalysis:
 		self.GetVarzFromTranspGrid()
 		self.DefineSatRegion(before=0, after=1)
 		self.DoDeviceMaps('all', '', 'no_cuts')
+		self.DoStripHistograms('all', '', 'no_cuts')
 		list_cuts = ['', 'no_neg', 'no_neg_no_sat']
 		cells = 'good'
 		for cut in list_cuts:
 			self.DoDeviceMaps(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
 			self.DoCellMaps(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
+			self.DoStripHistograms(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
 
 	def GetCutsFromCutManager(self, cells):
 		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]
