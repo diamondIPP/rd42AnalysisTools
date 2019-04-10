@@ -471,13 +471,13 @@ def SetDefault2DStats(histo):
 		histo.FindObject('palette').SetX2NDC(0.92)
 		ro.gPad.Update()
 		
-def SetDefault1DStats(histo):
+def SetDefault1DStats(histo, x1=0.6, x2=0.9, y1=0.6, y2=0.9, optstat=112211):
 	if histo.FindObject('stats'):
-		histo.FindObject('stats').SetOptStat(112211)
-		histo.FindObject('stats').SetX1NDC(0.6)
-		histo.FindObject('stats').SetX2NDC(0.9)
-		histo.FindObject('stats').SetY1NDC(0.6)
-		histo.FindObject('stats').SetY2NDC(0.9)
+		histo.FindObject('stats').SetOptStat(optstat)
+		histo.FindObject('stats').SetX1NDC(x1)
+		histo.FindObject('stats').SetX2NDC(x2)
+		histo.FindObject('stats').SetY1NDC(y1)
+		histo.FindObject('stats').SetY2NDC(y2)
 		ro.gPad.Update()
 
 def SetDefault1DCanvasSettings(canvas):

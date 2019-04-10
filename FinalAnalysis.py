@@ -223,6 +223,8 @@ class FinalAnalysis:
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 
 		for ch in xrange(1, self.cluster_size + 1):
+			DrawHisto('PH{c}_Ch_snr_{s}'.format(c=ch, s=suffix), 0, 480, self.trans_grid.phbins / 10.0, self.trans_grid.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [SNR]'.format(c=ch), tempcsnr)
+			DrawHisto('PH{c}_Ch_adc_{s}'.format(c=ch, s=suffix), 0, 4800, self.trans_grid.phbins, self.trans_grid.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [ADC]'.format(c=ch), tempcadc)
 			DrawHisto('PH{c}_H_snr_{s}'.format(c=ch, s=suffix), 0, 480, self.trans_grid.phbins / 10.0, self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]'.format(c=ch), tempcsnr)
 			DrawHisto('PH{c}_H_adc_{s}'.format(c=ch, s=suffix), 0, 4800, self.trans_grid.phbins, self.trans_grid.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]'.format(c=ch), tempcadc)
 

@@ -18,8 +18,8 @@ class NoiseAnalysis:
 		self.min_snr, self.max_snr = -650, 650
 		self.min_adc, self.max_adc = -6500, 6500
 		self.delta_adc, self.delta_snr = 20, 2
-		self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -322.5, 322.5, 0.5
-		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = -32.25, 32.25, 0.05
+		self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -322.25, 322.25, 0.5
+		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = -32.225, 32.225, 0.05
 		self.trash = []
 		self.w = 0
 		self.trans_grid = trans_grid
@@ -118,12 +118,14 @@ class NoiseAnalysis:
 		else:
 			print 'The transparent tree has no pedTree friend. Cannot do these plots'
 
-	def DoProfileMaps(self):
+	def DoCommonMode(self):
 		minev, maxev = self.trans_grid.trans_tree.GetMinimum('event'), self.trans_grid.trans_tree.GetMaximum('event')
 
 		self.trans_grid.DrawProfile1D('cm_event_profile', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 'event', 'cmn', 'cm [ADC]', self.trans_grid.cuts_man.transp_ev)
 		self.PosCanvas('cm_event_profile')
 
+		self.trans_grid.DrawHisto1D('cm_histo', -31, 31, 2, 'cmn', 'cm [ADC]', self.trans_grid.cuts_man.transp_ev)
+		self.PosCanvas('cm_histo')
 		# self.trans_grid.DrawProfile2D('adc_channel_event_profile', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChADC', 'ADC', self.trans_grid.cuts_man.transp_ev)
 		# self.PosCanvas('adc_channel_event_profile')
 		# self.trans_grid.DrawProfile2D('signal_channel_event_profile', minev + self.delta_ev / 2.0, maxev - self.delta_ev / 2.0, self.delta_ev, 'event', 0, 127, 1, 'VA channel', 'event', 'diaChannels', 'diaChSignal', 'Signal [ADC]', self.trans_grid.cuts_man.transp_ev)
@@ -206,24 +208,66 @@ class NoiseAnalysis:
 		self.trans_grid.DrawHisto2D(nameh, minev, maxev, deltaev, 'event', miny, maxy, 1.0, 'pedestal mean cluster chs [ADC]', 'event', varz, tempcuts)
 		self.PosCanvas(nameh)
 
+	def DoNoiseVsEventStudies(self, cells='all', num_delta_ev=100, doNC=False, doFriend=False):
+		suffix = self.suffix[cells]
+		xmin, xmax, deltax = self.trans_grid.trans_tree.GetMinimum('event'), self.trans_grid.trans_tree.GetMaximum('event'), num_delta_ev * self.delta_ev
+		hlimitsx = Get1DLimits(xmin, xmax, deltax, oddbins=False)
+		deltay = self.delta_adc_noise * 4
+		hlimitsy = Get1DLimits(RoundInt(self.min_adc_noise / 10.0), RoundInt(self.max_adc_noise / 10.0), deltay)
+		if not doFriend:
+			nameh = 'signal_noise_Vs_event_{c}'.format(c=suffix) if not doNC else 'signal_noise_NC_chs_Vs_event_{c}'.format(c=suffix)
+			temp_cut_noise = self.noise_cuts[cells] if not doNC else self.noise_nc_cuts[cells]
+			varz = 'diaChSignal'
+		else:
+			if not self.trans_grid.trans_tree.GetFriend('pedTree'):
+				print 'The transparent tree has no pedTree friend. Cannot do these plots'
+				return
+			optending = 'buffer_{v}'.format(v=int(RoundInt(self.trans_grid.trans_tree.GetMaximum('pedTree.slidingLength'))))
+			nameh = 'signal_noise_{o}_Vs_event_{c}'.format(o=optending, c=suffix) if not doNC else 'signal_noise_NC_chs_{o}_Vs_event_{c}'.format(o=optending, c=suffix)
+			temp_cut_noise = self.noise_friend_cuts[cells] if not doNC else self.noise_nc_friend_cuts[cells]
+			varz = 'pedTree.diaChSignal'
+
+		self.trans_grid.DrawHisto2D(nameh, hlimitsx['min'], hlimitsx['max'], deltax, 'event', hlimitsy['min'], hlimitsy['max'], deltay, 'signal noise [ADC]', 'event', varz, temp_cut_noise)
+		self.PosCanvas(nameh)
+
+		tempArray = ro.TObjArray()
+		self.trans_grid.histo[nameh].FitSlicesY(0, 0, -1, 0, 'QNR', tempArray)
+		if not doNC:
+			nameh2 = 'signal_noise_fitted_sigma_Vs_event_{c}'.format(c=suffix) if not doFriend else 'signal_noise_{o}_Fitted_sigma_Vs_event_{c}'.format(o=optending, c=suffix)
+		else:
+			nameh2 = 'signal_noise_NC_chs_fitted_sigma_Vs_event_{c}'.format(c=suffix) if not doFriend else 'signal_noise_NC_chs_{o}_Fitted_sigma_Vs_event_{c}'.format(o=optending, c=suffix)
+		self.trans_grid.histo[nameh2] = tempArray[2]
+		self.trans_grid.histo[nameh2].SetNameTitle('h_' + nameh2, 'h_' + nameh2)
+		self.trans_grid.canvas[nameh2] = ro.TCanvas('c_' + nameh2, 'c_' + nameh2, 1)
+		self.trans_grid.histo[nameh2].Draw('e hist')
+		ro.gPad.Update()
+		SetDefault1DCanvasSettings(self.trans_grid.canvas[nameh2])
+		SetDefault1DStats(self.trans_grid.histo[nameh2], y1=0.15, y2=0.45, optstat=1000000001)
+		self.trans_grid.FitPol(nameh2, 1)
+		self.PosCanvas(nameh2)
+
 	def DoNoiseAnalysis(self, cells='all'):
 		self.GetCutsFromCutManager(cells)
 		self.GetVarzFromTranspGrid()
-		self.DoProfileMaps()
-		# self.DoPedestalEventHistograms(False)
-		# self.DoStrips2DHistograms()
+		self.DoCommonMode()
+		self.DoPedestalEventHistograms(False)
+		self.DoStrips2DHistograms()
 		self.PlotNoiseNotInCluster(cells)
+		self.DoNoiseVsEventStudies(cells)
 		self.PlotNoiseNCChannels('all')
+		self.DoNoiseVsEventStudies('all', doNC=True)
 
 	def DoFriendNoiseAnalysis(self, cells='all'):
 		if self.trans_grid.trans_tree.GetFriend('pedTree'):
 			self.GetCutsFromCutManager(cells)
 			self.GetVarzFromTranspGrid()
 			self.DoFriendProfileMaps()
-			# self.DoPedestalEventHistograms(True)
-			# self.DoFriendStrips2DHistograms()
+			self.DoPedestalEventHistograms(True)
+			self.DoFriendStrips2DHistograms()
 			self.PlotFriendNoiseNotInCluster(cells)
+			self.DoNoiseVsEventStudies(cells, doFriend=True)
 			self.PlotFriendNoiseNCChannels('all')
+			self.DoNoiseVsEventStudies('all', doNC=True, doFriend=True)
 		else:
 			print 'The transparent tree has no pedTree friend. Cannot do these plots'
 

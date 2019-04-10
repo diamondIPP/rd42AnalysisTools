@@ -1394,6 +1394,20 @@ class TransparentGrid:
 			self.histo[name].GetFunction('f_gaus_' + name).Draw('same')
 			ro.gPad.Update()
 
+	def FitPol(self, name, num_pol=0):
+		if name in self.histo.keys():
+			if name in self.canvas.keys():
+				self.canvas[name].cd()
+			xmin, xmax = self.histo[name].GetXaxis().GetBinLowEdge(self.histo[name].FindFirstBinAbove()), self.histo[name].GetXaxis().GetBinLowEdge(self.histo[name].FindLastBinAbove() + 1)
+			func = ro.TF1('f_pol{num}_{n}'.format(num=num_pol, n=name), 'pol{n}'.format(n=num_pol), xmin, xmax)
+			func.SetNpx(1000)
+			func.SetLineStyle(1)
+			func.SetLineColor(ro.kRed)
+			func.SetLineWidth(2)
+			self.fits[name] = self.histo[name].Fit('f_pol{num}_{n}'.format(num=num_pol, n=name), 'QIEBMS', 'goff', xmin, xmax)
+			self.histo[name].GetFunction('f_pol{num}_{n}'.format(num=num_pol, n=name)).Draw('same')
+			ro.gPad.Update()
+
 	def SaveCanvasInlist(self, list):
 		if not os.path.isdir('{d}/{r}/{sd}'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir)):
 			os.makedirs('{d}/{r}/{sd}'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir))
