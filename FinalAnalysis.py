@@ -98,7 +98,7 @@ class FinalAnalysis:
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
 
-	def DoDeviceMaps(self, cells, cuts='', suffix='no_cuts'):
+	def DoDeviceMaps(self, cells, cuts='', suffix='no_cuts', typ='adc'):
 		def DrawProfile2D(name, varz, varzname, cut, getOccupancy=False):
 			self.trans_grid.DrawProfile2DDiamondMap(name, varz, varzname, cells, cut, 'prof colz')
 			self.trans_grid.profile[name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
@@ -117,12 +117,14 @@ class FinalAnalysis:
 		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else ''
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else ''
 		for ch in xrange(1, self.cluster_size + 1):
-			DrawProfile2D('PH{c}_Ch_map_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [SNR]'.format(c=ch), tempcsnr, False)
-			DrawProfile2D('PH{c}_Ch_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [ADC]'.format(c=ch), tempcadc, False)
-			DrawProfile2D('PH{c}_H_map_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]'.format(c=ch), tempcsnr, ch == self.cluster_size)
-			DrawProfile2D('PH{c}_H_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]'.format(c=ch), tempcadc, ch == self.cluster_size)
+			if typ == 'adc':
+				DrawProfile2D('PH{c}_Ch_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [ADC]'.format(c=ch), tempcadc, False)
+				if ch != self.cluster_size: DrawProfile2D('PH{c}_H_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]'.format(c=ch), tempcadc, ch == self.cluster_size)
+			else:
+				DrawProfile2D('PH{c}_Ch_map_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [SNR]'.format(c=ch), tempcsnr, False)
+				if ch != self.cluster_size: DrawProfile2D('PH{c}_H_map_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]'.format(c=ch), tempcsnr, ch == self.cluster_size)
 
-	def DoCellMaps(self, cells, cuts='', suffix='no_cuts'):
+	def DoCellMaps(self, cells, cuts='', suffix='no_cuts', typ='adc'):
 		def PlotCellsProfiles(name, varz, zmin, zmax, varname, cut, doOccupancy=False):
 			self.trans_grid.DrawProfile2DDiamondCellOverlay(name, varz, cells, cut, varname=varname)
 			self.trans_grid.profile[name].SetMinimum(min(0, zmin))
@@ -135,16 +137,18 @@ class FinalAnalysis:
 		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		for ch in xrange(1, self.cluster_size + 1):
-			minz, maxz = self.trans_grid.minz[cells]['PH{c}_Ch_snr'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_Ch_snr'.format(c=ch)]
-			PlotCellsProfiles('PH{c}_Ch_cell_map_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], minz, max(maxz, 480), 'PH{c} cluster chs [SNR]', tempcsnr)
-			minz, maxz = self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)]
-			PlotCellsProfiles('PH{c}_Ch_cell_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], minz, max(maxz, 4800), 'PH{c} cluster chs [ADC]', tempcadc)
-			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)]
-			PlotCellsProfiles('PH{c}_H_cell_map_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], minz, max(maxz, 480), 'PH{c} highest chs [SNR]', tempcsnr, ch == self.cluster_size)
-			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)]
-			PlotCellsProfiles('PH{c}_H_cell_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], minz, max(maxz, 4800), 'PH{c} highest chs [ADC]', tempcadc, ch == self.cluster_size)
+			if typ == 'adc':
+				minz, maxz = self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)]
+				PlotCellsProfiles('PH{c}_Ch_cell_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], minz, max(maxz, 4800), 'PH{c} cluster chs [ADC]', tempcadc)
+				minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)]
+				if ch != self.cluster_size: PlotCellsProfiles('PH{c}_H_cell_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], minz, max(maxz, 4800), 'PH{c} highest chs [ADC]', tempcadc, ch == self.cluster_size)
+			else:
+				minz, maxz = self.trans_grid.minz[cells]['PH{c}_Ch_snr'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_Ch_snr'.format(c=ch)]
+				PlotCellsProfiles('PH{c}_Ch_cell_map_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], minz, max(maxz, 480), 'PH{c} cluster chs [SNR]', tempcsnr)
+				minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)]
+				if ch != self.cluster_size: PlotCellsProfiles('PH{c}_H_cell_map_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], minz, max(maxz, 480), 'PH{c} highest chs [SNR]', tempcsnr, ch == self.cluster_size)
 
-	def DoStripHistograms(self, cells, cuts='', suffix='no_cuts'):
+	def DoStripHistograms(self, cells, cuts='', suffix='no_cuts', typ='adc'):
 		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_info_diamond['pitch']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
 		def Draw2DHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
 			deltay = 4 * self.delta_adc if typ == 'adc' else 4 * self.delta_snr
@@ -164,20 +168,23 @@ class FinalAnalysis:
 		tempcadc = self.trans_grid.cuts_man.ConcatenateCutWithCells(tempcadc, cells)
 
 		for ch in xrange(1, self.cluster_size + 1):
-			minzsnr, maxzsnr = min(0, self.trans_grid.minz[cells]['PH{c}_Ch_snr'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_Ch_snr'.format(c=ch)]
-			minzadc, maxzadc = min(0, self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_Ch_adc'.format(c=ch)]
-			Draw2DHistogram('PH{c}_Ch_Vs_strip_location_snr_{s}'.format(c=ch, s=suffix), minzsnr, maxzsnr, 'PH{c} cluster chs [SNR]', self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], tempcsnr, 'snr')
-			Draw2DHistogram('PH{c}_Ch_Vs_strip_location_adc_{s}'.format(c=ch, s=suffix), minzadc, maxzadc, 'PH{c} cluster chs [ADC]', self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], tempcadc, 'adc')
-			
-			minzsnr, maxzsnr = min(0, self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_H_snr'.format(c=ch)]
-			minzadc, maxzadc = min(0, self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_H_adc'.format(c=ch)]
-			Draw2DHistogram('PH{c}_H_Vs_strip_location_snr_{s}'.format(c=ch, s=suffix), minzsnr, maxzsnr, 'PH{c} highest chs [SNR]', self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], tempcsnr, 'snr')
-			Draw2DHistogram('PH{c}_H_Vs_strip_location_adc_{s}'.format(c=ch, s=suffix), minzadc, maxzadc, 'PH{c} highest chs [ADC]', self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], tempcadc, 'adc')
-			
-		Draw1DHistogram('strip_location_snr_{s}'.format(s=suffix), tempcsnr)
-		Draw1DHistogram('strip_location_adc_{s}'.format(s=suffix), tempcadc)
+			if typ == 'adc':
+				minzadc, maxzadc = min(0, self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_Ch_adc'.format(c=ch)]
+				Draw2DHistogram('PH{c}_Ch_Vs_strip_location_adc_{s}'.format(c=ch, s=suffix), minzadc, maxzadc, 'PH{c} cluster chs [ADC]', self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], tempcadc, 'adc')
+				minzadc, maxzadc = min(0, self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_H_adc'.format(c=ch)]
+				if ch != self.cluster_size: Draw2DHistogram('PH{c}_H_Vs_strip_location_adc_{s}'.format(c=ch, s=suffix), minzadc, maxzadc, 'PH{c} highest chs [ADC]', self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], tempcadc, 'adc')
+			else:
+				minzsnr, maxzsnr = min(0, self.trans_grid.minz[cells]['PH{c}_Ch_snr'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_Ch_snr'.format(c=ch)]
+				Draw2DHistogram('PH{c}_Ch_Vs_strip_location_snr_{s}'.format(c=ch, s=suffix), minzsnr, maxzsnr, 'PH{c} cluster chs [SNR]', self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], tempcsnr, 'snr')
+				minzsnr, maxzsnr = min(0, self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_H_snr'.format(c=ch)]
+				if ch != self.cluster_size: Draw2DHistogram('PH{c}_H_Vs_strip_location_snr_{s}'.format(c=ch, s=suffix), minzsnr, maxzsnr, 'PH{c} highest chs [SNR]', self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], tempcsnr, 'snr')
 
-	def DoEfficiencyPlots(self, cells, cuts='', suffix='no_cuts'):
+		if typ == 'adc':
+			Draw1DHistogram('strip_location_adc_{s}'.format(s=suffix), tempcadc)
+		else:
+			Draw1DHistogram('strip_location_snr_{s}'.format(s=suffix), tempcsnr)
+
+	def DoEfficiencyPlots(self, cells, cuts='', suffix='no_cuts', typ='adc'):
 
 		def DrawEfficiencyGraphs(name, var, cells, cuts, typ='adc', show_only_95=True):
 			xmin, xmax, deltax = (0, 4800, 50) if typ == 'adc' else (0, 480, 5)
@@ -185,36 +192,39 @@ class FinalAnalysis:
 			self.trans_grid.DrawEfficiencyGraph(name, var, cells, cuts, xmin, xmax, deltax, typ, ymin)
 			self.PosCanvas(name)
 
-		def DrawEfficiencyCellMaps(name, var, cells, cuts, nsigma=[1,2,5,10,20]):
+		def DrawEfficiencyCellMaps(name, var, cells, cuts, ncuts=[1, 2, 5, 10, 20], typ='adc'):
 			self.trans_grid.DrawProfile2DDiamondCellOverlay(name + '_h0_', var=var, cells=cells, cuts=cuts, plot_option='prof colz goff')
 			self.trans_grid.GetOccupancyFromProfile(name + '_h0_', 'colz goff')
-
-			for ns in nsigma:
+			typ_cut = 'sigma' if typ == 'snr' else 'adc'
+			for ns in ncuts:
 				tempcut = '({v}>={th})'.format(v=var, th=ns)
 				cut = tempcut if cuts == '' else self.trans_grid.cuts_man.ConcatenateCuts(cuts, tempcut)
-				self.trans_grid.DrawProfile2DDiamondCellOverlay(name + '_{n}sigma_cut'.format(n=ns), var=var, cells=cells, cuts=cut, plot_option='prof colz goff')
-				self.trans_grid.GetOccupancyFromProfile(name + '_{n}sigma_cut'.format(n=ns), 'colz goff')
-				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)] = self.trans_grid.histo['hit_map_' + name + '_{n}sigma_cut'.format(n=ns)].Clone('h_' + name + '_{n}sigma_cut'.format(n=ns))
-				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)].SetTitle('h_' + name + '_{n}sigma_cut'.format(n=ns))
-				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)].Sumw2()
-				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)].Divide(self.trans_grid.histo['hit_map_' + name + '_h0_'])
-				self.trans_grid.canvas[name + '_{n}sigma_cut'.format(n=ns)] = ro.TCanvas('c_' + name + '_{n}sigma_cut'.format(n=ns), 'c_' + name + '_{n}sigma_cut'.format(n=ns), 1)
-				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)].GetZaxis().SetTitle('Efficiency')
-				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)].GetZaxis().SetRangeUser(0.9, 1)
-				self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)].Draw('colz')
-				SetDefault2DStats(self.trans_grid.histo[name + '_{n}sigma_cut'.format(n=ns)])
-				self.PosCanvas(name + '_{n}sigma_cut'.format(n=ns))
+				self.trans_grid.DrawProfile2DDiamondCellOverlay(name + '_{n}{t}_cut'.format(n=ns, t=typ_cut), var=var, cells=cells, cuts=cut, plot_option='prof colz goff')
+				self.trans_grid.GetOccupancyFromProfile(name + '_{n}{t}_cut'.format(n=ns, t=typ_cut), 'colz goff')
+				self.trans_grid.histo[name + '_{n}{t}_cut'.format(n=ns, t=typ_cut)] = self.trans_grid.histo['hit_map_' + name + '_{n}{t}_cut'.format(n=ns, t=typ_cut)].Clone('h_' + name + '_{n}{t}_cut'.format(n=ns, t=typ_cut))
+				self.trans_grid.histo[name + '_{n}{t}_cut'.format(n=ns, t=typ_cut)].SetTitle('h_' + name + '_{n}{t}_cut'.format(n=ns, t=typ_cut))
+				self.trans_grid.histo[name + '_{n}{t}_cut'.format(n=ns, t=typ_cut)].Sumw2()
+				self.trans_grid.histo[name + '_{n}{t}_cut'.format(n=ns, t=typ_cut)].Divide(self.trans_grid.histo['hit_map_' + name + '_h0_'])
+				self.trans_grid.canvas[name + '_{n}{t}_cut'.format(n=ns, t=typ_cut)] = ro.TCanvas('c_' + name + '_{n}{t}_cut'.format(n=ns, t=typ_cut), 'c_' + name + '_{n}{t}_cut'.format(n=ns, t=typ_cut), 1)
+				self.trans_grid.histo[name + '_{n}{t}_cut'.format(n=ns, t=typ_cut)].GetZaxis().SetTitle('Efficiency')
+				self.trans_grid.histo[name + '_{n}{t}_cut'.format(n=ns, t=typ_cut)].GetZaxis().SetRangeUser(0.9, 1)
+				self.trans_grid.histo[name + '_{n}{t}_cut'.format(n=ns, t=typ_cut)].Draw('colz')
+				SetDefault2DStats(self.trans_grid.histo[name + '_{n}{t}_cut'.format(n=ns, t=typ_cut)])
+				self.PosCanvas(name + '_{n}{t}_cut'.format(n=ns, t=typ_cut))
 
 		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		for ch in xrange(1, self.cluster_size + 1):
-			DrawEfficiencyCellMaps('PH{c}_H_Efficiency_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], cells, tempcsnr)
-			# DrawEfficiencyGraphs('Eff_PH{c}_Ch_Vs_Threshold_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], cells, tempcsnr, 'snr')
-			# DrawEfficiencyGraphs('Eff_PH{c}_Ch_Vs_Threshold_adc_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], cells, tempcadc, 'adc')
-			DrawEfficiencyGraphs('Eff_PH{c}_H_Vs_Threshold_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], cells, tempcsnr, 'snr')
-			DrawEfficiencyGraphs('Eff_PH{c}_H_Vs_Threshold_adc_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_adc_h_varz['PH{c}_H'.format(c=ch)], cells, tempcadc, 'adc')
+			if typ == 'adc':
+				DrawEfficiencyCellMaps('PH{c}_H_Efficiency_adc_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_adc_h_varz['PH{c}_H'.format(c=ch)], cells, tempcadc, ncuts=[10, 20, 50, 100, 200], typ=typ)
+				DrawEfficiencyGraphs('Eff_PH{c}_H_Vs_Threshold_adc_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_adc_h_varz['PH{c}_H'.format(c=ch)], cells, tempcadc, typ)
+				# DrawEfficiencyGraphs('Eff_PH{c}_Ch_Vs_Threshold_adc_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], cells, tempcadc, typ)
+			else:
+				DrawEfficiencyCellMaps('PH{c}_H_Efficiency_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], cells, tempcsnr, ncuts=[1, 2, 5, 10, 20], typ=typ)
+				DrawEfficiencyGraphs('Eff_PH{c}_H_Vs_Threshold_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], cells, tempcsnr, typ)
+				# DrawEfficiencyGraphs('Eff_PH{c}_Ch_Vs_Threshold_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], cells, tempcsnr, typ)
 
-	def DoPHHistograms(self, cells, cuts='', suffix='no_cuts'):
+	def DoPHHistograms(self, cells, cuts='', suffix='no_cuts', typ='adc'):
 		def DrawHisto(name, xmin, xmax, deltax, varz, varname, cuts):
 			self.trans_grid.DrawPHInArea(name, varz, cells, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax)
 			self.PosCanvas(name)
@@ -223,30 +233,55 @@ class FinalAnalysis:
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 
 		for ch in xrange(1, self.cluster_size + 1):
-			DrawHisto('PH{c}_Ch_snr_{s}'.format(c=ch, s=suffix), 0, 480, self.trans_grid.phbins / 10.0, self.trans_grid.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [SNR]'.format(c=ch), tempcsnr)
-			DrawHisto('PH{c}_Ch_adc_{s}'.format(c=ch, s=suffix), 0, 4800, self.trans_grid.phbins, self.trans_grid.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [ADC]'.format(c=ch), tempcadc)
-			DrawHisto('PH{c}_H_snr_{s}'.format(c=ch, s=suffix), 0, 480, self.trans_grid.phbins / 10.0, self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]'.format(c=ch), tempcsnr)
-			DrawHisto('PH{c}_H_adc_{s}'.format(c=ch, s=suffix), 0, 4800, self.trans_grid.phbins, self.trans_grid.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]'.format(c=ch), tempcadc)
+			if typ == 'adc':
+				DrawHisto('PH{c}_Ch_adc_{s}'.format(c=ch, s=suffix), 0, 4800, 4800. / self.trans_grid.phbins, self.trans_grid.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [ADC]'.format(c=ch), tempcadc)
+				if ch != self.cluster_size: DrawHisto('PH{c}_H_adc_{s}'.format(c=ch, s=suffix), 0, 4800, 4800. / self.trans_grid.phbins, self.trans_grid.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]'.format(c=ch), tempcadc)
+			else:
+				DrawHisto('PH{c}_Ch_snr_{s}'.format(c=ch, s=suffix), 0, 480, 480. / self.trans_grid.phbins / 10.0, self.trans_grid.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [SNR]'.format(c=ch), tempcsnr)
+				if ch != self.cluster_size: DrawHisto('PH{c}_H_snr_{s}'.format(c=ch, s=suffix), 0, 480, 480. / self.trans_grid.phbins / 10.0, self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]'.format(c=ch), tempcsnr)
 
-	def DoFinalAnalysis(self):
+	def DoPH2DHistograms(self, cells, cuts='', suffix='no_cuts', typ='adc'):
+		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
+		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
+		tempcsnr = self.trans_grid.cuts_man.ConcatenateCutWithCells(tempcsnr, cells)
+		tempcadc = self.trans_grid.cuts_man.ConcatenateCutWithCells(tempcadc, cells)
+		for ch in xrange(1, self.cluster_size + 1):
+			nameh = 'PH{c}_H_Vs_hit_channel_adc_{s}'.format(c=ch, s=suffix) if typ == 'adc' else 'PH{c}_H_Vs_hit_channel_snr_{s}'.format(c=ch, s=suffix)
+			xmin, xmax, deltax = self.trans_grid.ch_ini, self.trans_grid.ch_end, 1
+			ymin, ymax, deltay = (0, 4800, 4800. / self.trans_grid.phbins) if typ == 'adc' else (0, 4800, 4800. / self.trans_grid.phbins / 10.)
+			vary = self.phN_adc_h_varz['PH{c}_H'.format(c=ch)] if typ == 'adc' else self.phN_snr_h_varz['PH{c}_H'.format(c=ch)]
+			tempc = tempcadc if typ == 'adc' else tempcsnr
+			self.trans_grid.DrawHisto2D(nameh, xmin, xmax, deltax, 'dia pred hit ch', ymin, ymax, deltay, 'PH{c} highest chs'.format(c=ch), 'diaChannels[int(TMath::Floor(diaChXPred+0.5))]', vary, tempc)
+			self.PosCanvas(nameh)
+			nameh = 'PH{c}_H_Vs_event_adc_{s}'.format(c=ch, s=suffix) if typ == 'adc' else 'PH{c}_H_Vs_event_snr_{s}'.format(c=ch, s=suffix)
+			xmin, xmax, deltax = self.trans_grid.trans_tree.GetMinimum('event'), self.trans_grid.trans_tree.GetMaximum('event'), 100 * self.delta_ev
+			self.trans_grid.DrawHisto2D(nameh, xmin, xmax, deltax, 'event', ymin, ymax, deltay, 'PH{c} highest chs'.format(c=ch), 'event', vary, tempc)
+			self.PosCanvas(nameh)
+
+	def DoFinalAnalysis(self, typ='adc'):
+		self.SetFinalAnalysis()
+		self.DefineSatRegion(before=0, after=1)
+		self.DoDeviceMaps('all', '', 'no_cuts', typ=typ)
+		self.DoStripHistograms('all', '', 'no_cuts', typ=typ)
+		self.DoPH2DHistograms('all', '', 'no_cuts', typ=typ)
+		self.DoEfficiencyPlots('all', '', 'no_cuts', typ=typ)
+		self.DoPHHistograms('all', '', 'no_cuts', typ=typ)
+		list_cuts = ['', 'no_neg', 'no_neg_no_sat']
+		cells = 'good'
+		for cut in list_cuts:
+			self.DoDeviceMaps(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut), typ=typ)
+			self.DoCellMaps(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut), typ=typ)
+			self.DoStripHistograms(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut), typ=typ)
+			self.DoPH2DHistograms(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut), typ=typ)
+			self.DoEfficiencyPlots(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut), typ=typ)
+			self.DoPHHistograms(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut), typ=typ)
+
+	def SetFinalAnalysis(self):
 		self.minz = self.trans_grid.minz
 		self.maxz = self.trans_grid.maxz
 		self.GetCutsFromCutManager('all')
 		self.GetCutsFromCutManager('good')
 		self.GetVarzFromTranspGrid()
-		self.DefineSatRegion(before=0, after=1)
-		self.DoDeviceMaps('all', '', 'no_cuts')
-		self.DoStripHistograms('all', '', 'no_cuts')
-		self.DoEfficiencyPlots('all', '', 'no_cuts')
-		self.DoPHHistograms('all', '', 'no_cuts')
-		list_cuts = ['', 'no_neg', 'no_neg_no_sat']
-		cells = 'good'
-		for cut in list_cuts:
-			self.DoDeviceMaps(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
-			self.DoCellMaps(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
-			self.DoStripHistograms(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
-			self.DoEfficiencyPlots(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
-			self.DoPHHistograms(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut))
 
 	def GetCutsFromCutManager(self, cells):
 		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]

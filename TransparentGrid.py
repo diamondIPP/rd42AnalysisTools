@@ -20,7 +20,8 @@ import time
 
 # ph_bins_options = np.array((1, 2, 4, 5, 10, 16, 20, 25, 32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000), 'uint16')
 # ph_bins_options = np.array((32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500, 800, 1000, 2000, 4000), 'uint16')
-ph_bins_options = np.array((32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500), 'uint16')
+# ph_bins_options = np.array((32, 40, 50, 80, 100, 125, 160, 200, 250, 400, 500), 'uint16')
+ph_bins_options = np.array((25, 30, 32, 40, 50, 60, 64, 75, 80, 100, 120, 150, 160, 200, 240, 300, 320, 400, 480, 600), 'uint16')
 eff_delta_options = np.array((8.2, 10, 10.25, 12.5, 16.4, 20, 20.5, 25, 32.8, 41, 50, 51.25, 82), 'float64')
 
 class TransparentGrid:
@@ -365,7 +366,7 @@ class TransparentGrid:
 			self.SelectGoodAndBadByThreshold()
 		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
 		histo_entries = float(self.histo['binning_temp'].GetEntries())
-		temp = np.abs(np.subtract(ph_bins_options, histo_entries * 200.0 / 4500.0, dtype='float32'), dtype='float32')
+		temp = np.abs(np.subtract(ph_bins_options, histo_entries * 240.0 / 4500.0, dtype='float32'), dtype='float32')
 		self.phbins = ph_bins_options[temp.argmin()]
 		self.phbins_neg = ph_bins_options[temp.argmin()]
 		cell_bins = min(25, max(11, RoundInt(np.sqrt(histo_entries * ((self.col_pitch / 2.0) ** 2) / 4500.0, dtype='float64'))))

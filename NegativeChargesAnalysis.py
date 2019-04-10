@@ -78,7 +78,7 @@ class NegativeChargesAnalysis:
 		if self.noise_ana:
 			self.noise_ana.OverlayNoiseDistribution(histo, cells)
 
-	def Do1DChSignalHistos(self, cells='all', doLog=False):
+	def Do1DChSignalHistos(self, cells='all', doLog=False, typ='adc'):
 		def DrawHisto(name, histo_limits, plot_lims, deltax, varz, varname, cuts):
 			self.trans_grid.DrawHisto1D(name, histo_limits['min'], histo_limits['max'], deltax, varz, varname, cuts)
 			self.trans_grid.histo[name].GetXaxis().SetRangeUser(plot_lims['min'], plot_lims['max'])
@@ -96,35 +96,37 @@ class NegativeChargesAnalysis:
 		tempcutsadc = self.neg_adc_phN_h['PH{c}_H'.format(c=self.cluster_size)]
 		tempcutssnr = self.neg_snr_phN_h['PH{c}_H'.format(c=self.cluster_size)]
 		for ch in xrange(self.cluster_size):
-			if 'PH_Ch' + str(ch) in self.ph_snr_ch_varz.keys():
-				tempcuts = tempcutssnr
-				minz, maxz = self.min_snr_neg, self.max_snr_neg
-				hist_limits = Get1DLimits(minz, maxz, self.delta_snr, 2)
-				plot_limits = Get1DLimits(minz, maxz, self.delta_snr, 1)
-				DrawHisto('PH_Ch{c}_snr_neg_evts_{s}'.format(c=ch, s=suffix), hist_limits, plot_limits, self.delta_snr, self.ph_snr_ch_varz['PH_Ch{c}'.format(c=ch)], 'PH cluster ch{c} neg events [SNR]'.format(c=ch), tempcuts)
+			if typ == 'snr':
+				if 'PH_Ch' + str(ch) in self.ph_snr_ch_varz.keys():
+					tempcuts = tempcutssnr
+					minz, maxz = self.min_snr_neg, self.max_snr_neg
+					hist_limits = Get1DLimits(minz, maxz, self.delta_snr, 2)
+					plot_limits = Get1DLimits(minz, maxz, self.delta_snr, 1)
+					DrawHisto('PH_Ch{c}_snr_neg_evts_{s}'.format(c=ch, s=suffix), hist_limits, plot_limits, self.delta_snr, self.ph_snr_ch_varz['PH_Ch{c}'.format(c=ch)], 'PH cluster ch{c} neg events [SNR]'.format(c=ch), tempcuts)
 
-			if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
-				tempcuts = tempcutsadc
-				minz, maxz = self.min_adc_neg, self.max_adc_neg
-				hist_limits = Get1DLimits(minz, maxz, self.delta_adc, 2)
-				plot_limits = Get1DLimits(minz, maxz, self.delta_adc, 1)
-				DrawHisto('PH_Ch{c}_adc_neg_evts_{s}'.format(c=ch, s=suffix), hist_limits, plot_limits, self.delta_adc, self.ph_adc_ch_varz['PH_Ch{c}'.format(c=ch)], 'PH cluster ch{c} neg events [ADC]'.format(c=ch), tempcuts)
+				if 'PH_H' + str(ch+1) in self.ph_snr_h_varz.keys():
+					tempcuts = tempcutssnr
+					minz, maxz = self.min_snr_neg, self.max_snr_neg
+					hist_limits = Get1DLimits(minz, maxz, self.delta_snr, 2)
+					plot_limits = Get1DLimits(minz, maxz, self.delta_snr, 1)
+					DrawHisto('PH_H{c}_snr_neg_evts_{s}'.format(c=ch+1, s=suffix), hist_limits, plot_limits, self.delta_snr, self.ph_snr_h_varz['PH_H{c}'.format(c=ch+1)], 'PH highest {c}{sf} ch neg events [SNR]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
 
-			if 'PH_H' + str(ch+1) in self.ph_snr_h_varz.keys():
-				tempcuts = tempcutssnr
-				minz, maxz = self.min_snr_neg, self.max_snr_neg
-				hist_limits = Get1DLimits(minz, maxz, self.delta_snr, 2)
-				plot_limits = Get1DLimits(minz, maxz, self.delta_snr, 1)
-				DrawHisto('PH_H{c}_snr_neg_evts_{s}'.format(c=ch+1, s=suffix), hist_limits, plot_limits, self.delta_snr, self.ph_snr_h_varz['PH_H{c}'.format(c=ch+1)], 'PH highest {c}{sf} ch neg events [SNR]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
+			else:
+				if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
+					tempcuts = tempcutsadc
+					minz, maxz = self.min_adc_neg, self.max_adc_neg
+					hist_limits = Get1DLimits(minz, maxz, self.delta_adc, 2)
+					plot_limits = Get1DLimits(minz, maxz, self.delta_adc, 1)
+					DrawHisto('PH_Ch{c}_adc_neg_evts_{s}'.format(c=ch, s=suffix), hist_limits, plot_limits, self.delta_adc, self.ph_adc_ch_varz['PH_Ch{c}'.format(c=ch)], 'PH cluster ch{c} neg events [ADC]'.format(c=ch), tempcuts)
 
-			if 'PH_H' + str(ch+1) in self.ph_adc_h_varz.keys():
-				tempcuts = tempcutsadc
-				minz, maxz = self.min_adc_neg, self.max_adc_neg
-				hist_limits = Get1DLimits(minz, maxz, self.delta_adc, 2)
-				plot_limits = Get1DLimits(minz, maxz, self.delta_adc, 1)
-				DrawHisto('PH_H{c}_adc_neg_evts_{s}'.format(c=ch+1, s=suffix), hist_limits, plot_limits, self.delta_adc, self.ph_adc_h_varz['PH_H{c}'.format(c=ch+1)], 'PH highest {c}{sf} ch neg events [ADC]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
+				if 'PH_H' + str(ch+1) in self.ph_adc_h_varz.keys():
+					tempcuts = tempcutsadc
+					minz, maxz = self.min_adc_neg, self.max_adc_neg
+					hist_limits = Get1DLimits(minz, maxz, self.delta_adc, 2)
+					plot_limits = Get1DLimits(minz, maxz, self.delta_adc, 1)
+					DrawHisto('PH_H{c}_adc_neg_evts_{s}'.format(c=ch+1, s=suffix), hist_limits, plot_limits, self.delta_adc, self.ph_adc_h_varz['PH_H{c}'.format(c=ch+1)], 'PH highest {c}{sf} ch neg events [ADC]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
 
-	def DoProfileMaps(self):
+	def DoProfileMaps(self, typ='adc'):
 		xmin, xmax, deltax, xname = self.trans_grid.ch_ini - 1.5, self.trans_grid.ch_end + 1.5, 1.0/self.trans_grid.bins_per_ch_x, 'pred dia hit ch',
 		ymin, ymax, deltay, yname = self.trans_grid.row_info_diamond['0'] - RoundInt(float(self.trans_grid.row_info_diamond['0']) / self.trans_grid.row_info_diamond['pitch'], 'f8') * self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['0'] + (256 - RoundInt(float(self.trans_grid.row_info_diamond['0']) / self.trans_grid.row_info_diamond['pitch'], 'f8')) * self.trans_grid.row_info_diamond['pitch'], float(self.trans_grid.row_info_diamond['pitch'])/self.trans_grid.bins_per_ch_y, 'sil pred dia hit in Y [#mum]'
 
@@ -144,27 +146,26 @@ class NegativeChargesAnalysis:
 				self.PosCanvas('hit_map_' + name)
 
 		for ch in xrange(self.cluster_size):
-			tempc = self.neg_snr_ph_ch['PH_Ch' + str(ch)]
-			DrawProfile2D('PH_Ch{c}_neg_map_pred_hit_snr'.format(c=ch), self.ph_snr_ch_varz['PH_Ch' + str(ch)], 'PH cluster ch{c} [SNR]'.format(c=ch), tempc, getOccupancy=True)
-			tempc = self.neg_adc_ph_ch['PH_Ch' + str(ch)]
-			DrawProfile2D('PH_Ch{c}_neg_map_pred_hit_adc'.format(c=ch), self.ph_adc_ch_varz['PH_Ch' + str(ch)], 'PH cluster ch{c} [ADC]'.format(c=ch), tempc, getOccupancy=True)
+			if typ == 'snr':
+				tempc = self.neg_snr_ph_ch['PH_Ch' + str(ch)]
+				DrawProfile2D('PH_Ch{c}_neg_map_pred_hit_snr'.format(c=ch), self.ph_snr_ch_varz['PH_Ch' + str(ch)], 'PH cluster ch{c} [SNR]'.format(c=ch), tempc, getOccupancy=True)
+				tempc = self.neg_snr_ph_ch['PH_Ch' + str(ch)]
+				DrawProfile2D('PH_Ch{c}_neg_map_pred_ch_snr'.format(c=ch), self.ph_snr_ch_varz['PH_Ch' + str(ch)], 'PH cluster ch{c} [SNR]'.format(c=ch), tempc, 1, 'cluster ch{c}'.format(c=ch), 'clusterChannel{c}'.format(c=ch))
+				# tempc = self.neg_snr_ph_h['PH_H' + str(ch+1)]
+				# DrawProfile2D('PH_H{c}_neg_map_pred_hit_snr'.format(c=ch+1), self.ph_snr_h_varz['PH_H' + str(ch+1)], 'PH highest {c}{sf} ch [SNR]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc, getOccupancy=True)
+			# tempc = self.neg_snr_ph_h['PH_H' + str(ch+1)]
+				# DrawProfile2D('PH_H{c}_neg_map_pred_ch_snr'.format(c=ch+1), self.ph_snr_h_varz['PH_H' + str(ch+1)], 'PH highest {c}{sf} ch [SNR]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc, 1, 'highest {c}{sf} ch'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), 'clusterChannelHighest{c}'.format(c=ch+1))
+			else:
+				tempc = self.neg_adc_ph_ch['PH_Ch' + str(ch)]
+				DrawProfile2D('PH_Ch{c}_neg_map_pred_hit_adc'.format(c=ch), self.ph_adc_ch_varz['PH_Ch' + str(ch)], 'PH cluster ch{c} [ADC]'.format(c=ch), tempc, getOccupancy=True)
+				tempc = self.neg_adc_ph_ch['PH_Ch' + str(ch)]
+				DrawProfile2D('PH_Ch{c}_neg_map_pred_ch_adc'.format(c=ch), self.ph_adc_ch_varz['PH_Ch' + str(ch)], 'PH cluster ch{c} [ADC]'.format(c=ch), tempc, 1, 'cluster ch{c}'.format(c=ch), 'clusterChannel{c}'.format(c=ch))
+				# tempc = self.neg_adc_ph_h['PH_H' + str(ch+1)]
+				# DrawProfile2D('PH_H{c}_neg_map_pred_hit_adc'.format(c=ch+1), self.ph_adc_h_varz['PH_H' + str(ch+1)], 'PH highest {c}{sf} ch [ADC]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc, getOccupancy=True)
+				# tempc = self.neg_adc_ph_h['PH_H' + str(ch+1)]
+				# DrawProfile2D('PH_H{c}_neg_map_pred_ch_adc'.format(c=ch+1), self.ph_adc_h_varz['PH_H' + str(ch+1)], 'PH highest {c}{sf} ch [ADC]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc, 1, 'highest {c}{sf} ch'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), 'clusterChannelHighest{c}'.format(c=ch+1))
 
-			tempc = self.neg_snr_ph_h['PH_H' + str(ch+1)]
-			DrawProfile2D('PH_H{c}_neg_map_pred_hit_snr'.format(c=ch+1), self.ph_snr_h_varz['PH_H' + str(ch+1)], 'PH highest {c}{sf} ch [SNR]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc, getOccupancy=True)
-			tempc = self.neg_adc_ph_h['PH_H' + str(ch+1)]
-			DrawProfile2D('PH_H{c}_neg_map_pred_hit_adc'.format(c=ch+1), self.ph_adc_h_varz['PH_H' + str(ch+1)], 'PH highest {c}{sf} ch [ADC]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc, getOccupancy=True)
-
-			tempc = self.neg_snr_ph_ch['PH_Ch' + str(ch)]
-			DrawProfile2D('PH_Ch{c}_neg_map_pred_ch_snr'.format(c=ch), self.ph_snr_ch_varz['PH_Ch' + str(ch)], 'PH cluster ch{c} [SNR]'.format(c=ch), tempc, 1, 'cluster ch{c}'.format(c=ch), 'clusterChannel{c}'.format(c=ch))
-			tempc = self.neg_adc_ph_ch['PH_Ch' + str(ch)]
-			DrawProfile2D('PH_Ch{c}_neg_map_pred_ch_adc'.format(c=ch), self.ph_adc_ch_varz['PH_Ch' + str(ch)], 'PH cluster ch{c} [ADC]'.format(c=ch), tempc, 1, 'cluster ch{c}'.format(c=ch), 'clusterChannel{c}'.format(c=ch))
-
-			tempc = self.neg_snr_ph_h['PH_H' + str(ch+1)]
-			DrawProfile2D('PH_H{c}_neg_map_pred_ch_snr'.format(c=ch+1), self.ph_snr_h_varz['PH_H' + str(ch+1)], 'PH highest {c}{sf} ch [SNR]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc, 1, 'highest {c}{sf} ch'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), 'clusterChannelHighest{c}'.format(c=ch+1))
-			tempc = self.neg_adc_ph_h['PH_H' + str(ch+1)]
-			DrawProfile2D('PH_H{c}_neg_map_pred_ch_adc'.format(c=ch+1), self.ph_adc_h_varz['PH_H' + str(ch+1)], 'PH highest {c}{sf} ch [ADC]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc, 1, 'highest {c}{sf} ch'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), 'clusterChannelHighest{c}'.format(c=ch+1))
-
-	def Do1DPHHistos(self, cells='all'):
+	def Do1DPHHistos(self, cells='all', typ='adc'):
 		suffix = self.suffix[cells]
 		noise_name0 = 'signal_noise_{s}_{t}'.format(s=suffix, t='adc')
 		if not noise_name0 in self.trans_grid.histo.keys():
@@ -179,17 +180,14 @@ class NegativeChargesAnalysis:
 		minsnr, maxsnr = int(RoundInt(self.trans_grid.phmin / sigm)), int(RoundInt(self.trans_grid.phmax / sigm))
 		deltsnr = float(maxsnr - minsnr) / float(self.trans_grid.phbins)
 		for ch in xrange(1, self.cluster_size + 1):
-			tempc = tempcsnr
-			DrawPHHisto('PH{c}_Ch_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} cluster chs [SNR]', tempc, minsnr, maxsnr, deltsnr)
-			tempc = tempcadc
-			DrawPHHisto('PH{c}_Ch_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} cluster chs [ADC]', tempc)
+			if typ == 'snr':
+				DrawPHHisto('PH{c}_Ch_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} cluster chs [SNR]', tempcsnr, minsnr, maxsnr, deltsnr)
+				if ch != self.cluster_size: DrawPHHisto('PH{c}_H_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]', tempcsnr, minsnr, maxsnr, deltsnr)
+			else:
+				DrawPHHisto('PH{c}_Ch_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} cluster chs [ADC]', tempcadc)
+				if ch != self.cluster_size: DrawPHHisto('PH{c}_H_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]', tempcadc)
 
-			tempc = tempcsnr
-			DrawPHHisto('PH{c}_H_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]', tempc, minsnr, maxsnr, deltsnr)
-			tempc = tempcadc
-			DrawPHHisto('PH{c}_H_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]', tempc)
-
-	def DoCellMaps(self, cells='all'):
+	def DoCellMaps(self, cells='all', typ='adc'):
 		def PlotCellsProfiles(name, varz, varname, cut):
 			self.trans_grid.DrawProfile2DDiamondCellOverlay(name, varz, cells, cut, varname=varname)
 			self.PosCanvas(name)
@@ -198,12 +196,14 @@ class NegativeChargesAnalysis:
 		tempcsnr = self.neg_snr_phN_h['PH{c}_H'.format(c=self.cluster_size)]
 		tempcadc = self.neg_adc_phN_h['PH{c}_H'.format(c=self.cluster_size)]
 		for ch in xrange(1, self.cluster_size + 1):
-			PlotCellsProfiles('PH{c}_Ch_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [SNR]'.format(c=ch), tempcsnr)
-			PlotCellsProfiles('PH{c}_Ch_cell_map_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [ADC]'.format(c=ch), tempcadc)
-			PlotCellsProfiles('PH{c}_H_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]'.format(c=ch), tempcsnr)
-			PlotCellsProfiles('PH{c}_H_cell_map_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]'.format(c=ch), tempcadc)
+			# PlotCellsProfiles('PH{c}_Ch_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [SNR]'.format(c=ch), tempcsnr)
+			# PlotCellsProfiles('PH{c}_Ch_cell_map_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [ADC]'.format(c=ch), tempcadc)
+			if typ == 'snr':
+				PlotCellsProfiles('PH{c}_H_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]'.format(c=ch), tempcsnr)
+			else:
+				PlotCellsProfiles('PH{c}_H_cell_map_neg_events_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]'.format(c=ch), tempcadc)
 
-	def PlotStripHistograms(self, cells='all'):
+	def PlotStripHistograms(self, cells='all', typ='adc'):
 		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_info_diamond['pitch']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
 		def Draw2DHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
 			histo_limits = Get1DLimits(zmin, zmax, 4 * self.delta_adc) if typ == 'adc' else Get1DLimits(zmin, zmax, 4 * self.delta_snr)
@@ -223,30 +223,36 @@ class NegativeChargesAnalysis:
 		tempcutsnr = self.neg_snr_phN_h['PH{c}_H'.format(c=self.cluster_size)]
 
 		for ch in xrange(1, self.cluster_size + 1):
-			minz, maxz = self.trans_grid.minz[cells]['PH_Ch{c}_snr'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch{c}_snr'.format(c=ch-1)]
-			Draw2DHistogram('PH_Ch{c}_Vs_strip_location_neg_events_snr_{s}'.format(c=ch-1, s=suffix), minz, maxz, 'PH cluster ch{c} [SNR]'.format(c=ch-1), self.ph_snr_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcutsnr)
-			minz, maxz = self.trans_grid.minz[cells]['PH_Ch{c}_adc'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch{c}_adc'.format(c=ch-1)]
-			Draw2DHistogram('PH_Ch{c}_Vs_strip_location_neg_events_adc_{s}'.format(c=ch-1, s=suffix), minz, maxz, 'PH cluster ch{c} [ADC]'.format(c=ch-1), self.ph_adc_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcutadc)
-			minz, maxz = self.trans_grid.minz[cells]['PH_H{c}_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H{c}_snr'.format(c=ch)]
-			Draw2DHistogram('PH_H{c}_Vs_strip_location_neg_events_snr_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH highest {c}{sf} ch [SNR]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_snr_h_varz['PH_H{c}'.format(c=ch)], tempcutsnr)
-			minz, maxz = self.trans_grid.minz[cells]['PH_H{c}_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H{c}_adc'.format(c=ch)]
-			Draw2DHistogram('PH_H{c}_Vs_strip_location_neg_events_adc_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH highest {c}{sf} ch [ADC]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_adc_h_varz['PH_H{c}'.format(c=ch)], tempcutadc)
-			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_snr'.format(c=ch)]
-			Draw2DHistogram('PH{c}_H_Vs_strip_location_neg_events_snr_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH{c} highest chs [SNR]', self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], tempcutsnr, 'snr')
-			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_adc'.format(c=ch)]
-			Draw2DHistogram('PH{c}_H_Vs_strip_location_neg_events_adc_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH{c} highest chs [ADC]', self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], tempcutadc, 'adc')
+			if typ == 'snr':
+				minz, maxz = self.trans_grid.minz[cells]['PH_Ch{c}_snr'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch{c}_snr'.format(c=ch-1)]
+				Draw2DHistogram('PH_Ch{c}_Vs_strip_location_neg_events_snr_{s}'.format(c=ch-1, s=suffix), minz, maxz, 'PH cluster ch{c} [SNR]'.format(c=ch-1), self.ph_snr_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcutsnr)
+				minz, maxz = self.trans_grid.minz[cells]['PH_H{c}_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H{c}_snr'.format(c=ch)]
+				Draw2DHistogram('PH_H{c}_Vs_strip_location_neg_events_snr_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH highest {c}{sf} ch [SNR]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_snr_h_varz['PH_H{c}'.format(c=ch)], tempcutsnr)
+				minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_snr'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_snr'.format(c=ch)]
+				Draw2DHistogram('PH{c}_H_Vs_strip_location_neg_events_snr_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH{c} highest chs [SNR]', self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], tempcutsnr, 'snr')
+			else:
+				minz, maxz = self.trans_grid.minz[cells]['PH_Ch{c}_adc'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch{c}_adc'.format(c=ch-1)]
+				Draw2DHistogram('PH_Ch{c}_Vs_strip_location_neg_events_adc_{s}'.format(c=ch-1, s=suffix), minz, maxz, 'PH cluster ch{c} [ADC]'.format(c=ch-1), self.ph_adc_ch_varz['PH_Ch{c}'.format(c=ch-1)], tempcutadc)
+				minz, maxz = self.trans_grid.minz[cells]['PH_H{c}_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH_H{c}_adc'.format(c=ch)]
+				Draw2DHistogram('PH_H{c}_Vs_strip_location_neg_events_adc_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH highest {c}{sf} ch [ADC]'.format(c=ch, sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_adc_h_varz['PH_H{c}'.format(c=ch)], tempcutadc)
+				minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_adc'.format(c=ch)], self.trans_grid.maxz[cells]['PH{c}_H_adc'.format(c=ch)]
+				Draw2DHistogram('PH{c}_H_Vs_strip_location_neg_events_adc_{s}'.format(c=ch, s=suffix), minz, maxz, 'PH{c} highest chs [ADC]', self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], tempcutadc, 'adc')
+		if typ == 'snr':
+			Draw1DHistogram('strip_location_neg_events_snr_{s}'.format(s=suffix), tempcutsnr)
+		else:
+			Draw1DHistogram('strip_location_neg_events_adc_{s}'.format(s=suffix), tempcutadc)
 
-		Draw1DHistogram('strip_location_neg_events_snr_{s}'.format(s=suffix), tempcutsnr)
-		Draw1DHistogram('strip_location_neg_events_adc_{s}'.format(s=suffix), tempcutadc)
+	def DoNegativeAnalysis(self, cells='all', typ='adc'):
+		self.SetNegAnalysis(cells)
+		# self.Do1DChSignalHistos(cells, False, typ)
+		self.DoProfileMaps(typ=typ)
+		self.DoCellMaps(cells, typ)
+		self.PlotStripHistograms(cells, typ)
+		self.Do1DPHHistos(cells, typ)
 
-	def DoNegativeAnalysis(self, cells='all'):
+	def SetNegAnalysis(self, cells='all'):
 		self.GetCutsFromCutManager(cells)
 		self.GetVarzFromTranspGrid()
-		self.Do1DChSignalHistos(cells, False)
-		self.DoProfileMaps()
-		self.DoCellMaps(cells)
-		self.PlotStripHistograms(cells)
-		self.Do1DPHHistos(cells)
 
 	def GetCutsFromCutManager(self, cells):
 		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]

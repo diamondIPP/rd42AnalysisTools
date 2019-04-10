@@ -310,34 +310,34 @@ class TestAreas:
 		SetDefault1DCanvasSettings(self.trans_grid.canvas[graphname])
 		self.PositionCanvas(graphname)
 
-	def DoNoiseStudies(self, cells='all'):
+	def DoNoiseStudies(self, cells='all', typ='adc'):
 		self.noise_ana.w, self.noise_ana.window_shift = self.w, self.window_shift
-		self.noise_ana.DoNoiseAnalysis(cells)
+		self.noise_ana.DoNoiseAnalysis(cells, typ)
 		self.w, self.window_shift = self.noise_ana.w, self.noise_ana.window_shift
 
-	def DoNoiseFriendStudies(self, cells='all'):
+	def DoNoiseFriendStudies(self, cells='all', typ='adc'):
 		self.noise_ana.w, self.noise_ana.window_shift = self.w, self.window_shift
-		self.noise_ana.DoFriendNoiseAnalysis(cells)
+		self.noise_ana.DoFriendNoiseAnalysis(cells, typ)
 		self.w, self.window_shift = self.noise_ana.w, self.noise_ana.window_shift
 
-	def DoClusterStudies(self, cells='all'):
+	def DoClusterStudies(self, cells='all', typ='adc'):
 		self.cluster_ch_ana.w, self.cluster_ch_ana.window_shift = self.w, self.window_shift
-		self.cluster_ch_ana.DoClusterStudies(cells)
+		self.cluster_ch_ana.DoClusterStudies(cells, typ)
 		self.w, self.window_shift = self.cluster_ch_ana.w, self.cluster_ch_ana.window_shift
 
-	def DoNegativeEventsStudies(self, cells='all'):
+	def DoNegativeEventsStudies(self, cells='all', typ='adc'):
 		self.neg_ana.w, self.neg_ana.window_shift = self.w, self.window_shift
-		self.neg_ana.DoNegativeAnalysis(cells)
+		self.neg_ana.DoNegativeAnalysis(cells, typ)
 		self.w, self.window_shift = self.neg_ana.w, self.neg_ana.window_shift
 
-	def DoSaturationStudies(self, cells='all'):
+	def DoSaturationStudies(self, cells='all', typ='adc'):
 		self.sat_ana.w, self.sat_ana.window_shift = self.w, self.window_shift
-		self.sat_ana.DoSaturationAnalysis(cells, self.skip_before_sat, self.skip_after_sat)
+		self.sat_ana.DoSaturationAnalysis(cells, self.skip_before_sat, self.skip_after_sat, typ='adc')
 		self.w, self.window_shift = self.sat_ana.w, self.sat_ana.window_shift
 
-	def DoFinalStudies(self, cells='all'):
+	def DoFinalStudies(self, typ='adc'):
 		self.final_ana.w, self.final_ana.window_shift = self.w, self.window_shift
-		self.final_ana.DoFinalAnalysis()
+		self.final_ana.DoFinalAnalysis(typ=typ)
 		self.w, self.window_shift = self.final_ana.w, self.final_ana.window_shift
 
 	def DoCenterCellStudies(self, cells='all'):
@@ -451,17 +451,19 @@ class TestAreas:
 	def SaveCanvas(self):
 		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys())
 
-	def DoAutomatic(self, cells='good', do_save=True):
+	def DoAutomatic(self, cells='good', do_save=False, types=['adc']):
 		self.window_shift = 1
 		self.DoBorderPlots()
 		self.DoCellHistograms()
-		self.DoNoiseStudies(cells)
-		self.DoClusterStudies(cells)
-		self.DoNegativeEventsStudies(cells)
-		self.DoSaturationStudies(cells)
-		self.DoFinalStudies(cells)
-		self.DoCenterCellStudies(cells)
-		self.DoCenterCellSaturationStudies(cells)
+		for typ in ['adc', 'snr']:
+			if typ in types:
+				self.DoNoiseStudies(cells, typ)
+				self.DoClusterStudies(cells, typ)
+				self.DoNegativeEventsStudies(cells, typ)
+				self.DoSaturationStudies(cells, typ)
+				self.DoFinalStudies(typ)
+				self.DoCenterCellStudies(cells)
+				self.DoCenterCellSaturationStudies(cells)
 		# self.PlotTestClusterStudies(cells)
 		# self.PlotTestForNegative(cells)
 		# self.PlotTest()
