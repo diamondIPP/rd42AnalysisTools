@@ -255,7 +255,7 @@ class TestAreas:
 		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.phN_adc_h_varz['PH2_H'], 'adc', 0, 4000, 50)
 		self.PositionCanvas('mean_ph_per_cell_adc')
 
-	def DoNoiseStudiesDifferentBuffers(self, cells='good'):
+	def DoNoiseStudiesDifferentBuffers(self, cells='good', typ='adc'):
 		suffix = self.suffix[cells]
 		divs, minbuffer, maxbuff = 3., 10, 2000
 		tempbuff = np.unique(np.floor(np.power(10, np.divide(np.arange(divs), float(divs), dtype='float64'), dtype='float64') + 0.5).astype('int32'))
@@ -266,7 +266,7 @@ class TestAreas:
 		self.trans_grid.CreatePedTreeFriendsForStudy(buffers_to_create)
 		for buff in buffers:
 			self.trans_grid.AddFriendWithNewPedestalBuffer(buff)
-			self.DoNoiseFriendStudies(cells)
+			self.DoNoiseFriendStudies(cells, typ)
 			self.trans_grid.UnfriendTree(self.trans_grid.trans_tree.GetFriend('pedTree'))
 
 		temp0 = np.array([buffers[1] - buffers[0]] + [buffers[i] - buffers[i-1] for i in xrange(1, buffers.size)])
@@ -290,10 +290,11 @@ class TestAreas:
 		self.trans_grid.canvas[graphname] = ro.TCanvas('c_' + graphname, 'c_' + graphname, 1)
 		self.trans_grid.graph[graphname].Draw('ALP')
 		SetDefault1DCanvasSettings(self.trans_grid.canvas[graphname])
+		self.trans_grid.canvas[graphname].SetLogx()
 		self.PositionCanvas(graphname)
-		
-		ymeanncarray = np.array([self.trans_grid.histo['signal_noise_NC_chs_buffer_{b}_{s}_adc'.format(b=buff, s=suffix)].GetRMS() for buff in buffers], dtype='float64')
-		ymeanncarrayerrs = np.array([self.trans_grid.histo['signal_noise_NC_chs_buffer_{b}_{s}_adc'.format(b=buff, s=suffix)].GetRMSError() for buff in buffers], dtype='float64')
+
+		ymeanncarray = np.array([self.trans_grid.histo['signal_noise_NC_chs_buffer_{b}_{s}_adc'.format(b=buff, s='all')].GetRMS() for buff in buffers], dtype='float64')
+		ymeanncarrayerrs = np.array([self.trans_grid.histo['signal_noise_NC_chs_buffer_{b}_{s}_adc'.format(b=buff, s='all')].GetRMSError() for buff in buffers], dtype='float64')
 
 		tgraphnc = ro.TGraphErrors(int(buffers.size), buffers.astype('float64'), ymeanncarray, xarrayerrs, ymeanncarrayerrs)
 		graphname = 'signal_noise_NC_chs_Vs_buffer_sizes_in_adc_{s}'.format(s=suffix)
@@ -308,6 +309,7 @@ class TestAreas:
 		self.trans_grid.canvas[graphname] = ro.TCanvas('c_' + graphname, 'c_' + graphname, 1)
 		self.trans_grid.graph[graphname].Draw('ALP')
 		SetDefault1DCanvasSettings(self.trans_grid.canvas[graphname])
+		self.trans_grid.canvas[graphname].SetLogx()
 		self.PositionCanvas(graphname)
 
 	def DoNoiseStudies(self, cells='all', typ='adc'):
@@ -335,9 +337,9 @@ class TestAreas:
 		self.sat_ana.DoSaturationAnalysis(cells, self.skip_before_sat, self.skip_after_sat, typ='adc')
 		self.w, self.window_shift = self.sat_ana.w, self.sat_ana.window_shift
 
-	def DoFinalStudies(self, typ='adc'):
+	def DoFinalStudies(self, typ='adc', cummulative_chs=[2]):
 		self.final_ana.w, self.final_ana.window_shift = self.w, self.window_shift
-		self.final_ana.DoFinalAnalysis(typ=typ)
+		self.final_ana.DoFinalAnalysis(typ=typ, cummulative_chs=cummulative_chs)
 		self.w, self.window_shift = self.final_ana.w, self.final_ana.window_shift
 
 	def DoCenterCellStudies(self, cells='all'):
@@ -407,8 +409,8 @@ class TestAreas:
 	def SaveCanvas(self):
 		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys())
 
-	def DoAutomatic(self, cells='good', do_save=False, types=['adc']):
-		self.window_shift = 1
+	def DoAutomatic(self, cells='good', do_save=True, types=['adc']):
+		self.window_shift = 2
 		self.DoBorderPlots()
 		self.DoCellHistograms()
 		for typ in ['adc', 'snr']:

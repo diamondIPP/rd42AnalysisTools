@@ -417,10 +417,11 @@ def DeleteDirectoryContents(dir):
 				print(e)
 		print 'Done'
 
-def AddLineToStats(canvas, key, value=0, samplelinekey='Mean'):
+def AddLineToStats(canvas, oldStatName='stats', newStatName='mystats', key='Mean_{Fit}', value=0, samplelinekey='Mean'):
 	if canvas:
-		ps = canvas.GetPrimitive('stats')
-		ps.SetName('mystats')
+		ps = canvas.GetPrimitive(oldStatName)
+		ps.SetName(newStatName)
+
 		lol = ps.GetListOfLines()
 		sampleline = ps.GetLineWith(samplelinekey)
 		line = ro.TLatex(0, 0, '{k} = {v:.2f}'.format(k=key, v=value))
@@ -430,7 +431,7 @@ def AddLineToStats(canvas, key, value=0, samplelinekey='Mean'):
 		line.SetTextFont(sampleline.GetTextFont())
 		line.SetTextSize(sampleline.GetTextSize())
 		lol.Add(line)
-		canvas.Modified()
+		return ps.Clone()
 
 def SetX1X2NDC(histo, x1, x2, statsname='stats'):
 	if histo.FindObject(statsname):

@@ -79,7 +79,7 @@ class CenterCellAnalysis:
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
 
-	def DoPHPlots(self, p_array, cells='all', draw2D=False, suffixop='', cut='', typ='adc'):
+	def DoPHPlots(self, p_array, cells='all', drawHistos=True, suffixop='', cut='', typ='adc'):
 		suffix = self.suffix[cells] if suffixop == '' else suffixop
 		for p in p_array:
 			if 0 < p < 100:
@@ -89,34 +89,34 @@ class CenterCellAnalysis:
 					tempcut = cut if cut != '' else self.phN_adc_h_cuts[cells][varzkey] if typ == 'adc' else self.phN_snr_h_cuts[cells][varzkey]
 					tempcutin = self.trans_grid.cuts_man.ConcatenateCuts(tempcut, self.in_central_rect_cut[p])
 					tempcutout = self.trans_grid.cuts_man.ConcatenateCuts(tempcut, self.out_central_rect_cut[p])
-					if draw2D:
+					if drawHistos:
 						self.DoCellOverlayPlot('PH{n}_H_{t}_cells_in_rect_{p}_percent_{s}'.format(p=p, s=suffix, n=self.num_strips, t=typ), varz, 'PH{n} highest chs [{t}]'.format(n=self.num_strips, t=typ.upper()), tempcutin, cells, typ=typ)
 						self.trans_grid.DrawCentralArea('PH{n}_H_{t}_cells_in_rect_{p}_percent_{s}'.format(p=p, s=suffix, n=self.num_strips, t=typ), p)
-					self.DoPHPlot('PH{n}_H_{t}_in_rect_{p}_percent_{s}'.format(p=p, s=suffix, n=self.num_strips, t=typ), varz, 'PH{n} highest chs [{t}]'.format(n=self.num_strips, t=typ.upper()), tempcutin, cells, typ)
+					self.DoPHPlot('PH{n}_H_{t}_in_rect_{p}_percent_{s}'.format(p=p, s=suffix, n=self.num_strips, t=typ), varz, 'PH{n} highest chs [{t}]'.format(n=self.num_strips, t=typ.upper()), tempcutin, cells, typ, drawHistos)
 
-					if draw2D:
+					if drawHistos:
 						self.DoCellOverlayPlot('PH{n}_H_{t}_cells_out_rect_{p}_percent_{s}'.format(p=p, s=suffix, n=self.num_strips, t=typ), varz, 'PH{n} highest chs [{t}]'.format(n=self.num_strips, t=typ.upper()), tempcutout, cells, typ=typ)
 						self.trans_grid.DrawCentralArea('PH{n}_H_{t}_cells_out_rect_{p}_percent_{s}'.format(p=p, s=suffix, n=self.num_strips, t=typ), p)
-					self.DoPHPlot('PH{n}_H_{t}_out_rect_{p}_percent_{s}'.format(p=p, s=suffix, n=self.num_strips, t=typ), varz, 'PH{n} highest chs [{t}]'.format(n=self.num_strips, t=typ.upper()), tempcutout, cells, typ)
+					self.DoPHPlot('PH{n}_H_{t}_out_rect_{p}_percent_{s}'.format(p=p, s=suffix, n=self.num_strips, t=typ), varz, 'PH{n} highest chs [{t}]'.format(n=self.num_strips, t=typ.upper()), tempcutout, cells, typ, drawHistos)
 
-	def DoCellOverlayPlot(self, name, varz, varname, cut, cells='all'):
+	def DoCellOverlayPlot(self, name, varz, varname, cut, cells='all', typ='adc'):
 		self.trans_grid.DrawProfile2DDiamondCellOverlay(name, varz, cells, cut, varname=varname, typ=typ)
 		self.PosCanvas(name)
 
-	def DoPHPlot(self, name, varz, varname, cut, cells='all', typ='adc'):
-		self.trans_grid.DrawPHInArea(name, varz, cells, cut, varname=varname, typ=typ)
-		self.PosCanvas(name)
+	def DoPHPlot(self, name, varz, varname, cut, cells='all', typ='adc', drawHisto=True):
+		self.trans_grid.DrawPHInArea(name, varz, cells, cut, varname=varname, typ=typ, drawHisto=drawHisto)
+		if drawHisto: self.PosCanvas(name)
 
-	def DoCenterRegionHistos(self, p_array, cells='all', draw2D=True, suffixop='', cuts='', typ='adc'):
+	def DoCenterRegionHistos(self, p_array, cells='all', drawHistos=True, suffixop='', cuts='', typ='adc'):
 		self.SetCenterRegionStudies(cells)
-		self.DoPHPlots(p_array, cells, draw2D, suffixop, cuts, typ)
+		self.DoPHPlots(p_array, cells, drawHistos, suffixop, cuts, typ)
 
-	def DoCenterRegionStudies(self, dists=np.arange(0.1, 1, 0.025), cells='all', draw2D=True, suffixop='', cuts='', typ='adc', do_sat=True):
+	def DoCenterRegionStudies(self, dists=np.arange(0.1, 1, 0.025), cells='all', drawHistos=True, suffixop='', cuts='', typ='adc', do_sat=True):
 		self.SetCenterRegionStudies(cells)
 		percents = np.unique(np.floor(np.power(dists, 2) * 100 + 0.5).astype('int32'))
 		for percent in percents:
 			self.trans_grid.CreateTCutGSymmetricRectangle(percent)
-		self.DoCenterRegionHistos(percents, cells, draw2D, suffixop, cuts, typ)
+		self.DoCenterRegionHistos(percents, cells, drawHistos, suffixop, cuts, typ)
 		self.DrawPHInAndOutGraphs(percents, suffixop, typ)
 		if do_sat: self.DoCenterSaturationStudies(percents, cells, suffixop, cuts, typ)
 
@@ -144,6 +144,7 @@ class CenterCellAnalysis:
 		self.trans_grid.graph[ingraphname] = tgraphe_in
 		self.trans_grid.canvas[ingraphname] = ro.TCanvas('c_' + ingraphname, 'c_' + ingraphname, 1)
 		self.trans_grid.graph[ingraphname].Draw('ALP')
+		ro.gPad.Update()
 		SetDefault1DCanvasSettings(self.trans_grid.canvas[ingraphname])
 		self.PosCanvas(ingraphname)
 
@@ -159,23 +160,26 @@ class CenterCellAnalysis:
 		self.trans_grid.graph[outgraphname] = tgraphe_out
 		self.trans_grid.canvas[outgraphname] = ro.TCanvas('c_' + outgraphname, 'c_' + outgraphname, 1)
 		self.trans_grid.graph[outgraphname].Draw('ALP')
+		ro.gPad.Update()
 		SetDefault1DCanvasSettings(self.trans_grid.canvas[outgraphname])
 		self.PosCanvas(outgraphname)
 
 	def DoCenterSaturationStudies(self, percents, cells='all', suffixop='', cuts='', typ='adc'):
 		self.SetCenterRegionStudies(cells)
-		
+		tempc = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, cuts) if cuts != '' else self.trans_grid.cuts_man.transp_ev
 		xarray = percents.astype('float64')
 		temp0 = np.array([percents[1] - percents[0]] + [percents[i] - percents[i-1] for i in xrange(1, percents.size)])
 		temp0fact = (percents[-1] - percents[0]) / (2 * temp0.sum(dtype='float64') - temp0[0] - temp0[-1])
 		xarrayerrs = np.multiply(temp0, temp0fact, dtype='float64')
-		# ipdb.set_trace()
-		ysatin = [self.trans_grid.trans_tree.Draw('event', self.sat_adc_inside_cut[p] if cuts == '' else self.trans_grid.cuts_man.ConcatenateCuts(cuts, self.sat_adc_inside_cut[p]), 'goff') for p in percents]
-		ysatout = [self.trans_grid.trans_tree.Draw('event', self.sat_adc_outside_cut[p] if cuts == '' else self.trans_grid.cuts_man.ConcatenateCuts(cuts, self.sat_adc_outside_cut[p]), 'goff') for p in percents]
-		ynosatin = [self.trans_grid.trans_tree.Draw('event', self.nosat_adc_inside_cut[p] if cuts == '' else self.trans_grid.cuts_man.ConcatenateCuts(cuts, self.nosat_adc_inside_cut[p]), 'goff') for p in percents]
-		ynosatout = [self.trans_grid.trans_tree.Draw('event', self.nosat_adc_outside_cut[p] if cuts == '' else self.trans_grid.cuts_man.ConcatenateCuts(cuts, self.nosat_adc_outside_cut[p]), 'goff') for p in percents]
+
+		ysatin = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.ConcatenateCuts(tempc, self.sat_adc_inside_cut[p]), 'goff') for p in percents]
+		ysatout = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.ConcatenateCuts(tempc, self.sat_adc_outside_cut[p]), 'goff') for p in percents]
+		ynosatin = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.ConcatenateCuts(tempc, self.nosat_adc_inside_cut[p]), 'goff') for p in percents]
+		ynosatout = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.ConcatenateCuts(tempc, self.nosat_adc_outside_cut[p]), 'goff') for p in percents]
+
 		ysat_nosat_ratio_in = np.divide(ysatin, np.add(ynosatin, ysatin), dtype='float64')
 		ysat_nosat_ratio_out = np.divide(ysatout, np.add(ysatout, ynosatout), dtype='float64')
+
 		ysat_nosat_ratio_in_errs = np.divide(np.sqrt(np.add(np.power(np.multiply(ysatin, np.sqrt(ynosatin)), 2), np.power(np.multiply(ynosatin, np.sqrt(ysatin)), 2))), np.power(np.add(ysatin, ynosatin), 2), dtype='float64')
 		ysat_nosat_ratio_out_errs = np.divide(np.sqrt(np.add(np.power(np.multiply(ysatout, np.sqrt(ynosatout)), 2), np.power(np.multiply(ynosatout, np.sqrt(ysatout)), 2))), np.power(np.add(ysatout, ynosatout), 2), dtype='float64')
 

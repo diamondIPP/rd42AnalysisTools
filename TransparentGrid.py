@@ -124,6 +124,7 @@ class TransparentGrid:
 
 		self.ped_file = None
 		self.ped_tree = None
+		self.trash = []
 
 
 	def CheckFoldersAndFiles(self):
@@ -674,7 +675,8 @@ class TransparentGrid:
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
 		self.trans_tree.Draw('{z}:{y}:{x}>>h_{n}'.format(z=varz, y=vary, x=varx, n=name), temp_cut, plot_option)
-		ro.gPad.Update()
+		if 'goff' not in plot_option:
+			ro.gPad.Update()
 		SetDefault2DStats(self.profile[name])
 		ro.TFormula.SetMaxima(1000)
 
@@ -926,15 +928,15 @@ class TransparentGrid:
 	def ResetAreas(self):
 		self.gridAreas.ResetAreas()
 
-	def DrawPHInArea(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc'):
+	def DrawPHInArea(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
 		if cells == 'good':
-			self.DrawPHGoodAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax, typ=typ)
+			self.DrawPHGoodAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax, typ=typ, drawHisto=drawHisto)
 		elif cells == 'bad':
-			self.DrawPHBadAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax, typ=typ)
+			self.DrawPHBadAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax, typ=typ, drawHisto=drawHisto)
 		else:
-			self.DrawPHAllAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax, typ=typ)
+			self.DrawPHAllAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax, typ=typ, drawHisto=drawHisto)
 
-	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc'):
+	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
 		list_cuts = [self.cuts_man.selected_cells]
 		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
 		if cuts != '':
@@ -943,9 +945,10 @@ class TransparentGrid:
 		phmin = xmin if xmin != 10000 else self.phmin if typ == 'adc' else self.phmin / 10.
 		phmax = xmax if xmax != -10000 else self.phmax if typ == 'adc' else self.phmax / 10.
 		deltx = deltax if deltax != -1 else float(self.phmax - self.phmin) / float(self.phbins)
-		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev)
+		graphopt = 'e hist' if drawHisto else 'e hist goff'
+		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev, option=graphopt)
 
-	def DrawPHAllAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc'):
+	def DrawPHAllAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
 		list_cuts = [self.cuts_man.all_cells]
 		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
 		if cuts != '':
@@ -954,9 +957,10 @@ class TransparentGrid:
 		phmin = xmin if xmin != 10000 else self.phmin if typ == 'adc' else self.phmin / 10.
 		phmax = xmax if xmax != -10000 else self.phmax if typ == 'adc' else self.phmax / 10.
 		deltx = deltax if deltax != -1 else float(self.phmax - self.phmin) / float(self.phbins)
-		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev)
+		graphopt = 'e hist' if drawHisto else 'e hist goff'
+		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev, option=graphopt)
 
-	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc'):
+	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
 		list_cuts = [self.cuts_man.not_selected_cells]
 		# list_cuts = ['{n}'.format(n=self.gridAreas.badAreasCutNames_diamond if type == 'diamond' else '')]
 		if cuts != '':
@@ -965,7 +969,8 @@ class TransparentGrid:
 		phmin = xmin if xmin != 10000 else self.phmin if typ == 'adc' else self.phmin / 10.
 		phmax = xmax if xmax != -10000 else self.phmax if typ == 'adc' else self.phmax / 10.
 		deltx = deltax if deltax != -1 else float(self.phmax - self.phmin) / float(self.phbins)
-		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev)
+		graphopt = 'e hist' if drawHisto else 'e hist goff'
+		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev, option=graphopt)
 
 	def DrawPHCentralRegion(self, name, var='clusterChargeN', cells='good', cuts='', transp_ev=True, varname='PH[ADC]'):
 		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond_centers) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_diamond_centers) if cells == 'bad' else '({n}||{m})'.format(n=self.gridAreas.goodAreasCutNames_diamond_centers, m=self.gridAreas.badAreasCutNames_diamond_centers)]
@@ -1012,7 +1017,8 @@ class TransparentGrid:
 			self.profile[name].GetZaxis().SetRangeUser(self.phmin, self.phmax)
 		else:
 			self.profile[name].GetZaxis().SetRangeUser(self.phmin / 10., self.phmax / 10.)
-		ro.gPad.Update()
+		if 'goff' not in plot_option:
+			ro.gPad.Update()
 		# self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '((diaChXPred-{ox})*{p})%{p}'.format(ox=xoff, p=self.col_pitch), '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
 	def DrawHisto2DDiamondChannelOverlay(self, name, cells='all', cuts='', transp_ev=True):
@@ -1316,17 +1322,19 @@ class TransparentGrid:
 		self.langaus[name].fit.Draw('same')
 		self.langaus[name].fit.SetLineColor(color)
 		self.line[name].Draw('same')
-		ro.gPad.Update()
 		self.histo[name].FindObject('stats').SetOptFit(1)
 		self.histo[name].FindObject('stats').SetX1NDC(0.6)
 		self.histo[name].FindObject('stats').SetX2NDC(0.9)
 		self.histo[name].FindObject('stats').SetY1NDC(0.6)
 		self.histo[name].FindObject('stats').SetY2NDC(0.9)
-		AddLineToStats(self.canvas[name], 'Mean_{Fit}', fitmean)
+		ro.gPad.Update()
+		ps = AddLineToStats(self.canvas[name], 'stats', 'mystats', 'Mean_{Fit}', fitmean)
 		self.histo[name].SetStats(0)
 		self.canvas[name].Modified()
+		ps.Draw()
+		self.trash.append(ps)
 		ro.gPad.Update()
-		print '{n}: <PH> = {f}'.format(n=name, f=fitmean)
+		# print '{n}: <PH> ex= {f}'.format(n=name, f=fitmean)
 
 	def DrawDoubleLangaus(self, name, name1, name2, color=ro.kBlack):
 		if self.langaus.has_key(name1) and self.langaus.has_key(name2):
@@ -1351,7 +1359,7 @@ class TransparentGrid:
 			self.line[name].SetLineWidth(4)
 			self.line[name].Draw('same')
 			self.doubleLangaus[name].SetLineColor(color)
-			AddLineToStats(self.canvas[name], 'Mean_{Fit}', fitmean)
+			AddLineToStats(self.canvas[name], 'stats', 'mystats', 'Mean_{Fit}', fitmean)
 			self.histo[name].SetStats(0)
 			self.canvas[name].Modified()
 			ro.gPad.Update()

@@ -258,9 +258,9 @@ class ClusterChannelsAnalysis:
 	def DoClusterStudies(self, cells='all', typ='adc'):
 		self.SetClusterStudies(cells)
 		self.Do2DProfileMaps(cells)
-		self.DoStrips2DHistograms(cells, typ='adc')
-		self.DoPHStripCorrelations(cells, typ='adc')
-		self.Do1DHistograms(cells, False, typ='adc')
+		self.DoStrips2DHistograms(cells, typ=typ)
+		self.DoPHStripCorrelations(cells, typ=typ)
+		self.Do1DHistograms(cells, False, typ=typ)
 		# self.Do1DHistograms(cells, True, typ='adc')
 
 	def SetClusterStudies(self, cells='all'):

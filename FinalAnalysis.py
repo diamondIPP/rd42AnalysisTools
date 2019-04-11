@@ -100,6 +100,8 @@ class FinalAnalysis:
 		self.phN_snr_h_varz = {}
 		self.phN_snr_ch_varz = {}
 
+		self.analysis_cummulative_ch = np.arange(1, self.cluster_size + 1)
+
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
 
@@ -121,7 +123,7 @@ class FinalAnalysis:
 
 		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else ''
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else ''
-		for ch in xrange(1, self.cluster_size + 1):
+		for ch in self.analysis_cummulative_ch:
 			if typ == 'adc':
 				DrawProfile2D('PH{c}_Ch_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [ADC]'.format(c=ch), tempcadc, False)
 				if ch != self.cluster_size: DrawProfile2D('PH{c}_H_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]'.format(c=ch), tempcadc, ch == self.cluster_size)
@@ -141,7 +143,7 @@ class FinalAnalysis:
 
 		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
-		for ch in xrange(1, self.cluster_size + 1):
+		for ch in self.analysis_cummulative_ch:
 			if typ == 'adc':
 				minz, maxz = self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)], self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)]
 				PlotCellsProfiles('PH{c}_Ch_cell_map_adc_{s}'.format(c=ch, s=suffix), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], minz, max(maxz, 4800), 'PH{c} cluster chs [ADC]', tempcadc)
@@ -172,7 +174,7 @@ class FinalAnalysis:
 		tempcsnr = self.trans_grid.cuts_man.ConcatenateCutWithCells(tempcsnr, cells)
 		tempcadc = self.trans_grid.cuts_man.ConcatenateCutWithCells(tempcadc, cells)
 
-		for ch in xrange(1, self.cluster_size + 1):
+		for ch in self.analysis_cummulative_ch:
 			if typ == 'adc':
 				minzadc, maxzadc = min(0, self.trans_grid.minz[cells]['PH{c}_Ch_adc'.format(c=ch)]), self.trans_grid.maxz[cells]['PH{c}_Ch_adc'.format(c=ch)]
 				Draw2DHistogram('PH{c}_Ch_Vs_strip_location_adc_{s}'.format(c=ch, s=suffix), minzadc, maxzadc, 'PH{c} cluster chs [ADC]', self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], tempcadc, 'adc')
@@ -219,13 +221,13 @@ class FinalAnalysis:
 
 		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
-		for ch in xrange(1, self.cluster_size + 1):
+		for ch in self.analysis_cummulative_ch:
 			if typ == 'adc':
-				DrawEfficiencyCellMaps('PH{c}_H_Efficiency_adc_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_adc_h_varz['PH{c}_H'.format(c=ch)], cells, tempcadc, ncuts=[10, 20, 50, 100, 200], typ=typ)
+				DrawEfficiencyCellMaps('PH{c}_H_Efficiency_adc_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_adc_h_varz['PH{c}_H'.format(c=ch)], cells, tempcadc, ncuts=[10, 50, 100, 200, 500], typ=typ)
 				DrawEfficiencyGraphs('Eff_PH{c}_H_Vs_Threshold_adc_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_adc_h_varz['PH{c}_H'.format(c=ch)], cells, tempcadc, typ)
 				# DrawEfficiencyGraphs('Eff_PH{c}_Ch_Vs_Threshold_adc_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], cells, tempcadc, typ)
 			else:
-				DrawEfficiencyCellMaps('PH{c}_H_Efficiency_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], cells, tempcsnr, ncuts=[1, 2, 5, 10, 20], typ=typ)
+				DrawEfficiencyCellMaps('PH{c}_H_Efficiency_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], cells, tempcsnr, ncuts=[1, 5, 10, 20, 50], typ=typ)
 				DrawEfficiencyGraphs('Eff_PH{c}_H_Vs_Threshold_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], cells, tempcsnr, typ)
 				# DrawEfficiencyGraphs('Eff_PH{c}_Ch_Vs_Threshold_snr_{s}'.format(c=ch, s=suffix), self.trans_grid.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], cells, tempcsnr, typ)
 
@@ -237,20 +239,26 @@ class FinalAnalysis:
 		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 
-		for ch in xrange(1, self.cluster_size + 1):
+		for ch in self.analysis_cummulative_ch:
 			if typ == 'adc':
 				DrawHisto('PH{c}_Ch_adc_{s}'.format(c=ch, s=suffix), 0, 4800, 4800. / self.trans_grid.phbins, self.trans_grid.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [ADC]'.format(c=ch), tempcadc)
-				if ch != self.cluster_size: DrawHisto('PH{c}_H_adc_{s}'.format(c=ch, s=suffix), 0, 4800, 4800. / self.trans_grid.phbins, self.trans_grid.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]'.format(c=ch), tempcadc)
+				self.trans_grid.FitLanGaus('PH{c}_Ch_adc_{s}'.format(c=ch, s=suffix))
+				if ch != self.cluster_size:
+					DrawHisto('PH{c}_H_adc_{s}'.format(c=ch, s=suffix), 0, 4800, 4800. / self.trans_grid.phbins, self.trans_grid.phN_adc_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [ADC]'.format(c=ch), tempcadc)
+					self.trans_grid.FitLanGaus('PH{c}_H_adc_{s}'.format(c=ch, s=suffix))
 			else:
 				DrawHisto('PH{c}_Ch_snr_{s}'.format(c=ch, s=suffix), 0, 480, 480. / self.trans_grid.phbins / 10.0, self.trans_grid.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], 'PH{c} cluster chs [SNR]'.format(c=ch), tempcsnr)
-				if ch != self.cluster_size: DrawHisto('PH{c}_H_snr_{s}'.format(c=ch, s=suffix), 0, 480, 480. / self.trans_grid.phbins / 10.0, self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]'.format(c=ch), tempcsnr)
+				self.trans_grid.FitLanGaus('PH{c}_Ch_snr_{s}'.format(c=ch, s=suffix))
+				if ch != self.cluster_size:
+					DrawHisto('PH{c}_H_snr_{s}'.format(c=ch, s=suffix), 0, 480, 480. / self.trans_grid.phbins / 10.0, self.trans_grid.phN_snr_h_varz['PH{c}_H'.format(c=ch)], 'PH{c} highest chs [SNR]'.format(c=ch), tempcsnr)
+					self.trans_grid.FitLanGaus('PH{c}_H_snr_{s}'.format(c=ch, s=suffix))
 
 	def DoPH2DHistograms(self, cells, cuts='', suffix='no_cuts', typ='adc'):
 		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		tempcsnr = self.trans_grid.cuts_man.ConcatenateCutWithCells(tempcsnr, cells)
 		tempcadc = self.trans_grid.cuts_man.ConcatenateCutWithCells(tempcadc, cells)
-		for ch in xrange(1, self.cluster_size + 1):
+		for ch in self.analysis_cummulative_ch:
 			nameh = 'PH{c}_H_Vs_hit_channel_adc_{s}'.format(c=ch, s=suffix) if typ == 'adc' else 'PH{c}_H_Vs_hit_channel_snr_{s}'.format(c=ch, s=suffix)
 			xmin, xmax, deltax = self.trans_grid.ch_ini, self.trans_grid.ch_end, 1
 			ymin, ymax, deltay = (0, 4800, 4800. / self.trans_grid.phbins) if typ == 'adc' else (0, 4800, 4800. / self.trans_grid.phbins / 10.)
@@ -263,15 +271,27 @@ class FinalAnalysis:
 			self.trans_grid.DrawHisto2D(nameh, xmin, xmax, deltax, 'event', ymin, ymax, deltay, 'PH{c} highest chs'.format(c=ch), 'event', vary, tempc)
 			self.PosCanvas(nameh)
 
-	def DoCenterPHStudies(self, cells, cuts='', suffix='no_cuts', typ='adc', do_sat=True):
+			namehp = 'PH{c}_H_mean_Vs_event_adc_{s}'.format(c=ch, s=suffix) if typ == 'adc' else 'PH{c}_H_mean_Vs_event_snr_{s}'.format(c=ch, s=suffix)
+			self.trans_grid.histo[namehp] = self.trans_grid.histo[nameh].ProfileX('h_' + namehp)
+			self.trans_grid.histo[namehp].SetTitle('h_' + namehp)
+			self.trans_grid.canvas[namehp] = ro.TCanvas('c_' + namehp, 'c_' + namehp, 1)
+			self.trans_grid.histo[namehp].Draw('e hist')
+			SetDefault1DStats(self.trans_grid.histo[namehp], y1=0.15, y2=0.45)
+			SetDefault1DCanvasSettings(self.trans_grid.canvas[namehp])
+			ro.gPad.Update()
+			self.PosCanvas(namehp)
+
+	def DoCenterPHStudies(self, cells, cuts='', suffix='no_cuts', typ='adc', do_sat=True, do_all_plots=False):
 		self.center_reg_ana.w, self.center_reg_ana.window_shift = self.w, self.window_shift
 		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
 		tempc = tempcsnr if typ == 'snr' else tempcadc
-		self.center_reg_ana.DoCenterRegionStudies(self.cell_dists, cells, False, suffix, tempc, typ, do_sat)
+		self.center_reg_ana.DoCenterRegionStudies(self.cell_dists, cells, do_all_plots, suffix, tempc, typ, do_sat)
 		self.w, self.window_shift = self.center_reg_ana.w, self.center_reg_ana.window_shift
 
-	def DoFinalAnalysis(self, typ='adc'):
+	def DoFinalAnalysis(self, typ='adc', cummulative_chs=None):
+		if cummulative_chs:
+			self.analysis_cummulative_ch = cummulative_chs
 		self.SetFinalAnalysis()
 		self.DefineSatRegion(before=0, after=1)
 		self.DoDeviceMaps('all', '', 'no_cuts', typ=typ)

@@ -94,13 +94,13 @@ class NoiseAnalysis:
 		temp_cut_noise = self.noise_cuts[cells]
 		self.PlotNoise1D(self.noise_varz, nameh, temp_cut_noise, typ=typ)
 
-	def PlotFriendNoiseNotInCluster(self, cells='all'):
+	def PlotFriendNoiseNotInCluster(self, cells='all', typ='adc'):
 		if self.trans_grid.trans_tree.GetFriend('pedTree'):
 			optending = 'buffer_{v}'.format(v=int(RoundInt(self.trans_grid.trans_tree.GetMaximum('pedTree.slidingLength'))))
 			suffix = self.suffix[cells]
 			nameh = 'signal_noise_{s}_{c}'.format(c=suffix, s=optending)
 			temp_cut_noise = self.noise_friend_cuts[cells]
-			self.PlotNoise1D(self.noise_friend_varz, nameh, temp_cut_noise)
+			self.PlotNoise1D(self.noise_friend_varz, nameh, temp_cut_noise, typ=typ)
 		else:
 			print 'The transparent tree has no pedTree friend. Cannot do these plots'
 
@@ -110,13 +110,13 @@ class NoiseAnalysis:
 		nameh = 'signal_noise_NC_chs_{c}'.format(c=suffix)
 		self.PlotNoise1D(self.noise_varz, nameh, temp_cut_noise, typ=typ)
 
-	def PlotFriendNoiseNCChannels(self, cells='all'):
+	def PlotFriendNoiseNCChannels(self, cells='all', typ='adc'):
 		if self.trans_grid.trans_tree.GetFriend('pedTree'):
 			optending = 'buffer_{v}'.format(v=int(RoundInt(self.trans_grid.trans_tree.GetMaximum('pedTree.slidingLength'))))
 			suffix = self.suffix[cells]
 			nameh = 'signal_noise_NC_chs_{s}_{c}'.format(c=suffix, s=optending)
 			temp_cut_noise = self.noise_nc_friend_cuts[cells]
-			self.PlotNoise1D(self.noise_friend_varz, nameh, temp_cut_noise)
+			self.PlotNoise1D(self.noise_friend_varz, nameh, temp_cut_noise, typ=typ)
 		else:
 			print 'The transparent tree has no pedTree friend. Cannot do these plots'
 
@@ -169,7 +169,7 @@ class NoiseAnalysis:
 		else:
 			DrawHistogram('noise_Vs_channel_snr', minz, maxz, 'signal noise [SNR]', self.noise_varz['snr'], tempcuts, 'snr')
 
-	def DoFriendStrips2DHistograms(self):
+	def DoFriendStrips2DHistograms(self, typ='adc'):
 		optending = 'buffer_{v}'.format(v=int(RoundInt(self.trans_grid.trans_tree.GetMaximum('pedTree.slidingLength'))))
 		minch, maxch, deltach, xname, xvar = -0.5, 127.5, 1, 'VA channel', 'diaChannels'
 		minch_plot, maxch_plot = int(self.trans_grid.ch_ini - np.ceil((self.cluster_size - 1) / 2.0)), int(self.trans_grid.ch_end + np.ceil((self.cluster_size - 1) / 2.0))
@@ -183,11 +183,12 @@ class NoiseAnalysis:
 			self.trans_grid.histo[name].GetYaxis().SetRangeUser(miny_plot, maxy_plot)
 			self.PosCanvas(name)
 
-		tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.not_in_cluster, self.trans_grid.cuts_man.valid_ped_friend_sigma)
-		minz, maxz = -322.5, 322.5
-		DrawHistogram('noise_Vs_channel_adc_{s}'.format(s=optending), minz, maxz, 'signal noise [ADC]', self.noise_friend_varz['adc'], tempcuts, 'adc')
-		minz, maxz = -32.25, 32.25
-		DrawHistogram('noise_Vs_channel_snr_{s}'.format(s=optending), minz, maxz, 'signal noise [SNR]', self.noise_friend_varz['snr'], tempcuts, 'snr')
+		tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.not_in_cluster, self.trans_grid.cuts_man.valid_ped_sigma)
+		minz, maxz = (self.min_adc_noise, self.max_adc_noise) if typ == 'adc' else (self.min_adc_noise / 10., self.max_adc_noise / 10.)
+		if typ == 'adc':
+			DrawHistogram('noise_Vs_channel_adc_{s}'.format(s=optending), minz, maxz, 'signal noise [ADC]', self.noise_friend_varz['adc'], tempcuts, 'adc')
+		else:
+			DrawHistogram('noise_Vs_channel_snr_{s}'.format(s=optending), minz, maxz, 'signal noise [SNR]', self.noise_friend_varz['snr'], tempcuts, 'snr')
 
 	def DoPedestalEventHistograms(self, doFriend=False):
 		tempcuts = self.in_transp_cluster
