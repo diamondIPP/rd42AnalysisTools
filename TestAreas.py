@@ -190,10 +190,10 @@ class TestAreas:
 		self.noise_ana = NoiseAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 		self.cluster_ch_ana = ClusterChannelsAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
 		self.trans_grid.FindMaxMinVarz()
-		self.center_cells_ana = CenterCellAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 		self.neg_ana = NegativeChargesAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
 		self.sat_ana = SaturationAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
-		self.final_ana = FinalAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
+		self.center_cells_ana = CenterCellAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
+		self.final_ana = FinalAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana, self.center_cells_ana)
 
 	def SetCutsInCutManager(self):
 		print 'Setting cuts in cut manager...', ; sys.stdout.flush()
@@ -344,52 +344,8 @@ class TestAreas:
 		suffix = self.suffix[cells]
 		self.center_cells_ana.w, self.center_cells_ana.window_shift = self.w, self.window_shift
 		dists = np.arange(0.1, 1, 0.025)
-		percents = np.unique(np.floor(np.power(dists, 2) * 100 + 0.5).astype('int32'))
-		for percent in percents:
-			self.trans_grid.CreateTCutGSymmetricRectangle(percent)
-		self.center_cells_ana.DoCenterRegionStudies(percents, cells)
+		self.center_cells_ana.DoCenterRegionStudies(dists, cells, suffix)
 		self.w, self.window_shift = self.center_cells_ana.w, self.center_cells_ana.window_shift
-
-		xarray = percents.astype('float64')
-		temp0 = np.array([percents[1] - percents[0]] + [percents[i] - percents[i-1] for i in xrange(1, percents.size)])
-		temp0fact = (percents[-1] - percents[0]) / (2 * temp0.sum(dtype='float64') - temp0[0] - temp0[-1])
-		xarrayerrs = np.multiply(temp0, temp0fact, dtype='float64')
-
-		yarrayin = np.array([self.trans_grid.histo['PH2_H_adc_in_rect_{p}_percent_{s}'.format(p=p, s=suffix)].GetMean() for p in percents], 'float64')
-		yarrayinerrs = np.array([self.trans_grid.histo['PH2_H_adc_in_rect_{p}_percent_{s}'.format(p=p, s=suffix)].GetMeanError() for p in percents], 'float64')
-		yarrayout = np.array([self.trans_grid.histo['PH2_H_adc_out_rect_{p}_percent_{s}'.format(p=p, s=suffix)].GetMean() for p in percents], 'float64')
-		yarrayouterrs = np.array([self.trans_grid.histo['PH2_H_adc_out_rect_{p}_percent_{s}'.format(p=p, s=suffix)].GetMeanError() for p in percents], 'float64')
-		maxy = max(yarrayin.max() + yarrayinerrs.max(), yarrayout.max() + yarrayouterrs.max())
-
-		tgraphe_in = ro.TGraphErrors(int(xarray.size), xarray, yarrayin, xarrayerrs, yarrayinerrs)
-		ingraphname = 'PH2_H_adc_in_rect_Vs_percent_area_in'
-		tgraphe_in.SetNameTitle('g_' + ingraphname, 'g_' + ingraphname)
-		tgraphe_in.GetXaxis().SetTitle('percentage of rectangular area inside [%]')
-		tgraphe_in.GetYaxis().SetTitle('<PH2 highest chs inside> [ADC]')
-		tgraphe_in.GetYaxis().SetRangeUser(0, maxy)
-		tgraphe_in.SetMarkerStyle(8)
-		tgraphe_in.SetMarkerColor(ro.kRed)
-		tgraphe_in.SetLineColor(ro.kRed)
-		self.trans_grid.graph[ingraphname] = tgraphe_in
-		self.trans_grid.canvas[ingraphname] = ro.TCanvas('c_' + ingraphname, 'c_' + ingraphname, 1)
-		self.trans_grid.graph[ingraphname].Draw('ALP')
-		SetDefault1DCanvasSettings(self.trans_grid.canvas[ingraphname])
-		self.PositionCanvas(ingraphname)
-
-		tgraphe_out = ro.TGraphErrors(int(xarray.size), xarray, yarrayout, xarrayerrs, yarrayouterrs)
-		outgraphname = 'PH2_H_adc_out_rect_Vs_percent_area_in'
-		tgraphe_out.SetNameTitle('g_' + outgraphname, 'g_' + outgraphname)
-		tgraphe_out.GetXaxis().SetTitle('percentage of rectangular area inside')
-		tgraphe_out.GetYaxis().SetTitle('<PH2 highest chs outside> [ADC]')
-		tgraphe_out.GetYaxis().SetRangeUser(0, maxy)
-		tgraphe_out.SetMarkerStyle(8)
-		tgraphe_out.SetMarkerColor(ro.kBlue)
-		tgraphe_out.SetLineColor(ro.kBlue)
-		self.trans_grid.graph[outgraphname] = tgraphe_out
-		self.trans_grid.canvas[outgraphname] = ro.TCanvas('c_' + outgraphname, 'c_' + outgraphname, 1)
-		self.trans_grid.graph[outgraphname].Draw('ALP')
-		SetDefault1DCanvasSettings(self.trans_grid.canvas[outgraphname])
-		self.PositionCanvas(outgraphname)
 
 	def DoCenterCellSaturationStudies(self, cells='all'):
 		self.trans_grid.AddFriendWithSaturationRegions(skipAfter=1, skipBefore=0)
@@ -462,8 +418,8 @@ class TestAreas:
 				self.DoNegativeEventsStudies(cells, typ)
 				self.DoSaturationStudies(cells, typ)
 				self.DoFinalStudies(typ)
-				self.DoCenterCellStudies(cells)
-				self.DoCenterCellSaturationStudies(cells)
+				# self.DoCenterCellStudies(cells)
+				# self.DoCenterCellSaturationStudies(cells)
 		# self.PlotTestClusterStudies(cells)
 		# self.PlotTestForNegative(cells)
 		# self.PlotTest()
@@ -493,6 +449,7 @@ class TestAreas:
 			print 'Setting neg_cut_adc to', self.trans_grid.neg_cut_adc, '. If you wish to change it, do it and save the pickle again in transparent grid object'
 			self.trans_grid.SavePickle()
 		self.trans_grid.SetVarz()
+		self.num_strips = self.trans_grid.num_strips
 
 
 

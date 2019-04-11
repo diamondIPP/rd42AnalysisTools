@@ -121,16 +121,16 @@ class SaturationAnalysis:
 				self.trans_grid.DrawGoodAreasDiamondCenters('hit_map_' + name)
 				self.PosCanvas('hit_map_' + name)
 		if typ == 'adc':
-			tempc = self.sat_adc_N_h_cut['2_H']
-			minz, maxz = min(self.minz['all']['PH2_H_adc'], 0), self.maxz['all']['PH2_H_adc']
-			DrawProfile2D('PH2_H_pred_hit_sat_events_map_{b}_before_{a}_after_adc'.format(b=before, a=after), self.phN_adc_h_varz['PH2_H'], minz, maxz, 'PH2 highest chs [ADC]', tempc, getOccupancy=True)
+			tempc = self.sat_adc_N_h_cut['{n}_H'.format(n=self.num_strips)]
+			minz, maxz = min(self.minz['all']['PH{n}_H_adc'.format(n=self.num_strips)], 0), self.maxz['all']['PH{n}_H_adc'.format(n=self.num_strips)]
+			DrawProfile2D('PH{n}_H_pred_hit_sat_events_map_{b}_before_{a}_after_adc'.format(n=self.num_strips, b=before, a=after), self.phN_adc_h_varz['PH{n}_H'.format(n=self.num_strips)], minz, maxz, 'PH{n} highest chs [ADC]'.format(n=self.num_strips), tempc, getOccupancy=True)
 			tempc = self.sat_adc_N_h_cut['1_H']
 			minz, maxz = min(self.minz['all']['PH1_H_adc'], 0), self.maxz['all']['PH1_H_adc']
 			DrawProfile2D('PH_sat_ch_map_{b}_before_{a}_after_adc'.format(b=before, a=after), self.phN_adc_h_varz['PH1_H'], minz, maxz, 'PH sat ch [ADC]', tempc, 1, 'highest ch', 'clusterChannelHighest1')
 		else:
-			tempc = self.sat_adc_N_h_cut['2_H']
-			minz, maxz = min(self.minz['all']['PH2_H_snr'], 0), self.maxz['all']['PH2_H_snr']
-			DrawProfile2D('PH2_H_pred_hit_sat_events_map_{b}_before_{a}_after_snr'.format(b=before, a=after), self.phN_snr_h_varz['PH2_H'], minz, maxz, 'PH2 highest chs [SNR]', tempc, getOccupancy=True)
+			tempc = self.sat_adc_N_h_cut['{n}_H'.format(n=self.num_strips)]
+			minz, maxz = min(self.minz['all']['PH{n}_H_snr'.format(n=self.num_strips)], 0), self.maxz['all']['PH{n}_H_snr'.format(n=self.num_strips)]
+			DrawProfile2D('PH{n}_H_pred_hit_sat_events_map_{b}_before_{a}_after_snr'.format(b=before, a=after, n=self.num_strips), self.phN_snr_h_varz['PH{n}_H'.format(n=self.num_strips)], minz, maxz, 'PH{n} highest chs [SNR]'.format(n=self.num_strips), tempc, getOccupancy=True)
 			tempc = self.sat_adc_N_h_cut['1_H']
 			minz, maxz = min(self.minz['all']['PH1_H_snr'], 0), self.maxz['all']['PH1_H_snr']
 			DrawProfile2D('PH_sat_ch_map_{b}_before_{a}_after_snr'.format(b=before, a=after), self.phN_snr_h_varz['PH1_H'], minz, maxz, 'PH sat ch [snr]', tempc, 1, 'highest ch', 'clusterChannelHighest1')

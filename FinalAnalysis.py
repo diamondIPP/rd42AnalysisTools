@@ -5,12 +5,14 @@ import ipdb, os
 from ConfigParser import ConfigParser
 from TransparentGrid import TransparentGrid
 from optparse import OptionParser
+from NoiseAnalysis import NoiseAnalysis
+from CenterCellAnalysis import CenterCellAnalysis
 from Utils import *
 
 color_index = 10000
 
 class FinalAnalysis:
-	def __init__(self, trans_grid, numstrips, clustersize, noise_ana=None):
+	def __init__(self, trans_grid, numstrips, clustersize, noise_ana=None, center_reg_ana=None):
 		self.phdelta = 0
 		self.window_shift = 2
 		self.min_snr_neg, self.max_snr_neg = -64, 0
@@ -27,6 +29,8 @@ class FinalAnalysis:
 		self.num_strips = numstrips
 		self.cluster_size = clustersize
 		self.noise_ana = noise_ana
+		self.center_reg_ana = center_reg_ana
+		self.cell_dists = np.arange(0.1, 1, 0.025)
 
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 
@@ -258,6 +262,14 @@ class FinalAnalysis:
 			self.trans_grid.DrawHisto2D(nameh, xmin, xmax, deltax, 'event', ymin, ymax, deltay, 'PH{c} highest chs'.format(c=ch), 'event', vary, tempc)
 			self.PosCanvas(nameh)
 
+	def DoCenterPHStudies(self, cells, cuts='', suffix='no_cuts', typ='adc', do_sat=True):
+		self.center_reg_ana.w, self.center_reg_ana.window_shift = self.w, self.window_shift
+		tempcsnr = self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_snr_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
+		tempcadc = self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)] if cuts == 'no_neg' else self.trans_grid.cuts_man.ConcatenateCuts(self.not_neg_adc_phN_ch['PH{c}_Ch'.format(c=self.cluster_size)], self.not_sat_evts_region) if cuts == 'no_neg_no_sat' else '(1)'
+		tempc = tempcsnr if typ == 'snr' else tempcadc
+		self.center_reg_ana.DoCenterRegionStudies(self.cell_dists, cells, False, suffix, tempc, typ, do_sat)
+		self.w, self.window_shift = self.center_reg_ana.w, self.center_reg_ana.window_shift
+
 	def DoFinalAnalysis(self, typ='adc'):
 		self.SetFinalAnalysis()
 		self.DefineSatRegion(before=0, after=1)
@@ -266,6 +278,7 @@ class FinalAnalysis:
 		self.DoPH2DHistograms('all', '', 'no_cuts', typ=typ)
 		self.DoEfficiencyPlots('all', '', 'no_cuts', typ=typ)
 		self.DoPHHistograms('all', '', 'no_cuts', typ=typ)
+		self.DoCenterPHStudies('all', '', 'no_cuts', typ=typ)
 		list_cuts = ['', 'no_neg', 'no_neg_no_sat']
 		cells = 'good'
 		for cut in list_cuts:
@@ -275,6 +288,7 @@ class FinalAnalysis:
 			self.DoPH2DHistograms(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut), typ=typ)
 			self.DoEfficiencyPlots(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut), typ=typ)
 			self.DoPHHistograms(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut), typ=typ)
+			self.DoCenterPHStudies(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut), typ=typ, do_sat=(cut != 'no_neg_no_sat'))
 
 	def SetFinalAnalysis(self):
 		self.minz = self.trans_grid.minz

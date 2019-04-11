@@ -55,10 +55,10 @@ class TransparentGrid:
 		self.threshold_criteria_in_sigmas = 2
 		self.threshold = 0
 		self.threshold_snr = 0
-		self.phbins = 200
+		self.phbins = 240
 		self.phmin = 0
-		self.phmax = 4000
-		self.phbins_neg = 200
+		self.phmax = 4800
+		self.phbins_neg = 240
 		self.phmin_neg = -2000
 		self.phmax_neg = 2000
 		self.neg_cut = 15
@@ -192,6 +192,7 @@ class TransparentGrid:
 		object_dic['num_parallel'] = self.num_parallel
 		object_dic['hit_factor'] = self.hit_factor
 		object_dic['seed_factor'] = self.seed_factor
+		object_dic['num_strips'] = self.num_strips
 
 		if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
 			os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
@@ -282,6 +283,8 @@ class TransparentGrid:
 			self.hit_factor = self.pkl['hit_factor']
 		if 'seed_factor' in self.pkl.keys():
 			self.seed_factor = self.pkl['seed_factor']
+		if 'num_strips' in self.pkl.keys():
+			self.num_strips = self.pkl['num_strips']
 
 	def SetLines(self, try_align=True):
 		self.LoadPickle()
@@ -923,44 +926,44 @@ class TransparentGrid:
 	def ResetAreas(self):
 		self.gridAreas.ResetAreas()
 
-	def DrawPHInArea(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1):
+	def DrawPHInArea(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc'):
 		if cells == 'good':
-			self.DrawPHGoodAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax)
+			self.DrawPHGoodAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax, typ=typ)
 		elif cells == 'bad':
-			self.DrawPHBadAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax)
+			self.DrawPHBadAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax, typ=typ)
 		else:
-			self.DrawPHAllAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax)
+			self.DrawPHAllAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax, typ=typ)
 
-	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1):
+	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc'):
 		list_cuts = [self.cuts_man.selected_cells]
 		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
-		phmin = xmin if xmin != 10000 else self.phmin
-		phmax = xmax if xmax != -10000 else self.phmax
+		phmin = xmin if xmin != 10000 else self.phmin if typ == 'adc' else self.phmin / 10.
+		phmax = xmax if xmax != -10000 else self.phmax if typ == 'adc' else self.phmax / 10.
 		deltx = deltax if deltax != -1 else float(self.phmax - self.phmin) / float(self.phbins)
 		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev)
 
-	def DrawPHAllAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1):
+	def DrawPHAllAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc'):
 		list_cuts = [self.cuts_man.all_cells]
 		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
-		phmin = xmin if xmin != 10000 else self.phmin
-		phmax = xmax if xmax != -10000 else self.phmax
+		phmin = xmin if xmin != 10000 else self.phmin if typ == 'adc' else self.phmin / 10.
+		phmax = xmax if xmax != -10000 else self.phmax if typ == 'adc' else self.phmax / 10.
 		deltx = deltax if deltax != -1 else float(self.phmax - self.phmin) / float(self.phbins)
 		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev)
 
-	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1):
+	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc'):
 		list_cuts = [self.cuts_man.not_selected_cells]
 		# list_cuts = ['{n}'.format(n=self.gridAreas.badAreasCutNames_diamond if type == 'diamond' else '')]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
-		phmin = xmin if xmin != 10000 else self.phmin
-		phmax = xmax if xmax != -10000 else self.phmax
+		phmin = xmin if xmin != 10000 else self.phmin if typ == 'adc' else self.phmin / 10.
+		phmax = xmax if xmax != -10000 else self.phmax if typ == 'adc' else self.phmax / 10.
 		deltx = deltax if deltax != -1 else float(self.phmax - self.phmin) / float(self.phbins)
 		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev)
 
@@ -998,13 +1001,18 @@ class TransparentGrid:
 		temp_cuts = '&&'.join(list_cuts)
 		self.DrawProfile2D(name, -0.5, 127.5, self.cell_resolution, 'dia X ch', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', self.row_overlay_var, var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
-	def DrawProfile2DDiamondCellOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz', varname='PH[ADC]'):
+	def DrawProfile2DDiamondCellOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz', varname='PH[ADC]', typ='adc'):
 		y0, rowpitch, numrows, xoff, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['x_off'], self.row_info_diamond['y_off']
 		list_cuts = [self.cuts_man.selected_cells if cells == 'good' else self.cuts_man.not_selected_cells if cells == 'bad' else self.cuts_man.all_cells]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
 		self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', self.col_overlay_var, self.row_overlay_var, var, varname, temp_cuts, transp_ev, plot_option)
+		if typ == 'adc':
+			self.profile[name].GetZaxis().SetRangeUser(self.phmin, self.phmax)
+		else:
+			self.profile[name].GetZaxis().SetRangeUser(self.phmin / 10., self.phmax / 10.)
+		ro.gPad.Update()
 		# self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '((diaChXPred-{ox})*{p})%{p}'.format(ox=xoff, p=self.col_pitch), '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
 	def DrawHisto2DDiamondChannelOverlay(self, name, cells='all', cuts='', transp_ev=True):
