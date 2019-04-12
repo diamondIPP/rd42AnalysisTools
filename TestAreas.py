@@ -26,7 +26,6 @@ class TestAreas:
 		self.run = run
 		self.cellsize = 50
 		self.cell_resolution = 0
-		self.phdelta = 0
 		self.phmin = 10000
 		self.phmax = -10000
 		self.binsperx = 0
@@ -35,15 +34,13 @@ class TestAreas:
 		self.skip_before_sat = 5
 		self.skip_after_sat = 95
 		self.do_threshold = False
+		self.efficiency_subdiv = 1
 		self.window_shift = 3
 		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -65, 1, 2
-		# self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.125
 		self.min_snr, self.max_snr = -650, 650
 		self.min_adc, self.max_adc = -6500, 6500
 		self.delta_adc = 20
 		self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -322.5, 322.5, 0.5
-		# self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -32.25, 32.25, 0.5
-		# self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = -3.225, 3.225, 0.05
 		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = -32.25, 32.25, 0.05
 		self.minz = {t: {} for t in ['all', 'good', 'bad']}
 		self.maxz = {t: {} for t in ['all', 'good', 'bad']}
@@ -68,9 +65,9 @@ class TestAreas:
 		self.sat_ana = None
 		self.final_ana = None
 		self.bias = self.trans_grid.bias
-		self.saturated_ADC = self.trans_grid.saturated_ADC
-		self.num_strips = self.trans_grid.num_strips if self.trans_grid.num_strips != 0 else 3
-		self.cluster_size = self.trans_grid.cluster_size if self.trans_grid.cluster_size != 0 else 3
+		self.saturated_ADC = 0
+		self.num_strips = 0
+		self.cluster_size = 0
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 		if self.num_rows != 0:
 			self.trans_grid.row_info_diamond['num'] = self.num_rows
@@ -95,10 +92,8 @@ class TestAreas:
 					self.cluster_size = pars.getint('SETTINGS', 'cluster_size')
 				if pars.has_option('SETTINGS', 'cell_size'):
 					self.cellsize = pars.getint('SETTINGS', 'cell_size')
-				if pars.has_option('SETTINGS', 'do_fit'):
-					self.do_fit = pars.getboolean('SETTINGS', 'do_fit')
-				if pars.has_option('SETTINGS', 'do_saturation'):
-					self.do_saturation = pars.getboolean('SETTINGS', 'do_saturation')
+				if pars.has_option('SETTINGS', 'num_strips'):
+					self.num_strips = pars.getint('SETTINGS', 'num_strips')
 				if pars.has_option('SETTINGS', 'skip_before_sat'):
 					self.skip_before_sat = pars.getint('SETTINGS', 'skip_before_sat')
 				if pars.has_option('SETTINGS', 'skip_after_sat'):
@@ -111,8 +106,8 @@ class TestAreas:
 					self.do_threshold = pars.getboolean('SETTINGS', 'do_threshold')
 				if pars.has_option('SETTINGS', 'cell_resolution'):
 					self.cell_resolution = pars.getfloat('SETTINGS', 'cell_resolution')
-				if pars.has_option('SETTINGS', 'phdelta'):
-					self.phdelta = pars.getfloat('SETTINGS', 'phdelta')
+				if pars.has_option('SETTINGS', 'delta_adc'):
+					self.delta_adc = pars.getfloat('SETTINGS', 'delta_adc')
 				if pars.has_option('SETTINGS', 'phmin'):
 					self.phmin = pars.getfloat('SETTINGS', 'phmin')
 				if pars.has_option('SETTINGS', 'phmax'):
@@ -122,7 +117,9 @@ class TestAreas:
 				if pars.has_option('SETTINGS', 'binspery'):
 					self.binspery = pars.getfloat('SETTINGS', 'binspery')
 				if pars.has_option('SETTINGS', 'efficiency_subdiv'):
-					self.binspery = pars.getfloat('SETTINGS', 'efficiency_subdiv')
+					self.efficiency_subdiv = pars.getfloat('SETTINGS', 'efficiency_subdiv')
+				if pars.has_option('SETTINGS', 'saturated_ADC'):
+					self.saturated_ADC = pars.getint('SETTINGS', 'saturated_ADC')
 			if pars.has_section('ROWS'):
 				if pars.has_option('ROWS', 'rows'):
 					rows = pars.get('ROWS', 'rows')
@@ -409,8 +406,8 @@ class TestAreas:
 	def SaveCanvas(self):
 		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys())
 
-	def DoAutomatic(self, cells='good', do_save=True, types=['adc']):
-		self.window_shift = 2
+	def DoAutomatic(self, cells='good', types=['adc'], SaveAllPlots=False):
+		self.window_shift = 1
 		self.DoBorderPlots()
 		self.DoCellHistograms()
 		for typ in ['adc', 'snr']:
@@ -427,16 +424,20 @@ class TestAreas:
 		# self.PlotTest()
 		# if self.do_saturation:
 		# 	self.PlotSaturation()
-		if do_save:
+		if SaveAllPlots:
 			self.SaveCanvas()
 
 	def SetTransparentGrid(self):
 		self.trans_grid.SetLines()
 		self.trans_grid.CreateTCutGs()
-		if self.trans_grid.saturated_ADC != 0:
-			self.saturated_ADC = self.trans_grid.saturated_ADC
+		if self.saturated_ADC == 0:
+			if self.trans_grid.saturated_ADC != 0:
+				self.saturated_ADC = self.trans_grid.saturated_ADC
+			else:
+				self.saturated_ADC = Get_From_User_Value('saturation_ADC for run ' + str(self.run), 'int', self.trans_grid.saturated_ADC, True)
+				self.trans_grid.saturated_ADC = self.saturated_ADC
+				self.trans_grid.SavePickle()
 		else:
-			self.saturated_ADC = Get_From_User_Value('saturation_ADC for run ' + str(self.run), 'int', self.trans_grid.saturated_ADC, True)
 			self.trans_grid.saturated_ADC = self.saturated_ADC
 			self.trans_grid.SavePickle()
 		if self.trans_grid.bias != 0:
@@ -446,12 +447,53 @@ class TestAreas:
 			self.trans_grid.bias = self.bias
 			self.trans_grid.SavePickle()
 		if self.trans_grid.neg_cut_adc == 4100:
-			self.trans_grid.DrawHisto1D('NoiseAllCells', -32.25, 32.25, 0.5, 'diaChSignal', 'signal not in cluster cmc [ADC]', self.trans_grid.cuts_man.not_in_transp_cluster, option='goff')
-			self.trans_grid.neg_cut_adc = self.trans_grid.neg_cut * self.trans_grid.histo['NoiseAllCells'].GetRMS()
-			print 'Setting neg_cut_adc to', self.trans_grid.neg_cut_adc, '. If you wish to change it, do it and save the pickle again in transparent grid object'
-			self.trans_grid.SavePickle()
+			if self.trans_grid.neg_cut_snr != 410:
+				self.trans_grid.DrawHisto1D('NoiseAllCells', -32.25, 32.25, 0.5, 'diaChSignal', 'signal not in cluster cmc [ADC]', self.trans_grid.cuts_man.not_in_transp_cluster, option='goff')
+				self.trans_grid.neg_cut_adc = self.trans_grid.neg_cut_snr * self.trans_grid.histo['NoiseAllCells'].GetRMS()
+				print 'Setting neg_cut_adc to', self.trans_grid.neg_cut_adc, '. If you wish to change it, do it and save the pickle again in the transparent grid object'
+				self.trans_grid.SavePickle()
+			else:
+				print 'Run the noise and the cluster analysis to determine the neg_cut_snr and neg_cut_adc values'
+
 		self.trans_grid.SetVarz()
-		self.num_strips = self.trans_grid.num_strips
+		# Update cluster size:
+		if self.cluster_size == 0:
+			self.cluster_size = self.trans_grid.cluster_size
+		else:
+			self.trans_grid.cluster_size = self.cluster_size
+		# Update num_strips
+		if self.num_strips == 0:
+			self.num_strips = self.trans_grid.num_strips
+		else:
+			self.trans_grid.num_strips = self.num_strips
+		# Update phmax for value analysis
+		if self.phmax != -10000:
+			self.trans_grid.phmax = self.phmax
+		else:
+			self.phmax = self.trans_grid.phmax
+		# Update phmin for value analysis
+		if self.phmin != 10000:
+			self.trans_grid.phmin = self.phmin
+		else:
+			self.phmin = self.trans_grid.phmin
+		# Update cell resolution value for analysis
+		if self.cell_resolution == 0:
+			self.trans_grid.FindBinningAndResolution()
+			self.cell_resolution = self.trans_grid.FindBinningAndResolution()
+		else:
+			self.trans_grid.cell_resolution = self.cell_resolution
+		# update ph binning:
+		if self.phdelta != 0:
+			self.trans_grid.phbins = RoundInt(float(self.phmax - self.phmin) / self.phdelta)
+		# ph binx x update:
+		if self.binsperx != 0:
+			self.trans_grid.bins_per_ch_x = self.binsperx
+		# ph bins y update:
+		if self.binspery != 0:
+			self.trans_grid.bins_per_ch_y = self.binspery
+		# efficiency subdiv
+		if self.efficiency_subdiv != 1:
+			self.trans_grid.efficiency_subdiv = self.efficiency_subdiv
 
 
 
@@ -460,11 +502,13 @@ if __name__ == '__main__':
 	parser.add_option('-r', '--run', dest='run', type='int', default=0, help='run number to be analysed (e.g. 25209)')
 	parser.add_option('-a', '--auto', dest='auto', default=False, action='store_true', help='Sets up test, creates plots and saves them automatically if toggled')
 	parser.add_option('-c', '--config', dest='config', default='', type='string', help='gives the path to a config file for the test area')
+	parser.add_option('-t', '--type', dest='typ', default='[adc]', type='string', help='selects a type of analysis to run automatically. Options are [adc], [adc,snr], or [snr] order does not matter.')
 
 	(options, args) = parser.parse_args()
 	run = int(options.run)
 	autom = bool(options.auto)
 	config = str(options.config)
+	typ = str(options.typ).strip('[').strip(']').split(',')
 
 	t = TestAreas(config, run)
 	t.SetTransparentGrid()
@@ -478,5 +522,5 @@ if __name__ == '__main__':
 		t.trans_grid.FindBinningAndResolution()
 		t.trans_grid.SavePickle()
 	if autom:
-		t.DoAutomatic('good')
+		t.DoAutomatic('good', types=typ, SaveAllPlots=True)
 

@@ -247,7 +247,6 @@ class CutManager:
 				self.phN_adc_h_cuts[cells]['PH{c}_H'.format(c=ch+1)] = self.ConcatenateCutWithCells(cut=self.ph_adc_N_h['PH{c}_H'.format(c=ch+1)], cells=cells)
 				self.phN_snr_h_cuts[cells]['PH{c}_H'.format(c=ch+1)] = self.ConcatenateCutWithCells(cut=self.ph_snr_N_h['PH{c}_H'.format(c=ch+1)], cells=cells)
 
-
 	def SetUpDownBorderCuts(self, lower, upper):
 		self.no_up_down_borders = self.no_up_down_borders.format(l=lower, h=upper)
 

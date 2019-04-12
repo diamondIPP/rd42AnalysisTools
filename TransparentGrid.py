@@ -61,7 +61,7 @@ class TransparentGrid:
 		self.phbins_neg = 240
 		self.phmin_neg = -2000
 		self.phmax_neg = 2000
-		self.neg_cut = 15
+		self.neg_cut_snr = 410
 		self.neg_cut_adc = 4100
 		self.evs_before_sat_cut = 0
 		self.evs_after_sat_cut = 0
@@ -76,7 +76,7 @@ class TransparentGrid:
 		self.length_central_region = 30 if self.col_pitch == 50 else 40 if self.col_pitch == 100 else 50
 		self.conv_steps = 1000
 		self.sigma_conv = 5
-		self.efficiency_subdiv = 50
+		self.efficiency_subdiv = 1
 		self.vertical_lines_diamond = []
 		self.vertical_lines_diamond_tline = []
 		self.horizontal_lines_diamond = []
@@ -175,7 +175,7 @@ class TransparentGrid:
 		object_dic['phbins_neg'] = self.phbins_neg
 		object_dic['phmin_neg'] = self.phmin_neg
 		object_dic['phmax_neg'] = self.phmax_neg
-		object_dic['neg_cut'] = self.neg_cut
+		object_dic['neg_cut_snr'] = self.neg_cut_snr
 		object_dic['neg_cut_adc'] = self.neg_cut_adc
 		object_dic['col_pitch'] = self.col_pitch
 		object_dic['cell_resolution'] = self.cell_resolution
@@ -248,8 +248,8 @@ class TransparentGrid:
 			self.phmin_neg = self.pkl['phmin_neg']
 		if 'phmax_neg' in self.pkl.keys():
 			self.phmax_neg = self.pkl['phmax_neg']
-		if 'neg_cut' in self.pkl.keys():
-			self.neg_cut = self.pkl['neg_cut']
+		if 'neg_cut_snr' in self.pkl.keys():
+			self.neg_cut_snr = self.pkl['neg_cut_snr']
 		if 'neg_cut_adc' in self.pkl.keys():
 			self.neg_cut_adc = self.pkl['neg_cut_adc']
 		if 'col_pitch' in self.pkl.keys():
@@ -534,7 +534,7 @@ class TransparentGrid:
 		self.CreateTCutGsDiamondCenter()
 		self.CreateGridText()
 		self.cuts_man = CutManager(self.trans_tree, self.num_strips, self.cluster_size, self.saturated_ADC)
-		self.cuts_man.SetCuts(neg_cut_snr=self.neg_cut, neg_cut_adc=self.neg_cut_adc)
+		self.cuts_man.SetCuts(neg_cut_snr=self.neg_cut_snr, neg_cut_adc=self.neg_cut_adc)
 		self.cuts_man.SetUpDownBorderCuts(lower=self.row_info_diamond['0'], upper=self.row_info_diamond['up'])
 
 	def CreateTCutGsDiamond(self):
@@ -1080,7 +1080,7 @@ class TransparentGrid:
 					xsup = value - deltax / 2.0
 					yinf = ymin_plot - lim_one_side
 					break
-		self.efficiency_subdiv = int(max(RoundInt(subf / denominator), 1))
+		self.efficiency_subdiv = int(max(RoundInt(subf / denominator), 1)) if self.efficiency_subdiv == 1 else self.efficiency_subdiv
 		print 'Calculate uncertainties for efficiency plot... the step used is {d}...'.format(d=1.0 / (self.efficiency_subdiv * denominator)), ; sys.stdout.flush()
 		ySigmas = map(self.FindAsymmetricUncertaintiesWithDiscrete, numerator, [denominator for i in xrange(numerator.size)], [sigma_errbar for i in xrange(numerator.size)])
 		print 'Done'
