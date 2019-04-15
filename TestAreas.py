@@ -184,6 +184,17 @@ class TestAreas:
 
 	def SetAnalysis(self):
 		self.SetCutsInCutManager()
+		# Update cell resolution value for analysis
+		if self.cell_resolution == 0:
+			if self.trans_grid.cell_resolution == 0:
+				self.trans_grid.FindBinningAndResolution()
+				self.cell_resolution = self.trans_grid.FindBinningAndResolution()
+				self.trans_grid.SavePickle()
+			else:
+				self.cell_resolution = self.trans_grid.cell_resolution
+		else:
+			self.trans_grid.cell_resolution = self.cell_resolution
+			self.trans_grid.SavePickle()
 		self.noise_ana = NoiseAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 		self.cluster_ch_ana = ClusterChannelsAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
 		self.trans_grid.FindMaxMinVarz()
@@ -476,15 +487,9 @@ class TestAreas:
 			self.trans_grid.phmin = self.phmin
 		else:
 			self.phmin = self.trans_grid.phmin
-		# Update cell resolution value for analysis
-		if self.cell_resolution == 0:
-			self.trans_grid.FindBinningAndResolution()
-			self.cell_resolution = self.trans_grid.FindBinningAndResolution()
-		else:
-			self.trans_grid.cell_resolution = self.cell_resolution
 		# update ph binning:
-		if self.phdelta != 0:
-			self.trans_grid.phbins = RoundInt(float(self.phmax - self.phmin) / self.phdelta)
+		if self.delta_adc != 0:
+			self.trans_grid.phbins = RoundInt(float(self.phmax - self.phmin) / self.delta_adc)
 		# ph binx x update:
 		if self.binsperx != 0:
 			self.trans_grid.bins_per_ch_x = self.binsperx

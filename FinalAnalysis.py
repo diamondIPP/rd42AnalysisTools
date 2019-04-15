@@ -14,7 +14,6 @@ color_index = 10000
 
 class FinalAnalysis:
 	def __init__(self, trans_grid, numstrips, clustersize, noise_ana=None, center_reg_ana=None):
-		self.phdelta = 0
 		self.window_shift = 2
 		self.min_snr_neg, self.max_snr_neg = -64, 0
 		self.min_adc_neg, self.max_adc_neg = -650, 0

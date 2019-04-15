@@ -41,6 +41,7 @@ class CutManager:
 		self.not_neg_adc_phN_ch = {}
 		self.not_neg_adc_phN_h = {}
 
+		self.nc_chs = '((!diaChSeed)&&(!diaChHits)&&(!diaChsNoisy)&&(!diaChsScreened)&&(diaChsNC))'
 		self.in_transp_cluster = '((diaChSeed)||(diaChHits))'
 		self.not_in_cluster = '((!diaChSeed)&&(!diaChHits))'
 		self.not_in_transp_cluster = '((!diaChSeed)&&(!diaChHits)&&(!diaChsNoisy)&&(!diaChsScreened)&&(!diaChsNC))'
@@ -65,12 +66,12 @@ class CutManager:
 		self.sat_adc_N_h = {}
 		self.not_sat_adc_N_ch = {}
 		self.not_sat_adc_N_h = {}
-		
+
 		self.ph_adc_ch = {}
 		self.ph_snr_ch = {}
 		self.ph_adc_h = {}
 		self.ph_snr_h = {}
-		
+
 		self.ph_adc_N_ch = {}
 		self.ph_snr_N_ch = {}
 		self.ph_adc_N_h = {}
@@ -79,8 +80,7 @@ class CutManager:
 		self.sat_evts = None
 		self.sat_evts_region = '(satRegion)'
 		self.not_sat_evts_region = '(!satRegion)'
-		self.nc_chs = '((!diaChSeed)&&(!diaChHits)&&(!diaChsNoisy)&&(!diaChsScreened)&&(diaChsNC))'
-		
+
 		self.noise_cuts = {t: '' for t in ['all', 'good', 'bad']}
 		self.noise_friend_cuts = {t: '' for t in ['all', 'good', 'bad']}
 		self.noise_nc_cuts = {t: '' for t in ['all', 'good', 'bad']}

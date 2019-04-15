@@ -66,7 +66,7 @@ class TransparentGrid:
 		self.evs_before_sat_cut = 0
 		self.evs_after_sat_cut = 0
 		self.col_pitch = col_pitch
-		self.cell_resolution = 50.0 / 25 if self.col_pitch == 50 else 100.0 / 51
+		self.cell_resolution = 0
 		self.delta_offset_threshold = 0.01  # in mum
 		self.saturated_ADC = 0
 		self.bias = 0
