@@ -215,43 +215,53 @@ class ClusterChannelsAnalysis:
 					# these will be the same as PH{c1}_Ch when c1 == self.cluster_size - 1, because it is all the channels in the cluster
 					if typ == 'adc':
 						if 'PH{c1}_H'.format(c1=ch+1) in self.phN_adc_h_varz.keys() and 'PH_H{c2}'.format(c2=ch2+1) in self.ph_adc_h_varz.keys():
-							tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_adc_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_adc_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)])
+							tempcuts = self.trans_grid.cuts_man.AndCuts([self.phN_adc_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_adc_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)]])
+							# tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_adc_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_adc_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)])
 							DrawHistogram('PH{c1}_H_Vs_PH_H{c2}_adc'.format(c1=ch+1, c2=ch2+1), 'PH highest {c}{sf} ch [SNR]'.format(c=ch2+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), 0, 4200, 'PH{c1} highest chs [SNR]'.format(c1=ch+1), self.ph_adc_h_varz['PH_H{i}'.format(i=ch2+1)], self.phN_adc_h_varz['PH{i}_H'.format(i=ch+1)], tempcuts)
 
 						if 'PH{c1}_H'.format(c1=ch+1) in self.phN_adc_h_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_adc_ch_varz.keys():
-							tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_adc_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
+							tempcuts = self.trans_grid.cuts_man.AndCuts([self.phN_adc_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)]])
+							# tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_adc_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
 							DrawHistogram('PH{c1}_H_Vs_PH_Ch{c2}_adc'.format(c1=ch+1, c2=ch2), 'PH cluster ch{c2} [SNR]'.format(c2=ch2), 0, 4200, 'PH{c1} highest chs [SNR]'.format(c1=ch+1), self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch2)], self.phN_adc_h_varz['PH{i}_H'.format(i=ch+1)], tempcuts)
 					else:
 						if 'PH{c1}_H'.format(c1=ch+1) in self.phN_snr_h_varz.keys() and 'PH_H{c2}'.format(c2=ch2+1) in self.ph_snr_h_varz.keys():
-							tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_snr_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_snr_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)])
+							tempcuts = self.trans_grid.cuts_man.AndCuts([self.phN_snr_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_snr_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)]])
+							# tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_snr_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_snr_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)])
 							DrawHistogram('PH{c1}_H_Vs_PH_H{c2}_snr'.format(c1=ch+1, c2=ch2+1), 'PH highest {c}{sf} ch [SNR]'.format(c=ch2+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), 0, 420, 'PH{c1} highest chs [SNR]'.format(c1=ch+1), self.ph_snr_h_varz['PH_H{i}'.format(i=ch2+1)], self.phN_snr_h_varz['PH{i}_H'.format(i=ch+1)], tempcuts, 'snr')
 
 						if 'PH{c1}_H'.format(c1=ch+1) in self.phN_snr_h_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_snr_ch_varz.keys():
-							tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_snr_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_snr_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
+							tempcuts = self.trans_grid.cuts_man.AndCuts([self.phN_snr_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_snr_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)]])
+							# tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_snr_h_cuts[cells]['PH{c1}_H'.format(c1=ch+1)], self.ph_snr_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
 							DrawHistogram('PH{c1}_H_Vs_PH_Ch{c2}_snr'.format(c1=ch+1, c2=ch2), 'PH cluster ch{c2} [SNR]'.format(c2=ch2), 0, 420, 'PH{c1} highest chs [SNR]'.format(c1=ch+1), self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch2)], self.phN_snr_h_varz['PH{i}_H'.format(i=ch+1)], tempcuts, 'snr')
 				if typ == 'adc':
 					if 'PH{c1}_Ch'.format(c1=ch+1) in self.phN_adc_ch_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_adc_ch_varz.keys():
-						tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_adc_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
+						tempcuts = self.trans_grid.cuts_man.AndCuts([self.phN_adc_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)]])
+						# tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_adc_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
 						DrawHistogram('PH{c1}_Ch_Vs_PH_Ch{c2}_adc'.format(c1=ch+1, c2=ch2), 'PH cluster ch{c2} [SNR]'.format(c2=ch2), 0, 4200, 'PH{c1} cluster chs [SNR]'.format(c1=ch+1), self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch2)], self.phN_adc_ch_varz['PH{i}_Ch'.format(i=ch+1)], tempcuts)
 
 					if 'PH{c1}_Ch'.format(c1=ch+1) in self.phN_adc_ch_varz.keys() and 'PH_H{c2}'.format(c2=ch2+1) in self.ph_adc_h_varz.keys():
-						tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_adc_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_adc_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)])
+						tempcuts = self.trans_grid.cuts_man.AndCuts([self.phN_adc_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_adc_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)]])
+						# tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_adc_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_adc_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)])
 						DrawHistogram('PH{c1}_Ch_Vs_PH_H{c2}_adc'.format(c1=ch+1, c2=ch2+1), 'PH highest {c2}{sf} ch [SNR]'.format(c2=ch2+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), 0, 4200, 'PH{c1} cluster chs [SNR]'.format(c1=ch+1), self.ph_adc_h_varz['PH_H{i}'.format(i=ch2+1)], self.phN_adc_ch_varz['PH{i}_Ch'.format(i=ch+1)], tempcuts)
 
 					if 'PH_H{c1}'.format(c1=ch+1) in self.ph_adc_h_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_adc_ch_varz.keys():
-						tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.ph_adc_h_cuts[cells]['PH_H{c1}'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
+						tempcuts = self.trans_grid.cuts_man.AndCuts([self.ph_adc_h_cuts[cells]['PH_H{c1}'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)]])
+						# tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.ph_adc_h_cuts[cells]['PH_H{c1}'.format(c1=ch+1)], self.ph_adc_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
 						DrawHistogram('PH_H{c1}_Vs_PH_Ch{c2}_adc'.format(c1=ch+1, c2=ch2), 'PH cluster ch{c2} [SNR]'.format(c2=ch2), -550, 2650, 'PH highest {c1}{sf} ch [SNR]'.format(c1=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch2)], self.ph_adc_h_varz['PH_H{i}'.format(i=ch+1)], tempcuts)
 				else:
 					if 'PH{c1}_Ch'.format(c1=ch+1) in self.phN_snr_ch_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_snr_ch_varz.keys():
-						tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_snr_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_snr_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
+						tempcuts = self.trans_grid.cuts_man.AndCuts([self.phN_snr_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_snr_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)]])
+						# tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_snr_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_snr_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
 						DrawHistogram('PH{c1}_Ch_Vs_PH_Ch{c2}_snr'.format(c1=ch+1, c2=ch2), 'PH cluster ch{c2} [SNR]'.format(c2=ch2), 0, 420, 'PH{c1} cluster chs [SNR]'.format(c1=ch+1), self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch2)], self.phN_snr_ch_varz['PH{i}_Ch'.format(i=ch+1)], tempcuts, 'snr')
 
 					if 'PH{c1}_Ch'.format(c1=ch+1) in self.phN_snr_ch_varz.keys() and 'PH_H{c2}'.format(c2=ch2+1) in self.ph_snr_h_varz.keys():
-						tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_snr_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_snr_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)])
+						tempcuts = self.trans_grid.cuts_man.AndCuts([self.phN_snr_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_snr_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)]])
+						# tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.phN_snr_ch_cuts[cells]['PH{c1}_Ch'.format(c1=ch+1)], self.ph_snr_h_cuts[cells]['PH_H{c2}'.format(c2=ch2+1)])
 						DrawHistogram('PH{c1}_Ch_Vs_PH_H{c2}_snr'.format(c1=ch+1, c2=ch2+1), 'PH highest {c2}{sf} ch [SNR]'.format(c2=ch2+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), 0, 420, 'PH{c1} cluster chs [SNR]'.format(c1=ch+1), self.ph_snr_h_varz['PH_H{i}'.format(i=ch2+1)], self.phN_snr_ch_varz['PH{i}_Ch'.format(i=ch+1)], tempcuts, 'snr')
 
 					if 'PH_H{c1}'.format(c1=ch+1) in self.ph_snr_h_varz.keys() and 'PH_Ch{c2}'.format(c2=ch2) in self.ph_snr_ch_varz.keys():
-						tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.ph_snr_h_cuts[cells]['PH_H{c1}'.format(c1=ch+1)], self.ph_snr_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
+						tempcuts = self.trans_grid.cuts_man.AndCuts([self.ph_snr_h_cuts[cells]['PH_H{c1}'.format(c1=ch+1)], self.ph_snr_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)]])
+						# tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.ph_snr_h_cuts[cells]['PH_H{c1}'.format(c1=ch+1)], self.ph_snr_ch_cuts[cells]['PH_Ch{c2}'.format(c2=ch2)])
 						DrawHistogram('PH_H{c1}_Vs_PH_Ch{c2}_snr'.format(c1=ch+1, c2=ch2), 'PH cluster ch{c2} [SNR]'.format(c2=ch2), -55, 265, 'PH highest {c1}{sf} ch [SNR]'.format(c1=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch2)], self.ph_snr_h_varz['PH_H{i}'.format(i=ch+1)], tempcuts, 'snr')
 
 	def DoClusterStudies(self, cells='all', typ='adc'):

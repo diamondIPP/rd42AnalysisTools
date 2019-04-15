@@ -256,7 +256,8 @@ class NegativeChargesAnalysis:
 	def GetCutsFromCutManager(self, cells):
 		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]
 		self.noise_friend_cuts[cells] = self.trans_grid.cuts_man.noise_friend_cuts[cells]
-		self.in_transp_cluster = self.trans_grid.cuts_man.ConcatenateCuts(cut2=self.trans_grid.cuts_man.in_transp_cluster, cut1=self.trans_grid.cuts_man.transp_ev)
+		self.in_transp_cluster = self.trans_grid.cuts_man.AndCuts([self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.in_transp_cluster])
+		# self.in_transp_cluster = self.trans_grid.cuts_man.ConcatenateCuts(cut2=self.trans_grid.cuts_man.in_transp_cluster, cut1=self.trans_grid.cuts_man.transp_ev)
 		self.noise_nc_cuts[cells] = self.trans_grid.cuts_man.noise_nc_cuts[cells]
 		self.noise_nc_friend_cuts[cells] = self.trans_grid.cuts_man.noise_nc_friend_cuts[cells]
 

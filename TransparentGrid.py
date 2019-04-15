@@ -533,7 +533,7 @@ class TransparentGrid:
 		self.CreateTCutGsDiamond()
 		self.CreateTCutGsDiamondCenter()
 		self.CreateGridText()
-		self.cuts_man = CutManager(self.trans_tree, self.num_strips, self.cluster_size, self.saturated_ADC)
+		self.cuts_man = CutManager(self.trans_tree, self.num_strips, self.cluster_size, self.saturated_ADC, self.neg_cut_adc, self.neg_cut_snr)
 		self.cuts_man.SetCuts(neg_cut_snr=self.neg_cut_snr, neg_cut_adc=self.neg_cut_adc)
 		self.cuts_man.SetUpDownBorderCuts(lower=self.row_info_diamond['0'], upper=self.row_info_diamond['up'])
 
@@ -1060,7 +1060,7 @@ class TransparentGrid:
 		return '&&'.join(list_cuts)
 
 	def DrawEfficiencyGraph(self, name, var, cells, cuts, xmin, xmax, deltax, typ='adc', ymin_plot=0, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2)), subf=4000.0):
-		cut = self.cuts_man.transp_ev if cuts == '' else self.cuts_man.ConcatenateCuts(self.cuts_man.transp_ev, cuts)
+		cut = self.cuts_man.transp_ev if cuts == '' else self.cuts_man.AndCuts([self.cuts_man.transp_ev, cuts])
 		minimum = min(0, max(GetMinimumFromTree(self.trans_tree, var, cut), -9999))
 		denominator = float(self.GetEventsForThCut(var, minimum, cells, cut))
 		if denominator == 0:

@@ -157,7 +157,8 @@ class NoiseAnalysis:
 			self.trans_grid.histo[name].GetYaxis().SetRangeUser(miny_plot, maxy_plot)
 			self.PosCanvas(name)
 
-		tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.not_in_cluster, self.trans_grid.cuts_man.valid_ped_sigma)
+		tempcuts = self.trans_grid.cuts_man.AndCuts([self.trans_grid.cuts_man.not_in_cluster, self.trans_grid.cuts_man.valid_ped_sigma])
+		# tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.not_in_cluster, self.trans_grid.cuts_man.valid_ped_sigma)
 		minz, maxz = (self.min_adc_noise, self.max_adc_noise) if typ == 'adc' else (self.min_adc_noise / 10., self.max_adc_noise / 10.)
 		if typ == 'adc':
 			DrawHistogram('noise_Vs_channel_adc', minz, maxz, 'signal noise [ADC]', self.noise_varz['adc'], tempcuts, 'adc')
@@ -178,7 +179,8 @@ class NoiseAnalysis:
 			self.trans_grid.histo[name].GetYaxis().SetRangeUser(miny_plot, maxy_plot)
 			self.PosCanvas(name)
 
-		tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.not_in_cluster, self.trans_grid.cuts_man.valid_ped_sigma)
+		tempcuts = self.trans_grid.cuts_man.AndCuts([self.trans_grid.cuts_man.not_in_cluster, self.trans_grid.cuts_man.valid_ped_sigma])
+		# tempcuts = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.not_in_cluster, self.trans_grid.cuts_man.valid_ped_sigma)
 		minz, maxz = (self.min_adc_noise, self.max_adc_noise) if typ == 'adc' else (self.min_adc_noise / 10., self.max_adc_noise / 10.)
 		if typ == 'adc':
 			DrawHistogram('noise_Vs_channel_adc_{s}'.format(s=optending), minz, maxz, 'signal noise [ADC]', self.noise_friend_varz['adc'], tempcuts, 'adc')
@@ -275,7 +277,8 @@ class NoiseAnalysis:
 	def GetCutsFromCutManager(self, cells):
 		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]
 		self.noise_friend_cuts[cells] = self.trans_grid.cuts_man.noise_friend_cuts[cells]
-		self.in_transp_cluster = self.trans_grid.cuts_man.ConcatenateCuts(cut2=self.trans_grid.cuts_man.in_transp_cluster, cut1=self.trans_grid.cuts_man.transp_ev)
+		self.in_transp_cluster = self.trans_grid.cuts_man.AndCuts([self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.in_transp_cluster])
+		# self.in_transp_cluster = self.trans_grid.cuts_man.ConcatenateCuts(cut2=self.trans_grid.cuts_man.in_transp_cluster, cut1=self.trans_grid.cuts_man.transp_ev)
 		self.noise_nc_cuts[cells] = self.trans_grid.cuts_man.noise_nc_cuts[cells]
 		self.noise_nc_friend_cuts[cells] = self.trans_grid.cuts_man.noise_nc_friend_cuts[cells]
 

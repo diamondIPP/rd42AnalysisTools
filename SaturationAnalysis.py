@@ -144,8 +144,10 @@ class SaturationAnalysis:
 		def DrawPHHisto(name, varz, varzname, cuts, xmin=10000, xmax=-10000, deltax=-1):
 			self.trans_grid.DrawPHInArea(name, varz, cells, cuts, varname=varzname, xmin=xmin, xmax=xmax, deltax=deltax)
 			self.PosCanvas(name)
-		tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)])
-		tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)])
+		tempcsat = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)]])
+		# tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)])
+		tempcnosat = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)]])
+		# tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)])
 		minsnr, maxsnr = int(RoundInt(self.trans_grid.phmin / sigm)), int(RoundInt(self.trans_grid.phmax / sigm))
 		deltsnr = float(maxsnr - minsnr) / float(self.trans_grid.phbins)
 		for ch in xrange(1, self.cluster_size + 1):
@@ -174,25 +176,33 @@ class SaturationAnalysis:
 		suffix = self.suffix[cells]
 		for ch in xrange(1, self.cluster_size + 1):
 			if typ == 'adc':
-				tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_adc_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)])
-				tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_adc_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)])
+				tempcsat = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region, self.phN_adc_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)]])
+				# tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_adc_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)])
+				tempcnosat = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region, self.phN_adc_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)]])
+				# tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_adc_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)])
 				minzadc, maxzadc = min(self.minz[cells]['PH{c}_Ch_adc'.format(c=ch)], 0), self.maxz[cells]['PH{c}_Ch_adc'.format(c=ch)]
 				PlotCellsProfiles('PH{c}_Ch_cell_map_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], minzadc, maxzadc, 'PH{c} cluster chs [ADC]'.format(c=ch), tempcsat, ch == 1)
 				PlotCellsProfiles('PH{c}_Ch_cell_map_not_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), self.phN_adc_ch_varz['PH{c}_Ch'.format(c=ch)], minzadc, maxzadc, 'PH{c} cluster chs [ADC]'.format(c=ch), tempcnosat, ch == 1)
-				tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_adc_h_cuts[cells]['PH{c}_H'.format(c=ch)])
-				tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_adc_h_cuts[cells]['PH{c}_H'.format(c=ch)])
+				tempcsat = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region, self.phN_adc_h_cuts[cells]['PH{c}_H'.format(c=ch)]])
+				# tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_adc_h_cuts[cells]['PH{c}_H'.format(c=ch)])
+				tempcnosat = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region, self.phN_adc_h_cuts[cells]['PH{c}_H'.format(c=ch)]])
+				# tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_adc_h_cuts[cells]['PH{c}_H'.format(c=ch)])
 				minzadc, maxzadc = min(self.minz[cells]['PH{c}_H_adc'.format(c=ch)], 0), self.maxz[cells]['PH{c}_H_adc'.format(c=ch)]
 				if ch != self.cluster_size:
 					PlotCellsProfiles('PH{c}_H_cell_map_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], minzadc, maxzadc, 'PH{c} highest chs [ADC]'.format(c=ch), tempcsat)
 					PlotCellsProfiles('PH{c}_H_cell_map_not_sat_events_{b}_before_{a}_after_adc_{s}'.format(c=ch, s=suffix, b=before, a=after), self.phN_adc_h_varz['PH{c}_H'.format(c=ch)], minzadc, maxzadc, 'PH{c} highest chs [ADC]'.format(c=ch), tempcnosat)
 			else:
-				tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)])
-				tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)])
+				tempcsat = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)]])
+				# tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)])
+				tempcnosat = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)]])
+				# tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=ch)])
 				minzsnr, maxzsnr = min(self.minz[cells]['PH{c}_Ch_snr'.format(c=ch)], 0), self.maxz[cells]['PH{c}_Ch_snr'.format(c=ch)]
 				PlotCellsProfiles('PH{c}_Ch_cell_map_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch, s=suffix, b=before, a=after), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], minzsnr, maxzsnr, 'PH{c} cluster chs [SNR]'.format(c=ch), tempcsat, ch == 1)
 				PlotCellsProfiles('PH{c}_Ch_cell_map_not_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch, s=suffix, b=before, a=after), self.phN_snr_ch_varz['PH{c}_Ch'.format(c=ch)], minzsnr, maxzsnr, 'PH{c} cluster chs [SNR]'.format(c=ch), tempcnosat, ch == 1)
-				tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_snr_h_cuts[cells]['PH{c}_H'.format(c=ch)])
-				tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_snr_h_cuts[cells]['PH{c}_H'.format(c=ch)])
+				tempcsat = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region, self.phN_snr_h_cuts[cells]['PH{c}_H'.format(c=ch)]])
+				# tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_snr_h_cuts[cells]['PH{c}_H'.format(c=ch)])
+				tempcnosat = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region, self.phN_snr_h_cuts[cells]['PH{c}_H'.format(c=ch)]])
+				# tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_snr_h_cuts[cells]['PH{c}_H'.format(c=ch)])
 				minzsnr, maxzsnr = min(self.minz[cells]['PH{c}_H_snr'.format(c=ch)], 0), self.maxz[cells]['PH{c}_H_snr'.format(c=ch)]
 				if ch != self.cluster_size:
 					PlotCellsProfiles('PH{c}_H_cell_map_sat_events_{b}_before_{a}_after_snr_{s}'.format(c=ch, s=suffix, b=before, a=after), self.phN_snr_h_varz['PH{c}_H'.format(c=ch)], minzsnr, maxzsnr, 'PH{c} highest chs [SNR]'.format(c=ch), tempcsat)
@@ -216,8 +226,10 @@ class SaturationAnalysis:
 
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
 
-		tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)])
-		tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)])
+		tempcsat = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)]])
+		# tempcsat = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)])
+		tempcnosat = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)]])
+		# tempcnosat = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, self.phN_snr_ch_cuts[cells]['PH{c}_Ch'.format(c=self.cluster_size)])
 		for ch in xrange(1, self.cluster_size + 1):
 			if typ == 'adc':
 				minzadc, maxzadc = self.trans_grid.minz[cells]['PH_Ch{c}_adc'.format(c=ch-1)], self.trans_grid.maxz[cells]['PH_Ch{c}_adc'.format(c=ch-1)]
@@ -343,7 +355,8 @@ class SaturationAnalysis:
 	def GetCutsFromCutManager(self, cells):
 		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]
 		self.noise_friend_cuts[cells] = self.trans_grid.cuts_man.noise_friend_cuts[cells]
-		self.in_transp_cluster = self.trans_grid.cuts_man.ConcatenateCuts(cut2=self.trans_grid.cuts_man.in_transp_cluster, cut1=self.trans_grid.cuts_man.transp_ev)
+		self.in_transp_cluster = self.trans_grid.cuts_man.AndCuts([self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.in_transp_cluster])
+		# self.in_transp_cluster = self.trans_grid.cuts_man.ConcatenateCuts(cut2=self.trans_grid.cuts_man.in_transp_cluster, cut1=self.trans_grid.cuts_man.transp_ev)
 		self.noise_nc_cuts[cells] = self.trans_grid.cuts_man.noise_nc_cuts[cells]
 		self.noise_nc_friend_cuts[cells] = self.trans_grid.cuts_man.noise_nc_friend_cuts[cells]
 

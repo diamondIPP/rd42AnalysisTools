@@ -86,8 +86,10 @@ class CenterCellAnalysis:
 				varz = self.phN_adc_h_varz[varzkey] if typ == 'adc' else self.phN_snr_h_varz[varzkey]
 				if p in self.in_central_rect_cut.keys() and p in self.out_central_rect_cut.keys():
 					tempcut = cut if cut != '' else self.phN_adc_h_cuts[cells][varzkey] if typ == 'adc' else self.phN_snr_h_cuts[cells][varzkey]
-					tempcutin = self.trans_grid.cuts_man.ConcatenateCuts(tempcut, self.in_central_rect_cut[p])
-					tempcutout = self.trans_grid.cuts_man.ConcatenateCuts(tempcut, self.out_central_rect_cut[p])
+					tempcutin = self.trans_grid.cuts_man.AndCuts([tempcut, self.in_central_rect_cut[p]])
+					# tempcutin = self.trans_grid.cuts_man.ConcatenateCuts(tempcut, self.in_central_rect_cut[p])
+					tempcutout = self.trans_grid.cuts_man.AndCuts([tempcut, self.out_central_rect_cut[p]])
+					# tempcutout = self.trans_grid.cuts_man.ConcatenateCuts(tempcut, self.out_central_rect_cut[p])
 					if drawHistos:
 						self.DoCellOverlayPlot('PH{n}_H_{t}_cells_in_rect_{p}_percent_{s}'.format(p=p, s=suffix, n=self.num_strips, t=typ), varz, 'PH{n} highest chs [{t}]'.format(n=self.num_strips, t=typ.upper()), tempcutin, cells, typ=typ)
 						self.trans_grid.DrawCentralArea('PH{n}_H_{t}_cells_in_rect_{p}_percent_{s}'.format(p=p, s=suffix, n=self.num_strips, t=typ), p)
@@ -165,16 +167,21 @@ class CenterCellAnalysis:
 
 	def DoCenterSaturationStudies(self, percents, cells='all', suffixop='', cuts='', typ='adc'):
 		self.SetCenterRegionStudies(cells)
-		tempc = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, cuts) if cuts != '' else self.trans_grid.cuts_man.transp_ev
+		tempc = self.trans_grid.cuts_man.AndCuts([self.trans_grid.cuts_man.transp_ev, cuts]) if cuts != '' else self.trans_grid.cuts_man.transp_ev
+		# tempc = self.trans_grid.cuts_man.ConcatenateCuts(self.trans_grid.cuts_man.transp_ev, cuts) if cuts != '' else self.trans_grid.cuts_man.transp_ev
 		xarray = percents.astype('float64')
 		temp0 = np.array([percents[1] - percents[0]] + [percents[i] - percents[i-1] for i in xrange(1, percents.size)])
 		temp0fact = (percents[-1] - percents[0]) / (2 * temp0.sum(dtype='float64') - temp0[0] - temp0[-1])
 		xarrayerrs = np.multiply(temp0, temp0fact, dtype='float64')
 
-		ysatin = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.ConcatenateCuts(tempc, self.sat_adc_inside_cut[p]), 'goff') for p in percents]
-		ysatout = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.ConcatenateCuts(tempc, self.sat_adc_outside_cut[p]), 'goff') for p in percents]
-		ynosatin = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.ConcatenateCuts(tempc, self.nosat_adc_inside_cut[p]), 'goff') for p in percents]
-		ynosatout = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.ConcatenateCuts(tempc, self.nosat_adc_outside_cut[p]), 'goff') for p in percents]
+		ysatin = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.AndCuts([tempc, self.sat_adc_inside_cut[p]]), 'goff') for p in percents]
+		# ysatin = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.ConcatenateCuts(tempc, self.sat_adc_inside_cut[p]), 'goff') for p in percents]
+		ysatout = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.AndCuts([tempc, self.sat_adc_outside_cut[p]]), 'goff') for p in percents]
+		# ysatout = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.ConcatenateCuts(tempc, self.sat_adc_outside_cut[p]), 'goff') for p in percents]
+		ynosatin = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.AndCuts([tempc, self.nosat_adc_inside_cut[p]]), 'goff') for p in percents]
+		# ynosatin = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.ConcatenateCuts(tempc, self.nosat_adc_inside_cut[p]), 'goff') for p in percents]
+		ynosatout = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.AndCuts([tempc, self.nosat_adc_outside_cut[p]]), 'goff') for p in percents]
+		# ynosatout = [self.trans_grid.trans_tree.Draw('event>>hbla', self.trans_grid.cuts_man.ConcatenateCuts(tempc, self.nosat_adc_outside_cut[p]), 'goff') for p in percents]
 
 		ysat_nosat_ratio_in = np.divide(ysatin, np.add(ynosatin, ysatin), dtype='float64')
 		ysat_nosat_ratio_out = np.divide(ysatout, np.add(ysatout, ynosatout), dtype='float64')
@@ -257,11 +264,15 @@ class CenterCellAnalysis:
 
 	def SetCutsForSaturationRatio(self, cells='all'):
 		for p, cut in self.in_central_rect_cut.iteritems():
-			self.sat_adc_inside_cut[p] = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, cut)
-			self.nosat_adc_inside_cut[p] = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, cut)
+			self.sat_adc_inside_cut[p] = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region, cut])
+			# self.sat_adc_inside_cut[p] = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, cut)
+			self.nosat_adc_inside_cut[p] = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region, cut])
+			# self.nosat_adc_inside_cut[p] = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, cut)
 		for p, cut in self.out_central_rect_cut.iteritems():
-			self.sat_adc_outside_cut[p] = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, cut)
-			self.nosat_adc_outside_cut[p] = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, cut)
+			self.sat_adc_outside_cut[p] = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region, cut])
+			# self.sat_adc_outside_cut[p] = self.trans_grid.cuts_man.ConcatenateCuts(self.sat_evts_region, cut)
+			self.nosat_adc_outside_cut[p] = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region, cut])
+			# self.nosat_adc_outside_cut[p] = self.trans_grid.cuts_man.ConcatenateCuts(self.not_sat_evts_region, cut)
 
 
 if __name__ == '__main__':
