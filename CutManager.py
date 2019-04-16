@@ -150,15 +150,15 @@ class CutManager:
 			temp.append(self.GetNotNegPHChCut(vari, typ2, isFriend))
 		return self.AndCuts(temp) if op == '&&' else self.OrCuts(temp) if op == '||' else '(0)'
 
-	def GetPHCuts(self, varKey, cells='', isFriend=False):
+	def GetPHCuts(self, varKey, isFriend=False):
 		if varKey.startswith('PH_Ch'):
-			return self.ConcatenateCutWithCells(self.GetValidPedChCut('clusterChannel{c}'.format(c=varKey.strip('PH_Ch')), isFriend), cells)
+			return self.GetValidPedChCut('clusterChannel{c}'.format(c=varKey.strip('PH_Ch')), isFriend)
 		elif varKey.startswith('PH_H'):
-			return self.ConcatenateCutWithCells(self.GetValidPedChCut('clusterChannelHighest{c}'.format(c=varKey.strip('PH_H')), isFriend), cells)
+			return self.GetValidPedChCut('clusterChannelHighest{c}'.format(c=varKey.strip('PH_H')), isFriend)
 		elif varKey.endswith('Ch'):
-			return self.ConcatenateCutWithCells(self.GetValidPedNChsCut(int(varKey.strip('PH').strip('_Ch')), 'Ch', isFriend, '&&'), cells)
+			return self.GetValidPedNChsCut(int(varKey.strip('PH').strip('_Ch')), 'Ch', isFriend, '&&')
 		elif varKey.endswith('H'):
-			return self.ConcatenateCutWithCells(self.GetValidPedNChsCut(int(varKey.strip('PH').strip('_H')), 'H', isFriend, '&&'), cells)
+			return self.GetValidPedNChsCut(int(varKey.strip('PH').strip('_H')), 'H', isFriend, '&&')
 
 	def SetCuts(self, neg_cut_snr, neg_cut_adc):
 		for i in xrange(self.cluster_size):

@@ -626,13 +626,11 @@ class TransparentGrid:
 		temp_cuts = '&&'.join(list_cuts)
 		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz, zname, temp_cuts, transp_ev, plot_option)
 
-	def DrawProfile2DDiamondChannel(self, name, varx='clusterChannel0', xname='C0', varz='clusterChargeN', cuts='', draw_top_borders=False, transp_ev=True, plot_option='prof colz'):
+	def DrawProfile2DDiamondChannel(self, name, varx='clusterChannel0', xname='C0', varz='clusterChargeN', varname='PH [ADC]', cells='', cuts='', transp_ev=True, plot_option='prof colz'):
 		xmin, xmax, deltax = self.ch_ini - 1.5, self.ch_end + 1.5, 1.0
 		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - 2.5 * self.row_info_diamond['pitch'], self.row_info_diamond['up'] + 2.5 * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
-		if draw_top_borders:
-			self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
-		else:
-			self.DrawProfile2DNoTopBottomBorders(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
+		tempc = self.cuts_man.ConcatenateCutWithCells(cut=cuts, cells=cells)
+		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, varname, tempc, transp_ev, plot_option)
 
 	def DrawProfile1D(self, name, xmin, xmax, deltax, xname, varx, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True, plot_option='prof e hist'):
 		ro.TFormula.SetMaxima(100000)
@@ -725,7 +723,7 @@ class TransparentGrid:
 		self.histo[name].GetZaxis().SetTitle('entries')
 		self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
 		self.canvas[name].cd()
-		list_cuts = ['transparentEvent'] if transp_ev else []
+		list_cuts = [self.cuts_man.transp_ev] if transp_ev else []
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
@@ -1595,6 +1593,17 @@ class TransparentGrid:
 			self.phN_adc_h_varz['PH{i}_H'.format(i=ch + 1)] = '(' + '+'.join(list_adc_phN_h) + ')' if len(list_adc_phN_h) > 0 else ''
 			self.phN_snr_h_varz['PH{i}_H'.format(i=ch + 1)] = '(' + '+'.join(list_snr_phN_h) + ')' if len(list_snr_phN_h) > 0 else ''
 		print 'Done'
+
+	def GetPHChVar(self, ch, typ='H', isSNR=False, isFriend=False):
+		varch = 'clusterChannel' + str(ch) if typ == 'Ch' else 'clusterChannelHighest' + str(ch) if typ == 'H' else str(ch)
+		return '(pedTree.diaChSignal[{c}])'.format(c=varch) if isFriend and not isSNR else '(diaChSignal[{c}]/diaChPedSigmaCmc[{c}])'.format(c=varch) if not isFriend and isSNR else '(pedTree.diaChSignal[{c}]/pedTree.diaChPedSigmaCmc[{c}])'.format(c=varch) if isFriend and isSNR else '(diaChSignal[{c}])'.format(c=varch)
+
+	def GetPHNChsVar(self, n, typ='H', isSNR=False, isFriend=False):
+		temp = []
+		for chi in xrange(1, n + 1):
+			ch = 'clusterChannel{c}'.format(c=chi-1) if typ == 'Ch' else 'clusterChannelHighest{c}'.format(c=chi)
+			temp.append(self.GetPHChVar(ch, isSNR, isFriend))
+		return '+'.join(temp)
 
 	def FindMaxMinVarz(self):
 		if os.path.isfile('{d}/{r}/{s}/min_max_values.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
