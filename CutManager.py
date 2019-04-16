@@ -52,7 +52,7 @@ class CutManager:
 		self.seed_chs = '(diaChSeed)'
 		self.in_transp_cluster = self.OrCuts([self.hit_chs, self.seed_chs])
 		self.not_in_transp_cluster = self.NotCut(self.in_transp_cluster)
-		self.not_in_transp_cluster_not_masked = self.AndCuts([self.not_in_transp_cluster_not_masked, self.not_masked_chs])
+		self.not_in_transp_cluster_not_masked = self.AndCuts([self.not_in_transp_cluster, self.not_masked_chs])
 
 		self.any_saturated = '(diaChADC=={s})'.format(s=self.sat_adc)
 		self.non_saturated = '(diaChADC!={s})'.format(s=self.sat_adc)

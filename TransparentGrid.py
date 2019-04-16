@@ -82,6 +82,7 @@ class TransparentGrid:
 		self.horizontal_lines_diamond = []
 		self.horizontal_lines_diamond_tline = []
 		self.mpshift = -0.22278298
+		self.noise_friend_buffer = 0
 		self.canvas = {}
 		self.line = {}
 		self.profile = {}
@@ -377,11 +378,11 @@ class TransparentGrid:
 		self.cell_resolution = np.divide(self.col_pitch, cell_bins, dtype='float64') if cell_bins % 2 == 1 else np.divide(50.0, cell_bins + 1, dtype='float64')
 		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
 
-	def FindXandYOffests(self, factor=0.1, do_plot=True):
-		self.FindXOffset(factor, do_plot)
-		self.FindYOffset(factor, do_plot)
+	def FindXandYOffests(self, factor=0.1, do_plot=True, cells='good'):
+		self.FindXOffset(factor, do_plot, cells)
+		self.FindYOffset(factor, do_plot, cells)
 
-	def FindXOffset(self, factor=0.1, do_plot=True):
+	def FindXOffset(self, factor=0.1, do_plot=True, cells='good'):
 		plot_option = 'prof colz' if do_plot else 'prof goff'
 		self.row_info_diamond['x_off'] += 3.0 / 2.0
 		self.SetOverlayVariables()
@@ -398,7 +399,7 @@ class TransparentGrid:
 		while (abs(delta_x) > self.delta_offset_threshold and iteration < 100) or iteration < 10:
 			self.row_info_diamond['x_off'] -= np.divide(delta_x, self.col_pitch, dtype='float64') * (np.exp(-iteration) * (1 - factor) + factor)
 			self.SetOverlayVariables()
-			self.DrawProfile2DDiamondCellOverlay('x_off_alignment', 'clusterCharge1', 'good', plot_option=plot_option)
+			self.DrawProfile2DDiamondCellOverlay('x_off_alignment', 'clusterCharge1', cells, plot_option=plot_option)
 			# h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high)
 			h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high, 'e hist')
 			h_proj_x.GetXaxis().SetRangeUser(0.1, self.col_pitch - 0.1)
@@ -417,7 +418,7 @@ class TransparentGrid:
 		self.row_info_diamond['x_off'] = x_off_shifted - 0.5
 		self.SetOverlayVariables()
 
-	def FindYOffset(self, factor=0.1, do_plot=True):
+	def FindYOffset(self, factor=0.1, do_plot=True, cells='good'):
 		plot_option = 'prof colz' if do_plot else 'prof goff'
 		self.row_info_diamond['y_off'] += 3.0 * self.row_info_diamond['pitch'] / 2.0
 		self.SetOverlayVariables()
@@ -433,7 +434,7 @@ class TransparentGrid:
 		while (abs(delta_y) > self.delta_offset_threshold and iteration < 100) or iteration < 10:
 			self.row_info_diamond['y_off'] -= delta_y * (np.exp(-iteration) * (1 - factor) + factor)
 			self.SetOverlayVariables()
-			self.DrawProfile2DDiamondCellOverlay('y_off_alignment', 'clusterCharge1', 'good', plot_option=plot_option)
+			self.DrawProfile2DDiamondCellOverlay('y_off_alignment', 'clusterCharge1', cells, plot_option=plot_option)
 			h_proj_y = self.profile['y_off_alignment'].ProjectionY('y_off_alignment_py', proj_low, proj_high, 'e hist')
 			h_proj_y.GetXaxis().SetRangeUser(0.1, self.row_info_diamond['pitch'] - 0.1)
 			miny = h_proj_y.GetBinCenter(h_proj_y.GetMinimumBin())
@@ -534,8 +535,8 @@ class TransparentGrid:
 		self.CreateTCutGsDiamondCenter()
 		self.CreateGridText()
 		self.cuts_man = CutManager(self.trans_tree, self.num_strips, self.cluster_size, self.saturated_ADC, self.neg_cut_adc, self.neg_cut_snr)
-		self.cuts_man.SetCuts(neg_cut_snr=self.neg_cut_snr, neg_cut_adc=self.neg_cut_adc)
-		self.cuts_man.SetUpDownBorderCuts(lower=self.row_info_diamond['0'], upper=self.row_info_diamond['up'])
+		# self.cuts_man.SetCuts(neg_cut_snr=self.neg_cut_snr, neg_cut_adc=self.neg_cut_adc)
+		# self.cuts_man.SetUpDownBorderCuts(lower=self.row_info_diamond['0'], upper=self.row_info_diamond['up'])
 
 	def CreateTCutGsDiamond(self):
 		def GetNumpyArraysX(coli):
@@ -611,13 +612,11 @@ class TransparentGrid:
 			self.gridTextDiamond.Fill(x0[0]-0.1, np.mean((y0, y1)), (row + 0.01))
 		self.gridTextDiamond.SetMarkerSize(0.8)
 
-	def DrawProfile2DDiamond(self, name, varz='clusterChargeN', cuts='', draw_top_borders=False, transp_ev=True, plot_option='prof colz'):
+	def DrawProfile2DDiamond(self, name, varz='clusterChargeN', varname='PH [ADC]', cells='', cuts='', transp_ev=True, plot_option='prof colz'):
 		xmin, xmax, deltax, xname = -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch'
 		ymin, ymax, deltay, yname = self.row_info_diamond['0'] - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8') * self.row_info_diamond['pitch'], self.row_info_diamond['0'] + (256 - RoundInt(float(self.row_info_diamond['0']) / self.row_info_diamond['pitch'], 'f8')) * self.row_info_diamond['pitch'], float(self.row_info_diamond['pitch'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
-		if draw_top_borders:
-			self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
-		else:
-			self.DrawProfile2DNoTopBottomBorders(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, 'PH[ADC]', cuts, transp_ev, plot_option)
+		tempc = self.cuts_man.ConcatenateCutWithCells(cut=cuts, cells=cells)
+		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, varname, tempc, transp_ev, plot_option)
 
 	def DrawProfile2DNoTopBottomBorders(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True, plot_option='colz prof'):
 		list_cuts = [self.cuts_man.no_up_down_borders]
@@ -670,7 +669,7 @@ class TransparentGrid:
 		if 'goff' not in plot_option:
 			self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
 			self.canvas[name].cd()
-		list_cuts = ['transparentEvent'] if transp_ev else []
+		list_cuts = [self.cuts_man.transp_ev] if transp_ev else []
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
@@ -1513,10 +1512,12 @@ class TransparentGrid:
 		if not self.trans_tree.GetFriend('pedTree'):
 			if os.path.isfile('{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, s=slide_length, r=self.run)):
 				self.trans_tree.AddFriend('pedTree', '{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, r=self.run, s=slide_length))
+				self.noise_friend_buffer = slide_length
 			else:
 				self.CreateFriendWithNewPedestalBuffer(slide_length, hit_fact, seed_fact)
 				if os.path.isfile('{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, s=slide_length, r=self.run)):
 					self.trans_tree.AddFriend('pedTree', '{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, r=self.run, s=slide_length))
+					self.noise_friend_buffer = slide_length
 				else:
 					print 'Something went wrong... Created file does not exist!'
 

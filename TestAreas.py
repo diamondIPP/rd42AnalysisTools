@@ -208,7 +208,7 @@ class TestAreas:
 		self.trans_grid.cuts_man.SetChs(self.trans_grid.gridAreas.good_channels, self.trans_grid.gridAreas.bad_channels)
 		self.trans_grid.cuts_man.SetCells(selection=self.trans_grid.gridAreas.goodAreasCutNames_simplified_diamond, not_selection=self.trans_grid.gridAreas.badAreasCutNames_simplified_diamond)
 		self.trans_grid.cuts_man.SetNoiseCuts()
-		self.trans_grid.cuts_man.SetPHCuts()
+		# self.trans_grid.cuts_man.SetPHCuts()
 		print 'Done'
 
 	def PositionCanvas(self, canvas_name):
@@ -218,7 +218,7 @@ class TestAreas:
 			self.w += self.window_shift
 
 	def DoBorderPlots(self):
-		self.trans_grid.DrawProfile2DDiamond('PH2_H_map_with_borders', self.trans_grid.phN_adc_h_varz['PH2_H'], draw_top_borders=True)
+		self.trans_grid.DrawProfile2DDiamond('PH2_H_map_with_borders', self.trans_grid.phN_adc_h_varz['PH2_H'])
 		self.trans_grid.DrawTCutGs('PH2_H_map_with_borders', 'diamond')
 		self.trans_grid.DrawGoodAreasDiamondCenters('PH2_H_map_with_borders')
 		# self.trans_grid.DrawGoodAreasDiamond('PH2_H_map_with_borders')
@@ -258,9 +258,9 @@ class TestAreas:
 
 	def DoCellHistograms(self):
 		self.trans_grid.mean_ph_cell_dic = {'adc': {}, 'snr': {}}
-		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.phN_snr_h_varz['PH2_H'], 'snr', 0, 400, 5)
+		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.phN_snr_h_varz['PH2_H'], 'snr', self.phmin / 10., self.phmax / 10., self.delta_snr * 10)
 		self.PositionCanvas('mean_ph_per_cell_snr')
-		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.phN_adc_h_varz['PH2_H'], 'adc', 0, 4000, 50)
+		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.phN_adc_h_varz['PH2_H'], 'adc', self.phmin, self.phmax, self.delta_adc * 10)
 		self.PositionCanvas('mean_ph_per_cell_adc')
 
 	def DoNoiseStudiesDifferentBuffers(self, cells='good', typ='adc'):
