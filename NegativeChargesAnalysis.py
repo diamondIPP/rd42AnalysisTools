@@ -29,16 +29,6 @@ class NegativeChargesAnalysis:
 
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 
-		self.noise_cuts = {t: '' for t in ['all', 'good', 'bad']}
-		self.noise_nc_cuts = {t: '' for t in ['all', 'good', 'bad']}
-		self.noise_friend_cuts = {t: '' for t in ['all', 'good', 'bad']}
-		self.noise_nc_friend_cuts = {t: '' for t in ['all', 'good', 'bad']}
-
-		self.in_transp_cluster = ''
-
-		self.noise_varz = {}
-		self.noise_friend_varz = {}
-
 		self.neg_ch_cut = self.trans_grid.cuts_man.GetNegPHChCut
 		self.negN_chs_cut = self.trans_grid.cuts_man.GetNegPHNChsCut
 		self.not_neg_ch_cut = self.trans_grid.cuts_man.GetNotNegPHChCut
@@ -47,36 +37,6 @@ class NegativeChargesAnalysis:
 		self.ph_ch_var = self.trans_grid.GetPHChVar
 		self.phN_chs_var = self.trans_grid.GetPHNChsVar
 
-		self.neg_snr_ph_ch = {}
-		self.neg_snr_ph_h = {}
-		self.not_neg_snr_ph_ch = {}
-		self.not_neg_snr_ph_h = {}
-
-		self.neg_adc_ph_ch = {}
-		self.neg_adc_ph_h = {}
-		self.not_neg_adc_ph_ch = {}
-		self.not_neg_adc_ph_h = {}
-
-		self.neg_snr_phN_ch = {}
-		self.neg_snr_phN_h = {}
-		self.not_neg_snr_phN_ch = {}
-		self.not_neg_snr_phN_h = {}
-
-		self.neg_adc_phN_ch = {}
-		self.neg_adc_phN_h = {}
-		self.not_neg_adc_phN_ch = {}
-		self.not_neg_adc_phN_h = {}
-
-		self.noise_varz = {}
-		self.ph_adc_h_varz = {}
-		self.ph_adc_ch_varz = {}
-		self.ph_snr_h_varz = {}
-		self.ph_snr_ch_varz = {}
-
-		self.phN_adc_h_varz = {}
-		self.phN_adc_ch_varz = {}
-		self.phN_snr_h_varz = {}
-		self.phN_snr_ch_varz = {}
 
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
@@ -85,53 +45,53 @@ class NegativeChargesAnalysis:
 		if self.noise_ana:
 			self.noise_ana.OverlayNoiseDistribution(histo, cells, isFriend)
 
-	def Do1DChSignalHistos(self, cells='all', doLog=False, typ='adc', isFriend=False):
-		def DrawHisto(name, histo_limits, plot_lims, deltax, varz, varname, cuts):
-			self.trans_grid.DrawHisto1D(name, histo_limits['min'], histo_limits['max'], deltax, varz, varname, cuts)
-			self.trans_grid.histo[name].GetXaxis().SetRangeUser(plot_lims['min'], plot_lims['max'])
-			SetX1X2NDC(self.trans_grid.histo[name], 0.15, 0.45, 'stats')
-			self.OverlayNoiseDistribution(self.trans_grid.histo[name], cells, isFriend)
-			if doLog: self.trans_grid.canvas[name].SetLogy()
-			legend = self.trans_grid.canvas[name].BuildLegend()
-			ro.gPad.Update()
-			SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
-			self.PosCanvas(name)
-
-		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
-		suffix = suffix + '_logScale' if doLog else suffix
-
-		tempcutsadc = self.neg_adc_phN_h['PH{c}_H'.format(c=self.cluster_size)]
-		tempcutssnr = self.neg_snr_phN_h['PH{c}_H'.format(c=self.cluster_size)]
-		for ch in xrange(self.cluster_size):
-			if typ == 'snr':
-				if 'PH_Ch' + str(ch) in self.ph_snr_ch_varz.keys():
-					tempcuts = tempcutssnr
-					minz, maxz = self.min_snr_neg, self.max_snr_neg
-					hist_limits = Get1DLimits(minz, maxz, self.delta_snr, 2)
-					plot_limits = Get1DLimits(minz, maxz, self.delta_snr, 1)
-					DrawHisto('PH_Ch{c}_snr_neg_evts_{s}'.format(c=ch, s=suffix), hist_limits, plot_limits, self.delta_snr, self.ph_snr_ch_varz['PH_Ch{c}'.format(c=ch)], 'PH cluster ch{c} neg events [SNR]'.format(c=ch), tempcuts)
-
-				if 'PH_H' + str(ch+1) in self.ph_snr_h_varz.keys():
-					tempcuts = tempcutssnr
-					minz, maxz = self.min_snr_neg, self.max_snr_neg
-					hist_limits = Get1DLimits(minz, maxz, self.delta_snr, 2)
-					plot_limits = Get1DLimits(minz, maxz, self.delta_snr, 1)
-					DrawHisto('PH_H{c}_snr_neg_evts_{s}'.format(c=ch+1, s=suffix), hist_limits, plot_limits, self.delta_snr, self.ph_snr_h_varz['PH_H{c}'.format(c=ch+1)], 'PH highest {c}{sf} ch neg events [SNR]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
-
-			else:
-				if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
-					tempcuts = tempcutsadc
-					minz, maxz = self.min_adc_neg, self.max_adc_neg
-					hist_limits = Get1DLimits(minz, maxz, self.delta_adc, 2)
-					plot_limits = Get1DLimits(minz, maxz, self.delta_adc, 1)
-					DrawHisto('PH_Ch{c}_adc_neg_evts_{s}'.format(c=ch, s=suffix), hist_limits, plot_limits, self.delta_adc, self.ph_adc_ch_varz['PH_Ch{c}'.format(c=ch)], 'PH cluster ch{c} neg events [ADC]'.format(c=ch), tempcuts)
-
-				if 'PH_H' + str(ch+1) in self.ph_adc_h_varz.keys():
-					tempcuts = tempcutsadc
-					minz, maxz = self.min_adc_neg, self.max_adc_neg
-					hist_limits = Get1DLimits(minz, maxz, self.delta_adc, 2)
-					plot_limits = Get1DLimits(minz, maxz, self.delta_adc, 1)
-					DrawHisto('PH_H{c}_adc_neg_evts_{s}'.format(c=ch+1, s=suffix), hist_limits, plot_limits, self.delta_adc, self.ph_adc_h_varz['PH_H{c}'.format(c=ch+1)], 'PH highest {c}{sf} ch neg events [ADC]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
+	# def Do1DChSignalHistos(self, cells='all', doLog=False, typ='adc', isFriend=False):
+	# 	def DrawHisto(name, histo_limits, plot_lims, deltax, varz, varname, cuts):
+	# 		self.trans_grid.DrawHisto1D(name, histo_limits['min'], histo_limits['max'], deltax, varz, varname, cuts)
+	# 		self.trans_grid.histo[name].GetXaxis().SetRangeUser(plot_lims['min'], plot_lims['max'])
+	# 		SetX1X2NDC(self.trans_grid.histo[name], 0.15, 0.45, 'stats')
+	# 		self.OverlayNoiseDistribution(self.trans_grid.histo[name], cells, isFriend)
+	# 		if doLog: self.trans_grid.canvas[name].SetLogy()
+	# 		legend = self.trans_grid.canvas[name].BuildLegend()
+	# 		ro.gPad.Update()
+	# 		SetLegendX1X2Y1Y2(legend, 0.15, 0.45, 0.5, 0.6)
+	# 		self.PosCanvas(name)
+    #
+	# 	suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
+	# 	suffix = suffix + '_logScale' if doLog else suffix
+    #
+	# 	tempcutsadc = self.neg_adc_phN_h['PH{c}_H'.format(c=self.cluster_size)]
+	# 	tempcutssnr = self.neg_snr_phN_h['PH{c}_H'.format(c=self.cluster_size)]
+	# 	for ch in xrange(self.cluster_size):
+	# 		if typ == 'snr':
+	# 			if 'PH_Ch' + str(ch) in self.ph_snr_ch_varz.keys():
+	# 				tempcuts = tempcutssnr
+	# 				minz, maxz = self.min_snr_neg, self.max_snr_neg
+	# 				hist_limits = Get1DLimits(minz, maxz, self.delta_snr, 2)
+	# 				plot_limits = Get1DLimits(minz, maxz, self.delta_snr, 1)
+	# 				DrawHisto('PH_Ch{c}_snr_neg_evts_{s}'.format(c=ch, s=suffix), hist_limits, plot_limits, self.delta_snr, self.ph_snr_ch_varz['PH_Ch{c}'.format(c=ch)], 'PH cluster ch{c} neg events [SNR]'.format(c=ch), tempcuts)
+    #
+	# 			if 'PH_H' + str(ch+1) in self.ph_snr_h_varz.keys():
+	# 				tempcuts = tempcutssnr
+	# 				minz, maxz = self.min_snr_neg, self.max_snr_neg
+	# 				hist_limits = Get1DLimits(minz, maxz, self.delta_snr, 2)
+	# 				plot_limits = Get1DLimits(minz, maxz, self.delta_snr, 1)
+	# 				DrawHisto('PH_H{c}_snr_neg_evts_{s}'.format(c=ch+1, s=suffix), hist_limits, plot_limits, self.delta_snr, self.ph_snr_h_varz['PH_H{c}'.format(c=ch+1)], 'PH highest {c}{sf} ch neg events [SNR]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
+    #
+	# 		else:
+	# 			if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
+	# 				tempcuts = tempcutsadc
+	# 				minz, maxz = self.min_adc_neg, self.max_adc_neg
+	# 				hist_limits = Get1DLimits(minz, maxz, self.delta_adc, 2)
+	# 				plot_limits = Get1DLimits(minz, maxz, self.delta_adc, 1)
+	# 				DrawHisto('PH_Ch{c}_adc_neg_evts_{s}'.format(c=ch, s=suffix), hist_limits, plot_limits, self.delta_adc, self.ph_adc_ch_varz['PH_Ch{c}'.format(c=ch)], 'PH cluster ch{c} neg events [ADC]'.format(c=ch), tempcuts)
+    #
+	# 			if 'PH_H' + str(ch+1) in self.ph_adc_h_varz.keys():
+	# 				tempcuts = tempcutsadc
+	# 				minz, maxz = self.min_adc_neg, self.max_adc_neg
+	# 				hist_limits = Get1DLimits(minz, maxz, self.delta_adc, 2)
+	# 				plot_limits = Get1DLimits(minz, maxz, self.delta_adc, 1)
+	# 				DrawHisto('PH_H{c}_adc_neg_evts_{s}'.format(c=ch+1, s=suffix), hist_limits, plot_limits, self.delta_adc, self.ph_adc_h_varz['PH_H{c}'.format(c=ch+1)], 'PH highest {c}{sf} ch neg events [ADC]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
 
 	def DoProfileMaps(self, typ='adc', isFriend=False):
 		xmin, xmax, deltax, xname = self.trans_grid.ch_ini - 1.5, self.trans_grid.ch_end + 1.5, 1.0/self.trans_grid.bins_per_ch_x, 'pred dia hit ch',
@@ -218,55 +178,12 @@ class NegativeChargesAnalysis:
 		Draw1DHistogram('strip_location_neg_events_{t}_{s}'.format(s=suffix, t=typ.lower()), tempc)
 
 	def DoNegativeAnalysis(self, cells='all', typ='adc', isFriend=False):
-		self.SetNegAnalysis(cells)
 		# self.Do1DChSignalHistos(cells, False, typ, isFriend)
 		self.DoProfileMaps(typ=typ, isFriend=isFriend)
 		self.DoCellMaps(cells, typ, isFriend)
 		self.PlotStripHistograms(cells, typ, isFriend)
 		self.Do1DPHHistos(cells, typ, isFriend)
 
-	def SetNegAnalysis(self, cells='all'):
-		self.GetCutsFromCutManager(cells)
-		self.GetVarzFromTranspGrid()
-
-	def GetCutsFromCutManager(self, cells):
-		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]
-		self.noise_friend_cuts[cells] = self.trans_grid.cuts_man.noise_friend_cuts[cells]
-		self.in_transp_cluster = self.trans_grid.cuts_man.AndCuts([self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.in_transp_cluster])
-		# self.in_transp_cluster = self.trans_grid.cuts_man.ConcatenateCuts(cut2=self.trans_grid.cuts_man.in_transp_cluster, cut1=self.trans_grid.cuts_man.transp_ev)
-		self.noise_nc_cuts[cells] = self.trans_grid.cuts_man.noise_nc_cuts[cells]
-		self.noise_nc_friend_cuts[cells] = self.trans_grid.cuts_man.noise_nc_friend_cuts[cells]
-
-		self.neg_snr_ph_ch = self.trans_grid.cuts_man.neg_snr_ph_ch
-		self.neg_snr_ph_h = self.trans_grid.cuts_man.neg_snr_ph_h
-		self.not_neg_snr_ph_ch = self.trans_grid.cuts_man.not_neg_snr_ph_ch
-		self.not_neg_snr_ph_h = self.trans_grid.cuts_man.not_neg_snr_ph_h
-
-		self.neg_adc_ph_ch = self.trans_grid.cuts_man.neg_adc_ph_ch
-		self.neg_adc_ph_h = self.trans_grid.cuts_man.neg_adc_ph_h
-		self.not_neg_adc_ph_ch = self.trans_grid.cuts_man.not_neg_adc_ph_ch
-		self.not_neg_adc_ph_h = self.trans_grid.cuts_man.not_neg_adc_ph_h
-
-		self.neg_snr_phN_ch = self.trans_grid.cuts_man.neg_snr_phN_ch
-		self.neg_snr_phN_h = self.trans_grid.cuts_man.neg_snr_phN_h
-		self.not_neg_snr_phN_ch = self.trans_grid.cuts_man.not_neg_snr_phN_ch
-		self.not_neg_snr_phN_h = self.trans_grid.cuts_man.not_neg_snr_phN_h
-
-		self.neg_adc_phN_ch = self.trans_grid.cuts_man.neg_adc_phN_ch
-		self.neg_adc_phN_h = self.trans_grid.cuts_man.neg_adc_phN_h
-		self.not_neg_adc_phN_ch = self.trans_grid.cuts_man.not_neg_adc_phN_ch
-		self.not_neg_adc_phN_h = self.trans_grid.cuts_man.not_neg_adc_phN_h
-
-	def GetVarzFromTranspGrid(self):
-		self.noise_varz = self.trans_grid.noise_varz
-		self.ph_adc_ch_varz = self.trans_grid.ph_adc_ch_varz
-		self.ph_snr_ch_varz = self.trans_grid.ph_snr_ch_varz
-		self.ph_adc_h_varz = self.trans_grid.ph_adc_h_varz
-		self.ph_snr_h_varz = self.trans_grid.ph_snr_h_varz
-		self.phN_adc_ch_varz = self.trans_grid.phN_adc_ch_varz
-		self.phN_snr_ch_varz = self.trans_grid.phN_snr_ch_varz
-		self.phN_adc_h_varz = self.trans_grid.phN_adc_h_varz
-		self.phN_snr_h_varz = self.trans_grid.phN_snr_h_varz
 
 if __name__ == '__main__':
 	c = NegativeChargesAnalysis(None, 0, 0)

@@ -342,7 +342,7 @@ class TestAreas:
 
 	def DoSaturationStudies(self, cells='all', typ='adc', isFriend=False):
 		self.sat_ana.w, self.sat_ana.window_shift = self.w, self.window_shift
-		self.sat_ana.DoSaturationAnalysis(cells, self.skip_before_sat, self.skip_after_sat, typ='adc')
+		self.sat_ana.DoSaturationAnalysis(cells, self.skip_before_sat, self.skip_after_sat, typ=typ, isFriend=isFriend)
 		self.w, self.window_shift = self.sat_ana.w, self.sat_ana.window_shift
 
 	def DoFinalStudies(self, typ='adc', cummulative_chs=[2], isFriend=False):
@@ -426,7 +426,7 @@ class TestAreas:
 				self.DoNoiseStudies(cells, typ, isFriend)
 				self.DoClusterStudies(cells, typ, isFriend)
 				self.DoNegativeEventsStudies(cells, typ, isFriend)
-				self.DoSaturationStudies(cells, typ)
+				self.DoSaturationStudies(cells, typ, isFriend)
 				self.DoFinalStudies(typ)
 				# self.DoCenterCellStudies(cells)
 				# self.DoCenterCellSaturationStudies(cells)

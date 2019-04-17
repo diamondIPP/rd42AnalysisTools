@@ -23,15 +23,15 @@ class NoiseAnalysis:
 
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 
-		self.noise_cuts = {t: '' for t in ['all', 'good', 'bad']}
-		self.noise_nc_cuts = {t: '' for t in ['all', 'good', 'bad']}
-		self.noise_friend_cuts = {t: '' for t in ['all', 'good', 'bad']}
-		self.noise_nc_friend_cuts = {t: '' for t in ['all', 'good', 'bad']}
+		self.noise_cuts = self.trans_grid.cuts_man.noise_cuts
+		self.noise_friend_cuts = self.trans_grid.cuts_man.noise_friend_cuts
+		self.noise_nc_cuts = self.trans_grid.cuts_man.noise_nc_cuts
+		self.noise_nc_friend_cuts = self.trans_grid.cuts_man.noise_nc_friend_cuts
 
-		self.in_transp_cluster = ''
+		self.in_transp_cluster = self.trans_grid.cuts_man.AndCuts([self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.in_transp_cluster])
 
-		self.noise_varz = {}
-		self.noise_friend_varz = {}
+		self.noise_varz = self.trans_grid.noise_varz
+		self.noise_friend_varz = self.trans_grid.noise_friend_varz
 
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
@@ -195,7 +195,6 @@ class NoiseAnalysis:
 			if not self.trans_grid.trans_tree.GetFriend('pedTree'):
 				print 'The transparent tree has no pedTree friend. Add it first in transparent grid class'
 				return
-		self.SetNoiseAnalysis()
 		self.DoCommonMode(isFriend)
 		self.DoPedestalEventHistograms(isFriend)
 		self.DoStrips2DHistograms(typ, isFriend)
@@ -203,23 +202,6 @@ class NoiseAnalysis:
 		self.DoNoiseVsEventStudies(cells, isFriend=isFriend)
 		self.PlotNoiseNotInCluster('all', typ, True, isFriend)
 		self.DoNoiseVsEventStudies('all', doNC=True, isFriend=isFriend)
-
-	def SetNoiseAnalysis(self):
-		for cells in self.suffix.keys():
-			self.GetCutsFromCutManager(cells)
-			self.GetVarzFromTranspGrid()
-
-	def GetCutsFromCutManager(self, cells):
-		self.noise_cuts[cells] = self.trans_grid.cuts_man.noise_cuts[cells]
-		self.noise_friend_cuts[cells] = self.trans_grid.cuts_man.noise_friend_cuts[cells]
-		self.in_transp_cluster = self.trans_grid.cuts_man.AndCuts([self.trans_grid.cuts_man.transp_ev, self.trans_grid.cuts_man.in_transp_cluster])
-		# self.in_transp_cluster = self.trans_grid.cuts_man.ConcatenateCuts(cut2=self.trans_grid.cuts_man.in_transp_cluster, cut1=self.trans_grid.cuts_man.transp_ev)
-		self.noise_nc_cuts[cells] = self.trans_grid.cuts_man.noise_nc_cuts[cells]
-		self.noise_nc_friend_cuts[cells] = self.trans_grid.cuts_man.noise_nc_friend_cuts[cells]
-
-	def GetVarzFromTranspGrid(self):
-		self.noise_varz = self.trans_grid.noise_varz
-		self.noise_friend_varz = self.trans_grid.noise_friend_varz
 
 if __name__ == '__main__':
 	c = NoiseAnalysis(None, 0, 0)

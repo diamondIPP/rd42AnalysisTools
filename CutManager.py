@@ -100,7 +100,7 @@ class CutManager:
 
 	def GetSatChCut(self, ch, typ='Ch'):
 		varch = 'clusterChannel' + str(ch) if typ == 'Ch' else 'clusterChannelHighest' + str(ch) if typ == 'H' else str(ch)
-		return self.AndCuts([self.sat_evts_region, '(diChADC[{c}]>={t})'.format(c=varch, t=self.sat_adc)])
+		return self.AndCuts([self.sat_evts_region, '(diaChADC[{c}]>={t})'.format(c=varch, t=self.sat_adc)])
 
 	def GetSatNChsCut(self, n, typ='H', op='||'):
 		temp = []
