@@ -36,11 +36,11 @@ class NoiseAnalysis:
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
 
-	def OverlayNoiseDistribution(self, histo, cells='all'):
+	def OverlayNoiseDistribution(self, histo, cells='all', isFriend=False):
 		suffix = self.suffix[cells]
 		hname = histo.GetName().split('h_')[1]
 		typ = 'adc' if 'adc' in hname.lower() else 'snr'
-		noise_name0 = 'signal_noise_{s}_{t}'.format(s=suffix, t=typ)
+		noise_name0 = 'signal_noise_{s}_{t}'.format(s=suffix, t=typ) if not isFriend else 'signal_noise_buffer_{b}_{s}_{t}'.format(s=suffix, t=typ, b=self.trans_grid.noise_friend_buffer)
 		if not noise_name0 in self.trans_grid.histo.keys():
 			self.PlotNoiseNotInCluster(cells)
 		elif not self.trans_grid.histo[noise_name0]:
@@ -73,12 +73,12 @@ class NoiseAnalysis:
 		temph.Delete()
 		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = (ni / float(sigma) for ni in [self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise])
 		if typ == 'snr':
-			self.trans_grid.DrawHisto1D(name + '_snr', self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, varzdic['snr'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
+			self.trans_grid.DrawHisto1D(name + '_snr', self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, varzdic['snr'], varname='Signal not in cluster [SNR]', cuts=temp_cut_noise, option='e hist')
 			self.trans_grid.FitGaus(name + '_snr')
 			self.trans_grid.histo[name + '_snr'].GetXaxis().SetRangeUser(-3.2, 3.2)
 			self.PosCanvas(name + '_snr')
 		else:
-			self.trans_grid.DrawHisto1D(name + '_adc', self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, varzdic['adc'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
+			self.trans_grid.DrawHisto1D(name + '_adc', self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, varzdic['adc'], varname='Signal not in cluster [ADC]', cuts=temp_cut_noise, option='e hist')
 			self.trans_grid.FitGaus(name + '_adc')
 			self.trans_grid.histo[name + '_adc'].GetXaxis().SetRangeUser(-32, 32)
 			self.PosCanvas(name + '_adc')

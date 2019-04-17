@@ -941,7 +941,7 @@ class TransparentGrid:
 		temp_cut = '&&'.join(list_cuts)
 		phmin = xmin if xmin != 10000 else self.phmin if typ == 'adc' else self.phmin / 10.
 		phmax = xmax if xmax != -10000 else self.phmax if typ == 'adc' else self.phmax / 10.
-		deltx = deltax if deltax != -1 else float(self.phmax - self.phmin) / float(self.phbins)
+		deltx = deltax if deltax != -1 else float(phmax - phmin) / float(self.phbins)
 		graphopt = 'e hist' if drawHisto else 'e hist goff'
 		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev, option=graphopt)
 
@@ -953,7 +953,7 @@ class TransparentGrid:
 		temp_cut = '&&'.join(list_cuts)
 		phmin = xmin if xmin != 10000 else self.phmin if typ == 'adc' else self.phmin / 10.
 		phmax = xmax if xmax != -10000 else self.phmax if typ == 'adc' else self.phmax / 10.
-		deltx = deltax if deltax != -1 else float(self.phmax - self.phmin) / float(self.phbins)
+		deltx = deltax if deltax != -1 else float(phmax - phmin) / float(self.phbins)
 		graphopt = 'e hist' if drawHisto else 'e hist goff'
 		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev, option=graphopt)
 
@@ -965,7 +965,7 @@ class TransparentGrid:
 		temp_cut = '&&'.join(list_cuts)
 		phmin = xmin if xmin != 10000 else self.phmin if typ == 'adc' else self.phmin / 10.
 		phmax = xmax if xmax != -10000 else self.phmax if typ == 'adc' else self.phmax / 10.
-		deltx = deltax if deltax != -1 else float(self.phmax - self.phmin) / float(self.phbins)
+		deltx = deltax if deltax != -1 else float(phmax - phmin) / float(self.phbins)
 		graphopt = 'e hist' if drawHisto else 'e hist goff'
 		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev, option=graphopt)
 
@@ -1601,8 +1601,7 @@ class TransparentGrid:
 	def GetPHNChsVar(self, n, typ='H', isSNR=False, isFriend=False):
 		temp = []
 		for chi in xrange(1, n + 1):
-			ch = 'clusterChannel{c}'.format(c=chi-1) if typ == 'Ch' else 'clusterChannelHighest{c}'.format(c=chi)
-			temp.append(self.GetPHChVar(ch, isSNR, isFriend))
+			temp.append(self.GetPHChVar(chi - 1 if typ == 'Ch' else chi, typ, isSNR, isFriend))
 		return '+'.join(temp)
 
 	def FindMaxMinVarz(self):

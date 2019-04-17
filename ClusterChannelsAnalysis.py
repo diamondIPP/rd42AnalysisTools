@@ -63,26 +63,9 @@ class ClusterChannelsAnalysis:
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
 
-	def PlotNoiseNotInCluster(self, cells='all'):
-		temp_cut_noise = self.noise_cuts[cells]
-		temph = ro.TH1F('temph0', 'temph0', int(RoundInt((self.max_adc_noise - self.min_adc_noise) / float(self.delta_adc_noise))), self.min_adc_noise, self.max_adc_noise)
-		self.trans_grid.trans_tree.Draw('diaChSignal>>temph0', temp_cut_noise, 'goff')
-		mean, sigma = temph.GetMean(), temph.GetRMS()
-		temph.Delete()
-		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = (ni / float(sigma) for ni in [self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise])
-		suffix = self.suffix[cells]
-		self.trans_grid.DrawHisto1D('signal_noise_{c}_snr'.format(c=suffix), self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, self.noise_varz['snr'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
-		self.trans_grid.FitGaus('signal_noise_{c}_snr'.format(c=suffix))
-		self.trans_grid.histo['signal_noise_{c}_snr'.format(c=suffix)].GetXaxis().SetRangeUser(-3.2, 3.2)
-		self.PosCanvas('signal_noise_{c}_snr'.format(c=suffix))
-		self.trans_grid.DrawHisto1D('signal_noise_{c}_adc'.format(c=suffix), self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, self.noise_varz['adc'], varname='Signal not in cluster (SNR)', cuts=temp_cut_noise, option='e hist')
-		self.trans_grid.FitGaus('signal_noise_{c}_adc'.format(c=suffix))
-		self.trans_grid.histo['signal_noise_{c}_adc'.format(c=suffix)].GetXaxis().SetRangeUser(-32, 32)
-		self.PosCanvas('signal_noise_{c}_adc'.format(c=suffix))
-
-	def OverlayNoiseDistribution(self, histo, cells='all'):
+	def OverlayNoiseDistribution(self, histo, cells='all', isFriend=False):
 		if self.noise_ana:
-			self.noise_ana.OverlayNoiseDistribution(histo, cells)
+			self.noise_ana.OverlayNoiseDistribution(histo, cells, isFriend)
 
 	def Do1DHistograms(self, cells='all', doLog=False, typ='adc', isFriend=False):
 		def DrawHisto(name, histo_limits, plot_lims, deltax, varz, varname, cuts):
@@ -90,7 +73,7 @@ class ClusterChannelsAnalysis:
 			self.trans_grid.DrawHisto1D(name, histo_limits['min'], histo_limits['max'], deltax, varz, varname, tempc)
 			self.trans_grid.histo[name].GetXaxis().SetRangeUser(plot_lims['min'], plot_lims['max'])
 			SetX1X2NDC(self.trans_grid.histo[name], 0.15, 0.45, 'stats')
-			self.OverlayNoiseDistribution(self.trans_grid.histo[name], cells)
+			self.OverlayNoiseDistribution(self.trans_grid.histo[name], cells, isFriend)
 			if doLog: self.trans_grid.canvas[name].SetLogy()
 			legend = self.trans_grid.canvas[name].BuildLegend()
 			ro.gPad.Update()

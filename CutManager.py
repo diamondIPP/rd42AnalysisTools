@@ -79,14 +79,14 @@ class CutManager:
 		self.in_central_rect_region = {}
 		self.out_central_rect_region = {}
 
-	def GetValidPedChCut(self, ch, isFriend=False):
-		return '(diaChPedSigmaCmc[{c}]>0)'.format(c=ch) if not isFriend else '(pedTree.diaChPedSigmaCmc[{c}]>0)'.format(c=ch)
+	def GetValidPedChCut(self, ch, typ='Ch', isFriend=False):
+		varch = 'clusterChannel{c}'.format(c=ch) if typ == 'Ch' else 'clusterChannelHighest{c}'.format(c=ch) if typ == 'H' else str(ch)
+		return '(diaChPedSigmaCmc[{c}]>0)'.format(c=varch) if not isFriend else '(pedTree.diaChPedSigmaCmc[{c}]>0)'.format(c=varch)
 
 	def GetValidPedNChsCut(self, n, typ='Ch', isFriend=False, op='&&'):
 		temp = []
 		for chi in xrange(1, n + 1):
-			vari = 'clusterChannel{c}'.format(c=chi-1) if typ == 'Ch' else 'clusterChannelHighest{c}'.format(c=chi)
-			temp.append(self.GetValidPedChCut(vari, isFriend))
+			temp.append(self.GetValidPedChCut(chi if typ == 'H' else chi - 1, typ, isFriend))
 		return self.AndCuts(temp) if op == '&&' else self.OrCuts(temp) if op == '||' else '(0)'
 
 	def GetNoiseCut(self, cells, isFriend=False):
@@ -98,63 +98,61 @@ class CutManager:
 		else:
 			return self.AndCuts([cut1, self.not_in_transp_cluster_not_masked])
 
-	def GetSatChCut(self, ch):
-		return self.AndCuts([self.sat_evts_region, '(diChADC[{c}]>={t})'.format(c=ch, t=self.sat_adc)])
+	def GetSatChCut(self, ch, typ='Ch'):
+		varch = 'clusterChannel' + str(ch) if typ == 'Ch' else 'clusterChannelHighest' + str(ch) if typ == 'H' else str(ch)
+		return self.AndCuts([self.sat_evts_region, '(diChADC[{c}]>={t})'.format(c=varch, t=self.sat_adc)])
 
 	def GetSatNChsCut(self, n, typ='H', op='||'):
 		temp = []
 		for chi in xrange(1, n + 1):
-			vari = 'clusterChannel{c}'.format(c=chi-1) if typ == 'Ch' else 'clusterChannelHighest{c}'.format(c=chi)
-			temp.append(self.GetSatChCut(vari))
+			temp.append(self.GetSatChCut(chi if typ == 'H' else chi - 1, typ))
 		return self.AndCuts(temp) if op == '&&' else self.OrCuts(temp) if op == '||' else '(0)'
 
-	def GetNotSatChCut(self, ch):
-		return self.AndCuts([self.not_sat_evts_region, '(diaChADC[{c}]<{t})'.format(c=ch, t=self.sat_adc)])
+	def GetNotSatChCut(self, ch, typ='Ch'):
+		varch = 'clusterChannel' + str(ch) if typ == 'Ch' else 'clusterChannelHighest' + str(ch) if typ == 'H' else str(ch)
+		return self.AndCuts([self.not_sat_evts_region, '(diaChADC[{c}]<{t})'.format(c=varch, t=self.sat_adc)])
 
 	def GetNotSatNChsCut(self, n, typ='H', op='&&'):
 		temp = []
 		for chi in xrange(1, n + 1):
-			vari = 'clusterChannel{c}'.format(c=chi-1) if typ == 'Ch' else 'clusterChannelHighest{c}'.format(c=chi)
-			temp.append(self.GetNotSatChCut(vari))
+			temp.append(self.GetNotSatChCut(chi if typ == 'H' else chi - 1, typ))
 		return self.AndCuts(temp) if op == '&&' else self.OrCuts(temp) if op == '||' else '(0)'
 
-	def GetNegPHChCut(self, ch, typ='snr', isFriend=False):
-		cut1 = self.GetValidPedChCut(ch, isFriend)
+	def GetNegPHChCut(self, ch, typ='Ch', isSNR=False, isFriend=False):
+		varch = 'clusterChannel' + str(ch) if typ == 'Ch' else 'clusterChannelHighest' + str(ch) if typ == 'H' else str(ch)
+		cut1 = self.GetValidPedChCut(ch, typ, isFriend)
 		if not isFriend:
-			cut2 = '(diaChSignal[{c}]<-{t})'.format(c=ch, t=self.neg_adc_th) if typ == 'adc' else '(diaChSignal[{c}]<-{t}*diaChPedSigmaCmc[{c}])'.format(c=ch, t=self.neg_snr_th)
+			cut2 = '(diaChSignal[{c}]<-{t})'.format(c=varch, t=self.neg_adc_th) if not isSNR else '(diaChSignal[{c}]<-{t}*diaChPedSigmaCmc[{c}])'.format(c=varch, t=self.neg_snr_th)
 		else:
-			cut2 = '(pedTree.diaChSignal[{c}]<-{t})'.format(c=ch, t=self.neg_adc_th) if typ == 'adc' else '(pedTree.diaChSignal[{c}]<-{t}*pedTree.diaChPedSigmaCmc[{c}])'.format(c=ch, t=self.neg_snr_th)
+			cut2 = '(pedTree.diaChSignal[{c}]<-{t})'.format(c=varch, t=self.neg_adc_th) if not isSNR else '(pedTree.diaChSignal[{c}]<-{t}*pedTree.diaChPedSigmaCmc[{c}])'.format(c=varch, t=self.neg_snr_th)
 		return self.AndCuts([cut1, cut2])
 
 	def GetNegPHNChsCut(self, n, typ='Ch', isSNR=False, isFriend=False, op='||'):
 		temp = []
-		typ2 = 'snr' if isSNR else 'adc'
 		for chi in xrange(1, n + 1):
-			vari = 'clusterChannel{c}'.format(c=chi-1) if typ == 'Ch' else 'clusterChannelHighest{c}'.format(c=chi)
-			temp.append(self.GetNegPHChCut(vari, typ2, isFriend))
+			temp.append(self.GetNegPHChCut(chi if typ == 'H' else chi - 1, typ, isSNR, isFriend))
 		return self.AndCuts(temp) if op == '&&' else self.OrCuts(temp) if op == '||' else '(0)'
 
-	def GetNotNegPHChCut(self, ch, typ='snr', isFriend=False):
-		cut1 = self.GetValidPedChCut(ch, isFriend)
+	def GetNotNegPHChCut(self, ch, typ='Ch', isSNR=False, isFriend=False):
+		varch = 'clusterChannel' + str(ch) if typ == 'Ch' else 'clusterChannelHighest' + str(ch) if typ == 'H' else str(ch)
+		cut1 = self.GetValidPedChCut(ch, typ, isFriend)
 		if not isFriend:
-			cut2 = '(diaChSignal[{c}]>=-{t})'.format(c=ch, t=self.neg_adc_th) if typ == 'adc' else '(diaChSignal[{c}]>=-{t}*diaChPedSigmaCmc[{c}])'.format(c=ch, t=self.neg_snr_th)
+			cut2 = '(diaChSignal[{c}]>=-{t})'.format(c=varch, t=self.neg_adc_th) if not isSNR else '(diaChSignal[{c}]>=-{t}*diaChPedSigmaCmc[{c}])'.format(c=varch, t=self.neg_snr_th)
 		else:
-			cut2 = '(pedTree.diaChSignal[{c}]>=-{t})'.format(c=ch, t=self.neg_adc_th) if typ == 'adc' else '(pedTree.diaChSignal[{c}]>=-{t}*pedTree.diaChPedSigmaCmc[{c}])'.format(c=ch, t=self.neg_snr_th)
+			cut2 = '(pedTree.diaChSignal[{c}]>=-{t})'.format(c=varch, t=self.neg_adc_th) if not isSNR else '(pedTree.diaChSignal[{c}]>=-{t}*pedTree.diaChPedSigmaCmc[{c}])'.format(c=varch, t=self.neg_snr_th)
 		return self.AndCuts([cut1, cut2])
 
 	def GetNotNegPHNChsCut(self, n, typ='Ch', isSNR=False, isFriend=False, op='&&'):
 		temp = []
-		typ2 = 'snr' if isSNR else 'adc'
 		for chi in xrange(1, n + 1):
-			vari = 'clusterChannel{c}'.format(c=chi-1) if typ == 'Ch' else 'clusterChannelHighest{c}'.format(c=chi)
-			temp.append(self.GetNotNegPHChCut(vari, typ2, isFriend))
+			temp.append(self.GetNotNegPHChCut(chi if typ == 'H' else chi - 1, typ, isSNR, isFriend))
 		return self.AndCuts(temp) if op == '&&' else self.OrCuts(temp) if op == '||' else '(0)'
 
 	def GetPHCuts(self, varKey, isFriend=False):
 		if varKey.startswith('PH_Ch'):
-			return self.GetValidPedChCut('clusterChannel{c}'.format(c=varKey.strip('PH_Ch')), isFriend)
+			return self.GetValidPedChCut(varKey.strip('PH_Ch'), 'Ch',isFriend)
 		elif varKey.startswith('PH_H'):
-			return self.GetValidPedChCut('clusterChannelHighest{c}'.format(c=varKey.strip('PH_H')), isFriend)
+			return self.GetValidPedChCut(varKey.strip('PH_H'), 'H', isFriend)
 		elif varKey.endswith('Ch'):
 			return self.GetValidPedNChsCut(int(varKey.strip('PH').strip('_Ch')), 'Ch', isFriend, '&&')
 		elif varKey.endswith('H'):
@@ -175,7 +173,7 @@ class CutManager:
 
 				self.ph_adc_ch['PH_Ch{i}'.format(i=i)] = self.transp_ev
 				self.ph_snr_ch['PH_Ch{i}'.format(i=i)] = self.AndCuts([self.transp_ev, self.valid_ped_sigma_ch['Ch{i}'.format(i=i)]])
-				# self.ph_snr_ch['PH_Ch{i}'.format(i=i)] = self.ConcatenateCuts(self.transp_ev, self.valid_ped_sigma_ch['Ch{i}'.format(i=i)])
+			# self.ph_snr_ch['PH_Ch{i}'.format(i=i)] = self.ConcatenateCuts(self.transp_ev, self.valid_ped_sigma_ch['Ch{i}'.format(i=i)])
 
 			if FindLeafInTree(self.tree, 'clusterChannelHighest{i}'.format(i=i+1)):
 				self.neg_snr_ph_h['PH_H{i}'.format(i=i+1)] = '((diaChPedSigmaCmc[clusterChannelHighest{i}]>0)&&(diaChSignal[clusterChannelHighest{i}]/diaChPedSigmaCmc[clusterChannelHighest{i}]<-{th}))'.format(i=i+1, th=neg_cut_snr)
@@ -190,7 +188,7 @@ class CutManager:
 
 				self.ph_adc_h['PH_H{i}'.format(i=i+1)] = self.transp_ev
 				self.ph_snr_h['PH_H{i}'.format(i=i+1)] = self.AndCuts([self.transp_ev, self.valid_ped_sigma_h['H{i}'.format(i=i + 1)]])
-				# self.ph_snr_h['PH_H{i}'.format(i=i+1)] = self.ConcatenateCuts(self.transp_ev, self.valid_ped_sigma_h['H{i}'.format(i=i + 1)])
+		# self.ph_snr_h['PH_H{i}'.format(i=i+1)] = self.ConcatenateCuts(self.transp_ev, self.valid_ped_sigma_h['H{i}'.format(i=i + 1)])
 
 		for ch in xrange(self.cluster_size):
 			list_neg_snr_phN_ch = []
@@ -289,7 +287,7 @@ class CutManager:
 	def SetCellsCenters(self, selection, not_selection):
 		self.selected_cells_centers = self.selected_cells_centers.format(s=selection)
 		self.not_selected_cells_centers = self.not_selected_cells_centers.format(ns=not_selection)
-		# self.noise_nc_friend_cuts = {cells: self.ConcatenateCutWithCells(cut=self.ConcatenateCuts(cut1=self.nc_chs, cut2=self.valid_ped_friend_sigma), cells=cells) for cells in ['all', 'good', 'bad']}
+	# self.noise_nc_friend_cuts = {cells: self.ConcatenateCutWithCells(cut=self.ConcatenateCuts(cut1=self.nc_chs, cut2=self.valid_ped_friend_sigma), cells=cells) for cells in ['all', 'good', 'bad']}
 
 	def SetNoiseCuts(self):
 		# self.noise_cuts = {cells: self.ConcatenateCutWithCells(cut=self.ConcatenateCuts(cut1=self.not_in_transp_cluster_not_masked, cut2=self.valid_ped_sigma), cells=cells) for cells in ['all', 'good', 'bad']}
@@ -367,7 +365,7 @@ class CutManager:
 
 	def ConcatenateCutWithCells(self, cut, cells='all', operator='&&'):
 		return self.ConcatenateCuts([self.selected_cells, cut], operator) if cells == 'good' else self.ConcatenateCuts([self.not_selected_cells, cut], operator) if cells == 'bad' else self.ConcatenateCuts([self.all_cells, cut], operator) if cells == 'all' else cut
-		# return self.ConcatenateCuts(self.selected_cells, cut, operator) if cells == 'good' else self.ConcatenateCuts(self.not_selected_cells, cut, operator) if cells == 'bad' else self.ConcatenateCuts(self.all_cells, cut, operator)
+	# return self.ConcatenateCuts(self.selected_cells, cut, operator) if cells == 'good' else self.ConcatenateCuts(self.not_selected_cells, cut, operator) if cells == 'bad' else self.ConcatenateCuts(self.all_cells, cut, operator)
 
 	def NotCut(self, cut):
 		return '(!{c})'.format(c=cut)
