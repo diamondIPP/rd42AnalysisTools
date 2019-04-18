@@ -347,7 +347,7 @@ class TestAreas:
 
 	def DoFinalStudies(self, typ='adc', cummulative_chs=[2], isFriend=False):
 		self.final_ana.w, self.final_ana.window_shift = self.w, self.window_shift
-		self.final_ana.DoFinalAnalysis(typ=typ, cummulative_chs=cummulative_chs)
+		self.final_ana.DoFinalAnalysis(typ=typ, cummulative_chs=cummulative_chs, isFriend=isFriend)
 		self.w, self.window_shift = self.final_ana.w, self.final_ana.window_shift
 
 	def DoCenterCellStudies(self, cells='all'):
@@ -427,7 +427,7 @@ class TestAreas:
 				self.DoClusterStudies(cells, typ, isFriend)
 				self.DoNegativeEventsStudies(cells, typ, isFriend)
 				self.DoSaturationStudies(cells, typ, isFriend)
-				self.DoFinalStudies(typ)
+				self.DoFinalStudies(typ, cummulative_chs=[self.num_strips], isFriend=isFriend)
 				# self.DoCenterCellStudies(cells)
 				# self.DoCenterCellSaturationStudies(cells)
 		# self.PlotTestClusterStudies(cells)
