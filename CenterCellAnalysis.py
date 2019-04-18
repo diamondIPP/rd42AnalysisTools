@@ -51,24 +51,6 @@ class CenterCellAnalysis:
 		self.noise_varz = {}
 		self.noise_friend_varz = {}
 
-		self.ph_adc_ch_varz = {}
-		self.ph_snr_ch_varz = {}
-		self.ph_adc_h_varz = {}
-		self.ph_snr_h_varz = {}
-		self.phN_adc_ch_varz = {}
-		self.phN_snr_ch_varz = {}
-		self.phN_adc_h_varz = {}
-		self.phN_snr_h_varz = {}
-
-		self.ph_adc_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.ph_snr_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.ph_adc_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.ph_snr_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.phN_adc_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.phN_snr_ch_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.phN_adc_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
-		self.phN_snr_h_cuts = {t: {} for t in ['all', 'good', 'bad']}
-
 		self.sat_adc_ch_cut = {}
 		self.sat_adc_h_cut = {}
 		self.not_sat_adc_ch_cut = {}

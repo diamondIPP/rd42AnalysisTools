@@ -70,11 +70,11 @@ class SaturationAnalysis:
 
 
 		tempc = self.sat_N_ch_cut(self.num_strips, 'H')
-		minz, maxz = min(self.minz['all']['PH{n}_H_{t}'.format(n=self.num_strips, t=typ.lower())], 0), self.maxz['all']['PH{n}_H_{t}'.format(n=self.num_strips, t=typ.lower())]
+		minz, maxz = min(self.minz['PH{n}_H_{t}'.format(n=self.num_strips, t=typ.lower())], 0), self.maxz['PH{n}_H_{t}'.format(n=self.num_strips, t=typ.lower())]
 		hname = 'PH{n}_H_pred_hit_sat_events_map_{b}_before_{a}_after_{t}'.format(n=self.num_strips, b=before, a=after, t=typ.lower()) if not isFriend else 'PH{n}_H_buffer_{v}_pred_hit_sat_events_map_{b}_before_{a}_after_{t}'.format(n=self.num_strips, b=before, a=after, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 		DrawProfile2D(hname, self.phN_chs_var(self.num_strips, 'H', typ == 'snr', isFriend), minz, maxz, 'PH{n} highest chs [{t}]'.format(n=self.num_strips, t=typ.upper()), tempc, getOccupancy=True)
 		tempc = self.sat_N_ch_cut(1, 'H')
-		minz, maxz = min(self.minz['all']['PH1_H_{t}'.format(t=typ.lower())], 0), self.maxz['all']['PH1_H_{t}'.format(t=typ.lower())]
+		minz, maxz = min(self.minz['PH1_H_{t}'.format(t=typ.lower())], 0), self.maxz['PH1_H_{t}'.format(t=typ.lower())]
 		hname = 'PH_sat_ch_map_{b}_before_{a}_after_{t}'.format(b=before, a=after, t=typ.lower()) if not isFriend else 'PH_buffer_{v}_sat_ch_map_{b}_before_{a}_after_{t}'.format(b=before, a=after, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 		DrawProfile2D(hname, self.phN_chs_var(1, 'H', typ == 'snr', isFriend), minz, maxz, 'PH sat ch [{t}]'.format(t=typ.upper()), tempc, 1, 'highest ch', 'clusterChannelHighest1')
 
@@ -112,14 +112,14 @@ class SaturationAnalysis:
 		for ch in xrange(1, self.cluster_size + 1):
 			tempcsat = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region_cut, self.ph_cuts('PH{c}_Ch'.format(c=ch), isFriend)])
 			tempcnosat = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region_cut,  self.ph_cuts('PH{c}_Ch'.format(c=ch), isFriend)])
-			minz, maxz = min(self.minz[cells]['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())], 0), self.maxz[cells]['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())]
+			minz, maxz = min(self.minz['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())], 0), self.maxz['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())]
 			hname = 'PH{c}_Ch_cell_map_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, s=suffix, b=before, a=after, t=typ.lower()) if not isFriend else 'PH{c}_Ch_buffer_{v}_cell_map_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, s=suffix, b=before, a=after, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 			PlotCellsProfiles(hname, self.phN_chs_var(ch, 'Ch', typ == 'snr', isFriend), minz, maxz, 'PH{c} cluster chs [{t}]'.format(c=ch, t=typ.upper()), tempcsat, ch == 1)
 			hname = 'PH{c}_Ch_cell_map_not_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, s=suffix, b=before, a=after, t=typ.lower()) if not isFriend else 'PH{c}_Ch_buffer_{v}_cell_map_not_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, s=suffix, b=before, a=after, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 			PlotCellsProfiles(hname, self.phN_chs_var(ch, 'Ch', typ == 'snr', isFriend), minz, maxz, 'PH{c} cluster chs [{t}]'.format(c=ch, t=typ.upper()), tempcnosat, ch == 1)
 			tempcsat = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region_cut, self.ph_cuts('PH{c}_H'.format(c=ch), isFriend)])
 			tempcnosat = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region_cut, self.ph_cuts('PH{c}_H'.format(c=ch), isFriend)])
-			minz, maxz = min(self.minz[cells]['PH{c}_H_{t}'.format(c=ch, t=typ.lower())], 0), self.maxz[cells]['PH{c}_H_{t}'.format(c=ch, t=typ.lower())]
+			minz, maxz = min(self.minz['PH{c}_H_{t}'.format(c=ch, t=typ.lower())], 0), self.maxz['PH{c}_H_{t}'.format(c=ch, t=typ.lower())]
 			if ch != self.cluster_size:
 				hname = 'PH{c}_H_cell_map_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, s=suffix, b=before, a=after, t=typ.lower()) if not isFriend else 'PH{c}_H_buffer_{v}_cell_map_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, s=suffix, b=before, a=after, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 				PlotCellsProfiles(hname, self.phN_chs_var(ch, 'H', typ == 'snr', isFriend), minz, maxz, 'PH{c} highest chs [{t}]'.format(c=ch, t=typ.upper()), tempcsat)
@@ -149,23 +149,23 @@ class SaturationAnalysis:
 		tempcsat = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region_cut, self.ph_cuts('PH{c}_Ch'.format(c=self.cluster_size), isFriend)])
 		tempcnosat = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region_cut, self.ph_cuts('PH{c}_Ch'.format(c=self.cluster_size), isFriend)])
 		for ch in xrange(1, self.cluster_size + 1):
-			minz, maxz = self.trans_grid.minz[cells]['PH_Ch{c}_{t}'.format(c=ch-1, t=typ.lower())], self.trans_grid.maxz[cells]['PH_Ch{c}_{t}'.format(c=ch-1, t=typ.lower())]
+			minz, maxz = self.trans_grid.minz['PH_Ch{c}_{t}'.format(c=ch-1, t=typ.lower())], self.trans_grid.maxz['PH_Ch{c}_{t}'.format(c=ch-1, t=typ.lower())]
 			hname = 'PH_Ch{c}_Vs_strip_location_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch-1, s=suffix, b=before, a=after, t=typ.lower()) if not isFriend else 'PH_Ch{c}_buffer_{v}_Vs_strip_location_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch-1, s=suffix, b=before, a=after, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 			Draw2DHistogram(hname, minz, maxz, 'PH cluster ch{c} [{t}]'.format(c=ch-1, t=typ.upper()), self.ph_ch_var(ch - 1, 'Ch', typ == 'snr', isFriend), tempcsat)
 			hname = 'PH_Ch{c}_Vs_strip_location_not_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch-1, s=suffix, b=before, a=after, t=typ.lower()) if not isFriend else 'PH_Ch{c}_buffer_{v}_Vs_strip_location_not_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch-1, s=suffix, b=before, a=after, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 			Draw2DHistogram(hname, minz, maxz, 'PH cluster ch{c} [{t}]'.format(c=ch-1, t=typ.upper()), self.ph_ch_var(ch - 1, 'Ch', typ == 'snr', isFriend), tempcnosat)
-			minz, maxz = self.trans_grid.minz[cells]['PH_H{c}_{t}'.format(c=ch, t=typ.lower())], self.trans_grid.maxz[cells]['PH_H{c}_{t}'.format(c=ch, t=typ.lower())]
+			minz, maxz = self.trans_grid.minz['PH_H{c}_{t}'.format(c=ch, t=typ.lower())], self.trans_grid.maxz['PH_H{c}_{t}'.format(c=ch, t=typ.lower())]
 			hname = 'PH_H{c}_Vs_strip_location_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after) if not isFriend else 'PH_H{c}_buffer_{v}_Vs_strip_location_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after, v=self.trans_grid.noise_friend_buffer)
 			Draw2DHistogram(hname, minz, maxz, 'PH highest {c}{sf} ch [{t}]'.format(c=ch, t=typ.upper(), sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_ch_var(ch, 'H', typ == 'snr', isFriend), tempcsat)
 			hname = 'PH_H{c}_Vs_strip_location_not_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after) if not isFriend else 'PH_H{c}_buffer_{v}_Vs_strip_location_not_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after, v=self.trans_grid.noise_friend_buffer)
 			Draw2DHistogram(hname, minz, maxz, 'PH highest {c}{sf} ch [{t}]'.format(c=ch, t=typ.upper(), sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_ch_var(ch, 'H', typ == 'snr', isFriend), tempcnosat)
-			minz, maxz = self.trans_grid.minz[cells]['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())], self.trans_grid.maxz[cells]['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())]
+			minz, maxz = self.trans_grid.minz['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())], self.trans_grid.maxz['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())]
 			hname = 'PH{c}_Ch_Vs_strip_location_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after) if not isFriend else 'PH{c}_Ch_buffer_{v}_Vs_strip_location_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after, v=self.trans_grid.noise_friend_buffer)
 			Draw2DHistogram(hname, minz, maxz, 'PH{c} cluster chs [{t}]'.format(c=ch, t=typ.upper()), self.phN_chs_var(ch, 'Ch', typ == 'snr', isFriend), tempcsat)
 			hname = 'PH{c}_Ch_Vs_strip_location_not_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after) if not isFriend else 'PH{c}_Ch_buffer_{v}_Vs_strip_location_not_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after, v=self.trans_grid.noise_friend_buffer)
 			Draw2DHistogram(hname, minz, maxz, 'PH{c} cluster chs [{t}]'.format(c=ch, t=typ.upper()), self.phN_chs_var(ch, 'Ch', typ == 'snr', isFriend), tempcnosat)
 			if ch != self.cluster_size or ch != 1:
-				minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_{t}'.format(c=ch, t=typ.lower())], self.trans_grid.maxz[cells]['PH{c}_H_{t}'.format(c=ch, t=typ.lower())]
+				minz, maxz = self.trans_grid.minz['PH{c}_H_{t}'.format(c=ch, t=typ.lower())], self.trans_grid.maxz['PH{c}_H_{t}'.format(c=ch, t=typ.lower())]
 				hname = 'PH{c}_H_Vs_strip_location_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after) if not isFriend else 'PH{c}_H_buffer_{v}_Vs_strip_location_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after, v=self.trans_grid.noise_friend_buffer)
 				Draw2DHistogram(hname, minz, maxz, 'PH{c} highest chs [{t}]'.format(c=ch, t=typ.upper()), self.phN_chs_var(ch, 'H', typ == 'snr', isFriend), tempcsat)
 				hname = 'PH{c}_H_Vs_strip_location_not_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after) if not isFriend else 'PH{c}_H_buffer_{v}_Vs_strip_location_not_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after, v=self.trans_grid.noise_friend_buffer)

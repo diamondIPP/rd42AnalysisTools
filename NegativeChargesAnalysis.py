@@ -166,13 +166,13 @@ class NegativeChargesAnalysis:
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
 		tempc = self.negN_chs_cut(self.cluster_size, 'Ch', typ == 'snr', isFriend)
 		for ch in xrange(1, self.cluster_size + 1):
-			minz, maxz = self.trans_grid.minz[cells]['PH_Ch{c}_{t}'.format(c=ch-1, t=typ.lower())], self.trans_grid.maxz[cells]['PH_Ch{c}_{t}'.format(c=ch-1, t=typ.lower())]
+			minz, maxz = self.trans_grid.minz['PH_Ch{c}_{t}'.format(c=ch-1, t=typ.lower())], self.trans_grid.maxz['PH_Ch{c}_{t}'.format(c=ch-1, t=typ.lower())]
 			hname = 'PH_Ch{c}_Vs_strip_location_neg_events_{t}_{s}'.format(c=ch-1, s=suffix, t=typ.lower()) if not isFriend else 'PH_Ch{c}_buffer_{v}_Vs_strip_location_neg_events_{t}_{s}'.format(c=ch-1, s=suffix, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 			Draw2DHistogram(hname, minz, maxz, 'PH cluster ch{c} [{t}]'.format(c=ch-1, t=typ.upper()), self.ph_ch_var(ch - 1, 'Ch', typ == 'snr', isFriend), tempc, typ)
-			minz, maxz = self.trans_grid.minz[cells]['PH_H{c}_{t}'.format(c=ch, t=typ.lower())], self.trans_grid.maxz[cells]['PH_H{c}_{t}'.format(c=ch, t=typ.lower())]
+			minz, maxz = self.trans_grid.minz['PH_H{c}_{t}'.format(c=ch, t=typ.lower())], self.trans_grid.maxz['PH_H{c}_{t}'.format(c=ch, t=typ.lower())]
 			hname = 'PH_H{c}_Vs_strip_location_neg_events_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower()) if not isFriend else 'PH_H{c}_Vs_strip_location_neg_events_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 			Draw2DHistogram(hname, minz, maxz, 'PH highest {c}{sf} ch [{t}]'.format(c=ch, t=typ.upper(), sf='st' if ch - 1 == 0 else 'nd' if ch - 1 == 1 else 'rd' if ch - 1 == 2 else 'th'), self.ph_ch_var(ch, 'H', typ == 'snr', isFriend), tempc, typ)
-			minz, maxz = self.trans_grid.minz[cells]['PH{c}_H_{t}'.format(c=ch, t=typ.lower())], self.trans_grid.maxz[cells]['PH{c}_H_{t}'.format(c=ch, t=typ.lower())]
+			minz, maxz = self.trans_grid.minz['PH{c}_H_{t}'.format(c=ch, t=typ.lower())], self.trans_grid.maxz['PH{c}_H_{t}'.format(c=ch, t=typ.lower())]
 			hname = 'PH{c}_H_Vs_strip_location_neg_events_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower()) if not isFriend else 'PH{c}_H_buffer_{v}_Vs_strip_location_neg_events_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 			Draw2DHistogram(hname, minz, maxz, 'PH{c} highest chs [{t}]'.format(c=ch, t=typ.upper()), self.phN_chs_var(ch, 'H', typ == 'snr', isFriend), tempc, typ)
 		Draw1DHistogram('strip_location_neg_events_{t}_{s}'.format(s=suffix, t=typ.lower()), tempc)

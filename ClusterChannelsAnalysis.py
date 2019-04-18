@@ -67,7 +67,7 @@ class ClusterChannelsAnalysis:
 
 		for ch in xrange(self.cluster_size):
 			tempcuts = self.ph_cuts('PH_Ch{i}'.format(i=ch), isFriend)
-			minz, maxz = self.minz[cells]['PH_Ch{i}_{t}'.format(i=ch, t=typ.lower())], self.maxz[cells]['PH_Ch{i}_{t}'.format(i=ch, t=typ.lower())]
+			minz, maxz = self.minz['PH_Ch{i}_{t}'.format(i=ch, t=typ.lower())], self.maxz['PH_Ch{i}_{t}'.format(i=ch, t=typ.lower())]
 			delta = self.delta_adc if typ == 'adc' else self.delta_snr
 			hist_limits = GetSymmetric1DLimits(minz, maxz, delta, 2)
 			plot_limits = GetSymmetric1DLimits(minz, maxz, delta, 1, False)
@@ -75,7 +75,7 @@ class ClusterChannelsAnalysis:
 			DrawHisto(hname, hist_limits, plot_limits, delta, self.ph_ch_var(ch, 'Ch', typ=='snr', isFriend), 'PH cluster ch{i} [{t}]'.format(i=ch, t=typ.upper()), tempcuts)
 
 			tempcuts = self.ph_cuts('PH_H{i}'.format(i=ch+1), isFriend)
-			minz, maxz = self.minz[cells]['PH_H{i}_{t}'.format(i=ch+1, t=typ.lower())], self.maxz[cells]['PH_H{i}_{t}'.format(i=ch+1, t=typ.lower())]
+			minz, maxz = self.minz['PH_H{i}_{t}'.format(i=ch+1, t=typ.lower())], self.maxz['PH_H{i}_{t}'.format(i=ch+1, t=typ.lower())]
 			hist_limits = GetSymmetric1DLimits(minz, maxz, delta, 2)
 			plot_limits = GetSymmetric1DLimits(minz, maxz, delta, 1, False)
 			hname = 'PH_H{i}_{t}_{s}'.format(i=ch + 1, s=suffix, t=typ.lower()) if not isFriend else 'PH_H{i}_buffer_{v}_{t}_{s}'.format(v=self.trans_grid.noise_friend_buffer, i=ch+1, s=suffix, t=typ.lower())
@@ -91,17 +91,15 @@ class ClusterChannelsAnalysis:
 
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
 		for ch in xrange(self.cluster_size):
-			if 'PH_Ch' + str(ch) in self.ph_adc_ch_varz.keys():
-				tempcuts = self.ph_cuts('PH_Ch' + str(ch), isFriend)
-				minz, maxz = self.minz[cells]['PH_Ch{i}_adc'.format(i=ch)], self.maxz[cells]['PH_Ch{i}_adc'.format(i=ch)]
-				hname = 'PH_Ch{c}_map_{s}'.format(c=ch, s=suffix) if not isFriend else 'PH_Ch{c}_buffer_{v}_map_{s}'.format(c=ch, s=suffix, v=self.trans_grid.noise_friend_buffer)
-				DrawProfile(hname, 'clusterChannel{c}'.format(c=ch), 'cluster ch{c}'.format(c=ch), self.ph_ch_var(ch, 'Ch', False, isFriend), 'PH [ADC]', tempcuts, maxz, minz)
+			tempcuts = self.ph_cuts('PH_Ch' + str(ch), isFriend)
+			minz, maxz = self.minz['PH_Ch{i}_adc'.format(i=ch)], self.maxz['PH_Ch{i}_adc'.format(i=ch)]
+			hname = 'PH_Ch{c}_map_{s}'.format(c=ch, s=suffix) if not isFriend else 'PH_Ch{c}_buffer_{v}_map_{s}'.format(c=ch, s=suffix, v=self.trans_grid.noise_friend_buffer)
+			DrawProfile(hname, 'clusterChannel{c}'.format(c=ch), 'cluster ch{c}'.format(c=ch), self.ph_ch_var(ch, 'Ch', False, isFriend), 'PH [ADC]', tempcuts, maxz, minz)
 
-			if 'PH_H' + str(ch + 1) in self.ph_adc_h_varz.keys():
-				tempcuts = self.ph_cuts('PH_H' + str(ch + 1), isFriend)
-				minz, maxz = self.minz[cells]['PH_H{i}_adc'.format(i=ch+1)], self.maxz[cells]['PH_H{i}_adc'.format(i=ch+1)]
-				hname = 'PH_H{c}_map_{s}'.format(c=ch+1, s=suffix) if not isFriend else 'PH_H{c}_buffer_{v}_map_{s}'.format(c=ch+1, s=suffix, v=self.trans_grid.noise_friend_buffer)
-				DrawProfile(hname, 'clusterChannelHighest{c}'.format(c=ch+1), 'highest {c}{sf} ch'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_ch_var(ch + 1, 'H', False, isFriend), 'PH [ADC]', tempcuts, maxz, minz)
+			tempcuts = self.ph_cuts('PH_H' + str(ch + 1), isFriend)
+			minz, maxz = self.minz['PH_H{i}_adc'.format(i=ch+1)], self.maxz['PH_H{i}_adc'.format(i=ch+1)]
+			hname = 'PH_H{c}_map_{s}'.format(c=ch+1, s=suffix) if not isFriend else 'PH_H{c}_buffer_{v}_map_{s}'.format(c=ch+1, s=suffix, v=self.trans_grid.noise_friend_buffer)
+			DrawProfile(hname, 'clusterChannelHighest{c}'.format(c=ch+1), 'highest {c}{sf} ch'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_ch_var(ch + 1, 'H', False, isFriend), 'PH [ADC]', tempcuts, maxz, minz)
 
 	def DoStrips2DHistograms(self, cells='all', typ='adc', isFriend=False):
 		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_info_diamond['pitch']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
@@ -116,24 +114,24 @@ class ClusterChannelsAnalysis:
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
 		for ch in xrange(self.cluster_size):
 			tempcuts = self.ph_cuts('PH_Ch{i}'.format(i=ch), isFriend)
-			minz, maxz = self.minz[cells]['PH_Ch{c}_{t}'.format(c=ch, t=typ.lower())], self.maxz[cells]['PH_Ch{c}_{t}'.format(c=ch, t=typ.lower())]
+			minz, maxz = self.minz['PH_Ch{c}_{t}'.format(c=ch, t=typ.lower())], self.maxz['PH_Ch{c}_{t}'.format(c=ch, t=typ.lower())]
 			hname = 'PH_Ch{c}_Vs_strip_location_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower()) if not isFriend else 'PH_Ch{c}_buffer_{v}_Vs_strip_location_{t}_{s}'.format(v=self.trans_grid.noise_friend_buffer, c=ch, s=suffix, t=typ.lower())
 			DrawHistogram(hname, minz, maxz, 'PH cluster ch{c} [{t}]'.format(c=ch, t=typ.upper()), self.ph_ch_var(ch, 'Ch', typ=='snr', isFriend), tempcuts)
 
 			tempcuts = self.ph_cuts('PH_H{i}'.format(i=ch+1), isFriend)
-			minz, maxz = self.minz[cells]['PH_H{c}_{t}'.format(c=ch+1, t=typ.lower())], self.maxz[cells]['PH_H{c}_{t}'.format(c=ch+1, t=typ.lower())]
+			minz, maxz = self.minz['PH_H{c}_{t}'.format(c=ch+1, t=typ.lower())], self.maxz['PH_H{c}_{t}'.format(c=ch+1, t=typ.lower())]
 			hname = 'PH_H{c}_Vs_strip_location_{t}_{s}'.format(c=ch+1, s=suffix, t=typ.lower()) if not isFriend else 'PH_H{c}_buffer_{v}_Vs_strip_location_{t}_{s}'.format(v=self.trans_grid.noise_friend_buffer, c=ch+1, s=suffix, t=typ.lower())
 			DrawHistogram(hname, minz, maxz, 'PH highest {c}{sf} ch [{t}]'.format(t=typ.upper(), c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_ch_var(ch+1, 'H', typ=='snr', isFriend), tempcuts)
 
 			tempcuts = self.ph_cuts('PH{i}_Ch'.format(i=ch+1), isFriend)
-			minz, maxz = self.minz[cells]['PH{c}_Ch_{t}'.format(c=ch+1, t=typ.lower())], self.maxz[cells]['PH{c}_Ch_{t}'.format(c=ch+1, t=typ.lower())]
+			minz, maxz = self.minz['PH{c}_Ch_{t}'.format(c=ch+1, t=typ.lower())], self.maxz['PH{c}_Ch_{t}'.format(c=ch+1, t=typ.lower())]
 			hname = 'PH{c}_Ch_Vs_strip_location_{t}_{s}'.format(c=ch+1, s=suffix, t=typ.lower()) if not isFriend else 'PH{c}_Ch_buffer_{v}_Vs_strip_location_{t}_{s}'.format(v=self.trans_grid.noise_friend_buffer, c=ch+1, s=suffix, t=typ.lower())
 			DrawHistogram(hname, minz, maxz, 'PH{c} cluster chs [{t}]'.format(c=ch+1, t=typ.upper()), self.phN_chs_var(ch + 1, 'Ch', typ=='snr', isFriend), tempcuts)
 
 			if ch != self.cluster_size - 1:
 				# these will be the same as PH{c1}_Ch when c1 == self.cluster_size - 1, because it is all the channels in the cluster
 				tempcuts = self.ph_cuts('PH{i}_H'.format(i=ch+1), isFriend)
-				minz, maxz = self.minz[cells]['PH{c}_H_{t}'.format(c=ch+1, t=typ.lower())], self.maxz[cells]['PH{c}_H_{t}'.format(c=ch+1, t=typ.lower())]
+				minz, maxz = self.minz['PH{c}_H_{t}'.format(c=ch+1, t=typ.lower())], self.maxz['PH{c}_H_{t}'.format(c=ch+1, t=typ.lower())]
 				hname = 'PH{c}_H_Vs_strip_location_{t}_{s}'.format(c=ch+1, s=suffix, t=typ.lower()) if not isFriend else 'PH{c}_H_buffer_{v}_Vs_strip_location_{t}_{s}'.format(v=self.trans_grid.noise_friend_buffer, c=ch+1, s=suffix, t=typ.lower())
 				DrawHistogram(hname, minz, maxz, 'PH{c} highest chs [{t}]'.format(c=ch + 1, t=typ.upper()), self.phN_chs_var(ch + 1, 'H', typ=='snr', isFriend), tempcuts)
 

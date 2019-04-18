@@ -48,6 +48,9 @@ class TestAreas:
 		self.trash = []
 		self.w = 0
 		self.num_rows = 0
+		self.saturated_ADC = 0
+		self.num_strips = 0
+		self.cluster_size = 0
 		self.rows = []
 		self.cols = []
 		self.cells = []
@@ -65,9 +68,6 @@ class TestAreas:
 		self.sat_ana = None
 		self.final_ana = None
 		self.bias = self.trans_grid.bias
-		self.saturated_ADC = 0
-		self.num_strips = 0
-		self.cluster_size = 0
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 		if self.num_rows != 0:
 			self.trans_grid.row_info_diamond['num'] = self.num_rows
@@ -218,12 +218,12 @@ class TestAreas:
 			self.w += self.window_shift
 
 	def DoBorderPlots(self):
-		self.trans_grid.DrawProfile2DDiamond('PH2_H_map_with_borders', self.trans_grid.phN_adc_h_varz['PH2_H'])
+		self.trans_grid.DrawProfile2DDiamond('PH2_H_map_with_borders', self.trans_grid.GetPHNChsVar(2, 'H', False))
 		self.trans_grid.DrawTCutGs('PH2_H_map_with_borders', 'diamond')
 		self.trans_grid.DrawGoodAreasDiamondCenters('PH2_H_map_with_borders')
 		# self.trans_grid.DrawGoodAreasDiamond('PH2_H_map_with_borders')
 		# self.trans_grid.DrawBadAreasDiamond('PH2_H_map_with_borders')
-		xbinmin, xbinmax = self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5), self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5) + self.trans_grid.num_cols * self.trans_grid.bins_per_ch_x - 1
+		xbinmin, xbinmax = int(self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5)), int(self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5) + self.trans_grid.num_cols * self.trans_grid.bins_per_ch_x - 1)
 		self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().SetRange(xbinmin - 1, xbinmax + 1)
 		self.trans_grid.canvas['PH2_H_map_with_borders_py'] = ro.TCanvas('c_PH2_H_map_with_borders_py', 'c_PH2_H_map_with_borders_py', 1)
 		self.trans_grid.canvas['PH2_H_map_with_borders_py'].cd()
@@ -258,9 +258,9 @@ class TestAreas:
 
 	def DoCellHistograms(self):
 		self.trans_grid.mean_ph_cell_dic = {'adc': {}, 'snr': {}}
-		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.phN_snr_h_varz['PH2_H'], 'snr', self.phmin / 10., self.phmax / 10., self.delta_snr * 10)
+		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.GetPHNChsVar(2, 'H', True), 'snr', self.phmin / 10., self.phmax / 10., self.delta_adc / 20.)
 		self.PositionCanvas('mean_ph_per_cell_snr')
-		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.phN_adc_h_varz['PH2_H'], 'adc', self.phmin, self.phmax, self.delta_adc * 10)
+		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.GetPHNChsVar(2, 'H', False), 'adc', self.phmin, self.phmax, self.delta_adc / 2.)
 		self.PositionCanvas('mean_ph_per_cell_adc')
 
 	def DoNoiseStudiesDifferentBuffers(self, cells='good', typ='adc'):
@@ -417,7 +417,7 @@ class TestAreas:
 	def SaveCanvas(self):
 		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys())
 
-	def DoAutomatic(self, cells='good', types=['adc'], isFriend=False, SaveAllPlots=False):
+	def DoAutomatic(self, cells='good', types=['adc'], isFriend=False, SaveAllPlots=False, isFirst=False):
 		self.window_shift = 1
 		self.DoBorderPlots()
 		self.DoCellHistograms()
@@ -425,17 +425,18 @@ class TestAreas:
 			if typ in types:
 				self.DoNoiseStudies(cells, typ, isFriend)
 				self.DoClusterStudies(cells, typ, isFriend)
-				self.DoNegativeEventsStudies(cells, typ, isFriend)
-				self.DoSaturationStudies(cells, typ, isFriend)
-				self.DoFinalStudies(typ, cummulative_chs=[self.num_strips], isFriend=isFriend)
-				# self.DoCenterCellStudies(cells)
-				# self.DoCenterCellSaturationStudies(cells)
+				if not isFirst:
+					self.DoNegativeEventsStudies(cells, typ, isFriend)
+					self.DoSaturationStudies(cells, typ, isFriend)
+					self.DoFinalStudies(typ, cummulative_chs=[self.num_strips], isFriend=isFriend)
+					# self.DoCenterCellStudies(cells)
+					# self.DoCenterCellSaturationStudies(cells)
 		# self.PlotTestClusterStudies(cells)
 		# self.PlotTestForNegative(cells)
 		# self.PlotTest()
 		# if self.do_saturation:
 		# 	self.PlotSaturation()
-		if SaveAllPlots:
+		if SaveAllPlots and not isFirst:
 			self.SaveCanvas()
 
 	def SetTransparentGrid(self):
@@ -445,7 +446,7 @@ class TestAreas:
 			if self.trans_grid.saturated_ADC != 0:
 				self.saturated_ADC = self.trans_grid.saturated_ADC
 			else:
-				self.saturated_ADC = Get_From_User_Value('saturation_ADC for run ' + str(self.run), 'int', self.trans_grid.saturated_ADC, True)
+				self.saturated_ADC = Get_From_User_Value('saturated_ADC for run ' + str(self.run), 'int', self.trans_grid.saturated_ADC, True)
 				self.trans_grid.saturated_ADC = self.saturated_ADC
 				self.trans_grid.SavePickle()
 		else:
@@ -466,7 +467,7 @@ class TestAreas:
 			else:
 				print 'Run the noise and the cluster analysis to determine the neg_cut_snr and neg_cut_adc values'
 
-		self.trans_grid.SetVarz()
+		self.trans_grid.FindMaxMinVarz()
 		# Update cluster size:
 		if self.cluster_size == 0:
 			self.cluster_size = self.trans_grid.cluster_size
@@ -508,12 +509,14 @@ if __name__ == '__main__':
 	parser.add_option('-a', '--auto', dest='auto', default=False, action='store_true', help='Sets up test, creates plots and saves them automatically if toggled')
 	parser.add_option('-c', '--config', dest='config', default='', type='string', help='gives the path to a config file for the test area')
 	parser.add_option('-t', '--type', dest='typ', default='[adc]', type='string', help='selects a type of analysis to run automatically. Options are [adc], [adc,snr], or [snr] order does not matter.')
+	parser.add_option('-f', '--first', dest='first', default=False, action='store_true', help='Use when negative cuts are unknown. Will do analysis until cluster channel part.')
 
 	(options, args) = parser.parse_args()
 	run = int(options.run)
 	autom = bool(options.auto)
 	config = str(options.config)
 	typ = str(options.typ).strip('[').strip(']').split(',')
+	first = bool(options.first)
 
 	t = TestAreas(config, run)
 	t.SetTransparentGrid()
@@ -527,5 +530,5 @@ if __name__ == '__main__':
 		t.trans_grid.FindBinningAndResolution()
 		t.trans_grid.SavePickle()
 	if autom:
-		t.DoAutomatic('good', types=typ, SaveAllPlots=True)
+		t.DoAutomatic('good', types=typ if not first else ['adc', 'snr'], SaveAllPlots=True, isFirst=first)
 

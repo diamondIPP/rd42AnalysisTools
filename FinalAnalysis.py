@@ -100,10 +100,10 @@ class FinalAnalysis:
 		tempc = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.GetCut(cuts, typ, isFriend), cells=cells)
 
 		for ch in self.analysis_cummulative_ch:
-			minz, maxz = min(0, self.trans_grid.minz[cells]['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())]), self.trans_grid.maxz[cells]['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())]
+			minz, maxz = min(0, self.trans_grid.minz['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())]), self.trans_grid.maxz['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())]
 			hname = 'PH{c}_Ch_Vs_strip_location_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix) if not isFriend else 'PH{c}_Ch_buffer_{v}_Vs_strip_location_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, v=self.trans_grid.noise_friend_buffer)
 			Draw2DHistogram(hname, minz, maxz, 'PH{c} cluster chs [{t}]'.format(c=ch, t=typ.upper()), self.phN_chs_var(ch, 'Ch', typ == 'snr', isFriend), tempc, typ)
-			minz, maxz = min(0, self.trans_grid.minz[cells]['PH{c}_H_{t}'.format(c=ch, t=typ.lower())]), self.trans_grid.maxz[cells]['PH{c}_H_{t}'.format(c=ch, t=typ.lower())]
+			minz, maxz = min(0, self.trans_grid.minz['PH{c}_H_{t}'.format(c=ch, t=typ.lower())]), self.trans_grid.maxz['PH{c}_H_{t}'.format(c=ch, t=typ.lower())]
 			if ch != self.cluster_size:
 				hname = 'PH{c}_H_Vs_strip_location_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix) if not isFriend else 'PH{c}_H_buffer_{v}_Vs_strip_location_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, v=self.trans_grid.noise_friend_buffer)
 				Draw2DHistogram(hname, minz, maxz, 'PH{c} highest chs [{t}]'.format(c=ch, t=typ.upper()), self.phN_chs_var(ch, 'H', typ == 'snr', isFriend), tempc, typ)
@@ -205,7 +205,7 @@ class FinalAnalysis:
 		for ch in self.analysis_cummulative_ch:
 			for chtype in ['Ch', 'H']:
 				if ch != self.cluster_size or chtype != 'H':
-					minz, maxz = self.minz[cells]['PH{c}_{ct}_{t}'.format(c=ch, t=typ.lower(), ct=chtype)], max(self.minz[cells]['PH{c}_{ct}_{t}'.format(c=ch, t=typ.lower(), ct=chtype)], self.trans_grid.phmax if typ == 'adc' else self.trans_grid.phmax / 10.)
+					minz, maxz = self.minz['PH{c}_{ct}_{t}'.format(c=ch, t=typ.lower(), ct=chtype)], max(self.minz['PH{c}_{ct}_{t}'.format(c=ch, t=typ.lower(), ct=chtype)], self.trans_grid.phmax if typ == 'adc' else self.trans_grid.phmax / 10.)
 					hname = 'PH{c}_{ct}_cell_map_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower(), ct=chtype) if not isFriend else 'PH{c}_{ct}_buffer_{v}_cell_map_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower(), v=self.trans_grid.noise_friend_buffer, ct=chtype)
 					PlotCellsProfiles(hname, self.phN_chs_var(ch, chtype, typ == 'snr', isFriend), minz, maxz, 'PH{c} {ct} chs [{t}]'.format(c=ch, t=typ.upper(), ct='cluster' if chtype == 'Ch' else 'highest'), tempc)
 
@@ -214,6 +214,7 @@ class FinalAnalysis:
 			self.analysis_cummulative_ch = cummulative_chs
 		self.DefineSatRegion(before=0, after=1)
 		self.DoDeviceMaps('all', '', 'no_cuts', typ=typ, isFriend=isFriend)
+		self.DoCellMaps('all', '', 'no_cuts', typ=typ, isFriend=isFriend)
 		self.DoStripHistograms('all', '', 'no_cuts', typ=typ, isFriend=isFriend)
 		self.DoPH2DHistograms('all', '', 'no_cuts', typ=typ, isFriend=isFriend)
 		self.DoEfficiencyPlots('all', '', 'no_cuts', typ=typ, isFriend=isFriend)

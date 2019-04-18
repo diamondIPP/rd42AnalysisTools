@@ -120,8 +120,8 @@ class TransparentGrid:
 		self.phN_snr_h_varz = {}
 		self.phN_snr_ch_varz = {}
 
-		self.minz = {cells: {} for cells in ['all', 'good', 'bad']}
-		self.maxz = {cells: {} for cells in ['all', 'good', 'bad']}
+		self.minz = {}
+		self.maxz = {}
 
 		self.ped_file = None
 		self.ped_tree = None
@@ -325,8 +325,8 @@ class TransparentGrid:
 		self.SavePickle()
 
 	def FindUpperAndLowerLines(self):
-		self.DrawProfile2DDiamond('vertical_limits_profile', 'clusterChargeN', '', True)
-		xbinmin, xbinmax = self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5), self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5) + self.num_cols * self.bins_per_ch_x - 1
+		self.DrawProfile2DDiamond('vertical_limits_profile', 'clusterChargeN', '', transp_ev=True)
+		xbinmin, xbinmax = int(self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5)), int(self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5) + self.num_cols * self.bins_per_ch_x - 1)
 		self.canvas['vertical_limits_profile_py'] = ro.TCanvas('c_vertical_limits_profile_py', 'c_vertical_limits_profile_py', 1)
 		self.canvas['vertical_limits_profile_py'].cd()
 		self.histo['vertical_limits_profile_py'] = self.profile['vertical_limits_profile'].ProjectionY('h_vertical_limits_profile_py', xbinmin, xbinmax, 'e hist')
@@ -371,10 +371,10 @@ class TransparentGrid:
 			self.SelectGoodAndBadByThreshold()
 		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
 		histo_entries = float(self.histo['binning_temp'].GetEntries())
-		temp = np.abs(np.subtract(ph_bins_options, histo_entries * 240.0 / 4500.0, dtype='float32'), dtype='float32')
+		temp = np.abs(np.subtract(ph_bins_options, histo_entries * 240.0 / 4800.0, dtype='float32'), dtype='float32')
 		self.phbins = ph_bins_options[temp.argmin()]
 		self.phbins_neg = ph_bins_options[temp.argmin()]
-		cell_bins = min(25, max(11, RoundInt(np.sqrt(histo_entries * ((self.col_pitch / 2.0) ** 2) / 4500.0, dtype='float64'))))
+		cell_bins = min(25, max(11, RoundInt(np.sqrt(histo_entries * ((self.col_pitch / 2.0) ** 2) / 4800.0, dtype='float64'))))
 		self.cell_resolution = np.divide(self.col_pitch, cell_bins, dtype='float64') if cell_bins % 2 == 1 else np.divide(50.0, cell_bins + 1, dtype='float64')
 		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
 
@@ -382,10 +382,37 @@ class TransparentGrid:
 		self.FindXOffset(factor, do_plot, cells)
 		self.FindYOffset(factor, do_plot, cells)
 
+	def ShiftHalfXandYOffsets(self, n=1):
+		tempn = RoundInt(n)
+		tempn = tempn - 0.5 if tempn > 0 else tempn + 0.5 if tempn < 0 else 0
+		if tempn == 0:
+			print 'must give an integer different from 0'
+			return
+		self.row_info_diamond['x_off'] += tempn
+		self.row_info_diamond['y_off'] += tempn * self.row_info_diamond['pitch']
+		self.SetOverlayVariables()
+
+	def ShiftHalfXOffset(self, n=1):
+		tempn = RoundInt(n)
+		tempn = tempn - 0.5 if tempn > 0 else tempn + 0.5 if tempn < 0 else 0
+		if tempn == 0:
+			print 'must give an integer different from 0'
+			return
+		self.row_info_diamond['x_off'] += tempn
+		self.SetOverlayVariables()
+
+	def ShiftHalfYOffset(self, n=1):
+		tempn = RoundInt(n)
+		tempn = tempn - 0.5 if tempn > 0 else tempn + 0.5 if tempn < 0 else 0
+		if tempn == 0:
+			print 'must give an integer different from 0'
+			return
+		self.row_info_diamond['y_off'] += tempn * self.row_info_diamond['pitch']
+		self.SetOverlayVariables()
+
 	def FindXOffset(self, factor=0.1, do_plot=True, cells='good'):
 		plot_option = 'prof colz' if do_plot else 'prof goff'
-		self.row_info_diamond['x_off'] += 3.0 / 2.0
-		self.SetOverlayVariables()
+		self.ShiftHalfXOffset(2)
 		delta_x = self.col_pitch
 		# proj_width = self.row_info_diamond['pitch'] / 5.0  # in mum
 		proj_width = self.row_info_diamond['pitch']  # in mum
@@ -420,8 +447,7 @@ class TransparentGrid:
 
 	def FindYOffset(self, factor=0.1, do_plot=True, cells='good'):
 		plot_option = 'prof colz' if do_plot else 'prof goff'
-		self.row_info_diamond['y_off'] += 3.0 * self.row_info_diamond['pitch'] / 2.0
-		self.SetOverlayVariables()
+		self.ShiftHalfYOffset(2)
 		delta_y = self.row_info_diamond['pitch']
 		proj_width = self.col_pitch / 5.0  # in mum
 		proj_bins = RoundInt(float(proj_width) / self.cell_resolution)
@@ -806,7 +832,7 @@ class TransparentGrid:
 			self.FitGaus('mean_ph_per_cell_' + typ, 2, 5)
 			if self.fits['mean_ph_per_cell_' + typ].Ndf() < 2:
 				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8)
-			elif self.fits['mean_ph_per_cell_' + typ].Chi2() / self.fits['mean_ph_per_cell_' + typ].Ndf() < 0.9:
+			elif 0.5 <= self.fits['mean_ph_per_cell_' + typ].Chi2() / self.fits['mean_ph_per_cell_' + typ].Ndf() < 0.9:
 				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8)
 		else:
 			self.GetMeanPHPerCell(var, typ)
@@ -1564,35 +1590,6 @@ class TransparentGrid:
 			if self.ped_tree:
 				del self.ped_tree
 
-	def SetVarz(self):
-		print 'Setting ph variables for plotting...', ; sys.stdout.flush()
-		for chi in xrange(self.cluster_size):
-			if FindLeafInTree(self.trans_tree, 'clusterChannel{i}'.format(i=chi)):
-				self.ph_adc_ch_varz['PH_Ch{i}'.format(i=chi)] = '(diaChSignal[clusterChannel{i}])'.format(i=chi)
-				self.ph_snr_ch_varz['PH_Ch{i}'.format(i=chi)] = '(diaChSignal[clusterChannel{i}]/diaChPedSigmaCmc[clusterChannel{i}])'.format(i=chi)
-			if FindLeafInTree(self.trans_tree, 'clusterChannelHighest{i}'.format(i=chi+1)):
-				self.ph_adc_h_varz['PH_H{i}'.format(i=chi + 1)] = '(diaChSignal[clusterChannelHighest{i}])'.format(i=chi + 1)
-				self.ph_snr_h_varz['PH_H{i}'.format(i=chi + 1)] = '(diaChSignal[clusterChannelHighest{i}]/diaChPedSigmaCmc[clusterChannelHighest{i}])'.format(i=chi + 1)
-
-		for ch in xrange(self.cluster_size):
-			list_adc_phN_ch = []
-			list_snr_phN_ch = []
-			list_adc_phN_h = []
-			list_snr_phN_h = []
-
-			for chi in xrange(ch + 1):
-				if 'PH_Ch{i}'.format(i=chi) in self.ph_adc_ch_varz.keys():
-					list_adc_phN_ch.append(self.ph_adc_ch_varz['PH_Ch{i}'.format(i=chi)])
-					list_snr_phN_ch.append(self.ph_snr_ch_varz['PH_Ch{i}'.format(i=chi)])
-				if 'PH_H{i}'.format(i=chi+1) in self.ph_adc_h_varz.keys():
-					list_adc_phN_h.append(self.ph_adc_h_varz['PH_H{i}'.format(i=chi+1)])
-					list_snr_phN_h.append(self.ph_snr_h_varz['PH_H{i}'.format(i=chi+1)])
-
-			self.phN_adc_ch_varz['PH{i}_Ch'.format(i=ch + 1)] = '(' + '+'.join(list_adc_phN_ch) + ')' if len(list_adc_phN_ch) > 0 else ''
-			self.phN_snr_ch_varz['PH{i}_Ch'.format(i=ch + 1)] = '(' + '+'.join(list_snr_phN_ch) + ')' if len(list_snr_phN_ch) > 0 else ''
-			self.phN_adc_h_varz['PH{i}_H'.format(i=ch + 1)] = '(' + '+'.join(list_adc_phN_h) + ')' if len(list_adc_phN_h) > 0 else ''
-			self.phN_snr_h_varz['PH{i}_H'.format(i=ch + 1)] = '(' + '+'.join(list_snr_phN_h) + ')' if len(list_snr_phN_h) > 0 else ''
-		print 'Done'
 
 	def GetPHChVar(self, ch, typ='H', isSNR=False, isFriend=False):
 		varch = 'clusterChannel' + str(ch) if typ == 'Ch' else 'clusterChannelHighest' + str(ch) if typ == 'H' else str(ch)
@@ -1608,47 +1605,33 @@ class TransparentGrid:
 		if os.path.isfile('{d}/{r}/{s}/min_max_values.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
 			with open('{d}/{r}/{s}/min_max_values.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir), 'rb') as pkl:
 				minmax_temp = pickle.load(pkl)
-				min, max = minmax_temp['min'], minmax_temp['max']
-				for suff in self.suffix.keys():
-					if suff in min.keys() and suff in max.keys():
-						self.minz[suff] = min[suff]
-						self.maxz[suff] = max[suff]
+				self.minz, self.maxz = minmax_temp['min'], minmax_temp['max']
 				return
-		for cells in self.suffix.keys():
-			print 'Finding Maximum and Minimum ranges for plotting inside {sf} cells...'.format(sf=self.suffix[cells]), ; sys.stdout.flush()
-			if len(self.minz[cells].keys()) + len(self.maxz[cells].keys()) < 2:
-				for ch in xrange(self.cluster_size):
-					if 'PH_Ch{i}'.format(i=ch) in self.ph_adc_ch_varz.keys() and 'PH_Ch{i}'.format(i=ch) in self.cuts_man.ph_adc_ch_cuts[cells].keys():
-						self.minz[cells]['PH_Ch{i}_adc'.format(i=ch)] = GetMinimumFromTree(self.trans_tree, self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch)], self.cuts_man.ph_adc_ch_cuts[cells]['PH_Ch{i}'.format(i=ch)])
-						self.maxz[cells]['PH_Ch{i}_adc'.format(i=ch)] = GetMaximumFromTree(self.trans_tree, self.ph_adc_ch_varz['PH_Ch{i}'.format(i=ch)], self.cuts_man.ph_adc_ch_cuts[cells]['PH_Ch{i}'.format(i=ch)])
-					if 'PH_H{i}'.format(i=ch+1) in self.ph_adc_h_varz.keys() and 'PH_H{i}'.format(i=ch+1) in self.cuts_man.ph_adc_h_cuts[cells].keys():
-						self.minz[cells]['PH_H{i}_adc'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.ph_adc_h_varz['PH_H{i}'.format(i=ch+1)], self.cuts_man.ph_adc_h_cuts[cells]['PH_H{i}'.format(i=ch+1)])
-						self.maxz[cells]['PH_H{i}_adc'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.ph_adc_h_varz['PH_H{i}'.format(i=ch+1)], self.cuts_man.ph_adc_h_cuts[cells]['PH_H{i}'.format(i=ch+1)])
-					if 'PH_Ch{i}'.format(i=ch) in self.ph_snr_ch_varz.keys() and 'PH_Ch{i}'.format(i=ch) in self.cuts_man.ph_snr_ch_cuts[cells].keys():
-						self.minz[cells]['PH_Ch{i}_snr'.format(i=ch)] = GetMinimumFromTree(self.trans_tree, self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch)], self.cuts_man.ph_snr_ch_cuts[cells]['PH_Ch{i}'.format(i=ch)])
-						self.maxz[cells]['PH_Ch{i}_snr'.format(i=ch)] = GetMaximumFromTree(self.trans_tree, self.ph_snr_ch_varz['PH_Ch{i}'.format(i=ch)], self.cuts_man.ph_snr_ch_cuts[cells]['PH_Ch{i}'.format(i=ch)])
-					if 'PH_H{i}'.format(i=ch+1) in self.ph_snr_h_varz.keys() and 'PH_H{i}'.format(i=ch+1) in self.cuts_man.ph_snr_h_cuts[cells].keys():
-						self.minz[cells]['PH_H{i}_snr'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.ph_snr_h_varz['PH_H{i}'.format(i=ch+1)], self.cuts_man.ph_snr_h_cuts[cells]['PH_H{i}'.format(i=ch+1)])
-						self.maxz[cells]['PH_H{i}_snr'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.ph_snr_h_varz['PH_H{i}'.format(i=ch+1)], self.cuts_man.ph_snr_h_cuts[cells]['PH_H{i}'.format(i=ch+1)])
-					if 'PH{i}_Ch'.format(i=ch+1) in self.phN_adc_ch_varz.keys() and 'PH{i}_Ch'.format(i=ch+1) in self.cuts_man.phN_adc_ch_cuts[cells].keys():
-						self.minz[cells]['PH{i}_Ch_adc'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.phN_adc_ch_varz['PH{i}_Ch'.format(i=ch+1)], self.cuts_man.phN_adc_ch_cuts[cells]['PH{i}_Ch'.format(i=ch+1)])
-						self.maxz[cells]['PH{i}_Ch_adc'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.phN_adc_ch_varz['PH{i}_Ch'.format(i=ch+1)], self.cuts_man.phN_adc_ch_cuts[cells]['PH{i}_Ch'.format(i=ch+1)])
-					if 'PH{i}_Ch'.format(i=ch+1) in self.phN_snr_ch_varz.keys() and 'PH{i}_Ch'.format(i=ch+1) in self.cuts_man.phN_snr_ch_cuts[cells].keys():
-						self.minz[cells]['PH{i}_Ch_snr'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.phN_snr_ch_varz['PH{i}_Ch'.format(i=ch+1)], self.cuts_man.phN_snr_ch_cuts[cells]['PH{i}_Ch'.format(i=ch+1)])
-						self.maxz[cells]['PH{i}_Ch_snr'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.phN_snr_ch_varz['PH{i}_Ch'.format(i=ch+1)], self.cuts_man.phN_snr_ch_cuts[cells]['PH{i}_Ch'.format(i=ch+1)])
-					if 'PH{i}_H'.format(i=ch+1) in self.phN_adc_h_varz.keys() and 'PH{i}_H'.format(i=ch+1) in self.cuts_man.phN_adc_h_cuts[cells].keys():
-						self.minz[cells]['PH{i}_H_adc'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.phN_adc_h_varz['PH{i}_H'.format(i=ch+1)], self.cuts_man.phN_adc_h_cuts[cells]['PH{i}_H'.format(i=ch+1)])
-						self.maxz[cells]['PH{i}_H_adc'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.phN_adc_h_varz['PH{i}_H'.format(i=ch+1)], self.cuts_man.phN_adc_h_cuts[cells]['PH{i}_H'.format(i=ch+1)])
-					if 'PH{i}_H'.format(i=ch+1) in self.phN_snr_h_varz.keys() and 'PH{i}_H'.format(i=ch+1) in self.cuts_man.phN_snr_h_cuts[cells].keys():
-						self.minz[cells]['PH{i}_H_snr'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.phN_snr_h_varz['PH{i}_H'.format(i=ch+1)], self.cuts_man.phN_snr_h_cuts[cells]['PH{i}_H'.format(i=ch+1)])
-						self.maxz[cells]['PH{i}_H_snr'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.phN_snr_h_varz['PH{i}_H'.format(i=ch+1)], self.cuts_man.phN_snr_h_cuts[cells]['PH{i}_H'.format(i=ch+1)])
-			print 'Done'
-			minmax_obj = {'min': self.minz, 'max': self.maxz}
-			if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
-				os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
-			print 'Saving limits in pickle file', '{d}/{r}/{s}/min_max_values.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir), '...', ; sys.stdout.flush()
-			pickle.dump(minmax_obj, open('{d}/{r}/{s}/min_max_values.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir), 'wb'))
-			print 'Done'
+		print 'Finding Maximum and Minimum ranges for plotting...', ; sys.stdout.flush()
+		for ch in xrange(self.cluster_size):
+			self.minz['PH_Ch{i}_adc'.format(i=ch)] = GetMinimumFromTree(self.trans_tree, self.GetPHChVar(ch, 'Ch'), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH_Ch{i}'.format(i=ch))]))
+			self.maxz['PH_Ch{i}_adc'.format(i=ch)] = GetMaximumFromTree(self.trans_tree, self.GetPHChVar(ch, 'Ch'), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH_Ch{i}'.format(i=ch))]))
+			self.minz['PH_H{i}_adc'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.GetPHChVar(ch+1, 'H'), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH_H{i}'.format(i=ch+1))]))
+			self.maxz['PH_H{i}_adc'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.GetPHChVar(ch+1, 'H'), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH_H{i}'.format(i=ch+1))]))
+			self.minz['PH_Ch{i}_snr'.format(i=ch)] = GetMinimumFromTree(self.trans_tree, self.GetPHChVar(ch, 'Ch', True), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH_Ch{i}'.format(i=ch))]))
+			self.maxz['PH_Ch{i}_snr'.format(i=ch)] = GetMaximumFromTree(self.trans_tree, self.GetPHChVar(ch, 'Ch', True), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH_Ch{i}'.format(i=ch))]))
+			self.minz['PH_H{i}_snr'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.GetPHChVar(ch+1, 'H', True), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH_H{i}'.format(i=ch+1))]))
+			self.maxz['PH_H{i}_snr'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.GetPHChVar(ch+1, 'H', True), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH_H{i}'.format(i=ch+1))]))
+			self.minz['PH{i}_Ch_adc'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.GetPHNChsVar(ch+1, 'Ch'), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH{i}_Ch'.format(i=ch+1))]))
+			self.maxz['PH{i}_Ch_adc'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.GetPHNChsVar(ch+1, 'Ch'), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH{i}_Ch'.format(i=ch+1))]))
+			self.minz['PH{i}_Ch_snr'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.GetPHNChsVar(ch+1, 'Ch', True), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH{i}_Ch'.format(i=ch+1))]))
+			self.maxz['PH{i}_Ch_snr'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.GetPHNChsVar(ch+1, 'Ch', True), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH{i}_Ch'.format(i=ch+1))]))
+			self.minz['PH{i}_H_adc'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.GetPHNChsVar(ch+1, 'H'), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH{i}_H'.format(i=ch+1))]))
+			self.maxz['PH{i}_H_adc'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.GetPHNChsVar(ch+1, 'H'), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH{i}_H'.format(i=ch+1))]))
+			self.minz['PH{i}_H_snr'.format(i=ch+1)] = GetMinimumFromTree(self.trans_tree, self.GetPHNChsVar(ch+1, 'H', True), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH{i}_H'.format(i=ch+1))]))
+			self.maxz['PH{i}_H_snr'.format(i=ch+1)] = GetMaximumFromTree(self.trans_tree, self.GetPHNChsVar(ch+1, 'H', True), self.cuts_man.AndCuts([self.cuts_man.transp_ev, self.cuts_man.GetPHCuts('PH{i}_H'.format(i=ch+1))]))
+		print 'Done'
+		minmax_obj = {'min': self.minz, 'max': self.maxz}
+		if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
+			os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
+		print 'Saving limits in pickle file', '{d}/{r}/{s}/min_max_values.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir), '...', ; sys.stdout.flush()
+		pickle.dump(minmax_obj, open('{d}/{r}/{s}/min_max_values.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir), 'wb'))
+		print 'Done'
 
 if __name__ == '__main__':
 	parser = OptionParser()
