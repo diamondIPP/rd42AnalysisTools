@@ -583,7 +583,7 @@ class RD42Analysis:
 					if self.symlinks:
 						try:
 							os.symlink('../../{d}/{r}/rawData.{r}0.root'.format(d=self.subdir, r=self.run), 'rawData.{r}.root'.format(r=self.run))
-						except:
+						except Exception:
 							print 'Could not ln -s the corrected raw file for further anlysis. Do it manually.'
 					else:
 						try:
