@@ -50,7 +50,7 @@ class FinalAnalysis:
 		self.not_neg_ch_cut = self.trans_grid.cuts_man.GetNotNegPHChCut
 		self.not_negN_chs_cut = self.trans_grid.cuts_man.GetNotNegPHNChsCut
 
-		self.analysis_cummulative_ch = np.arange(1, self.cluster_size + 1)
+		self.analysis_cummulative_ch = np.arange(1, self.num_strips + 1)
 
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)

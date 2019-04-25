@@ -447,6 +447,14 @@ class TestAreas:
 			self.SaveCanvas()
 
 	def SetTransparentGrid(self):
+		if self.num_rows != 0:
+			self.trans_grid.row_info_diamond['num'] = self.num_rows
+		if self.rows_pitch != 0:
+			self.trans_grid.row_info_diamond['pitch'] = self.rows_pitch
+		else:
+			if self.trans_grid.row_info_diamond['pitch'] == 0:
+				self.trans_grid.row_info_diamond['pitch'] = 50.
+				self.rows_pitch = 50.
 		self.trans_grid.SetLines()
 		self.trans_grid.CreateTCutGs()
 		if self.saturated_ADC == 0:
@@ -473,15 +481,6 @@ class TestAreas:
 				self.trans_grid.SavePickle()
 			else:
 				print 'Run the noise and the cluster analysis to determine the neg_cut_snr and neg_cut_adc values'
-
-		if self.num_rows != 0:
-			self.trans_grid.row_info_diamond['num'] = self.num_rows
-		if self.rows_pitch != 0:
-			self.trans_grid.row_info_diamond['pitch'] = self.rows_pitch
-		else:
-			if self.trans_grid.row_info_diamond['pitch'] == 0:
-				self.trans_grid.row_info_diamond['pitch'] = 50.
-				self.rows_pitch = 50.
 
 		self.trans_grid.FindMaxMinVarz()
 		# Update cluster size:

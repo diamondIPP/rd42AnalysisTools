@@ -42,7 +42,7 @@ class SaturationAnalysis:
 
 		self.ph_cuts = self.trans_grid.cuts_man.GetPHCuts
 
-		self.strips_for_analysis = np.arange(self.cluster_size, 'i4')
+		self.strips_for_analysis = np.arange(self.cluster_size, dtype='i4')
 
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
@@ -195,7 +195,7 @@ class SaturationAnalysis:
 		if arr:
 			self.strips_for_analysis = arr
 		else:
-			self.strips_for_analysis = np.arange(self.num_strips, 'i4')
+			self.strips_for_analysis = np.arange(self.num_strips, dtype='i4')
 			self.strips_for_analysis = self.strips_for_analysis if self.cluster_size > 3 else np.unique(np.append(self.strips_for_analysis, self.cluster_size - 1))
 
 

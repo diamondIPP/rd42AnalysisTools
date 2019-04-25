@@ -37,7 +37,7 @@ class NegativeChargesAnalysis:
 		self.ph_ch_var = self.trans_grid.GetPHChVar
 		self.phN_chs_var = self.trans_grid.GetPHNChsVar
 
-		self.strips_for_analysis = np.arange(self.cluster_size, 'i4')
+		self.strips_for_analysis = np.arange(self.cluster_size, dtype='i4')
 
 
 	def PosCanvas(self, canvas_name):
@@ -191,7 +191,7 @@ class NegativeChargesAnalysis:
 		if arr:
 			self.strips_for_analysis = arr
 		else:
-			self.strips_for_analysis = np.arange(self.num_strips, 'i4')
+			self.strips_for_analysis = np.arange(self.num_strips, dtype='i4')
 			self.strips_for_analysis = self.strips_for_analysis if self.cluster_size > 3 else np.unique(np.append(self.strips_for_analysis, self.cluster_size - 1))
 
 

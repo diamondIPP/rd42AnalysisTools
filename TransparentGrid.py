@@ -914,9 +914,11 @@ class TransparentGrid:
 				SetDefault1DCanvasSettings(self.canvas[nameh])
 				ro.gPad.Update()
 			SetDefault1DStats(self.histo[nameh])
+			if(self.histo[nameh].FindLastBinAbove() - self.histo[nameh].FindFirstBinAbove() + 1) < 10:
+				self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax * 0.8, draw_opt)
 		else:
 			self.GetMeanPHPerCell(var, typ)
-			self.DrawMeanPHCellsHisto(var, typ)
+			self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax, draw_opt)
 
 	def DrawCentralArea(self, name, percent):
 		self.canvas[name].cd()
@@ -1156,7 +1158,8 @@ class TransparentGrid:
 				self.efficiency_subdiv = RoundInt(self.efficiency_subdiv * 0.95) if self.efficiency_subdiv > 1 else self.efficiency_subdiv * 0.5
 				cont += 1
 			elif (1.0 / (self.efficiency_subdiv * denominator)) > 1e-3:
-				self.efficiency_subdiv = RoundInt(self.efficiency_subdiv * 1.125)
+				self.efficiency_subdiv = RoundInt(self.efficiency_subdiv * 1.5)
+				cont += 1
 		print '{c}. Calculate uncertainties for efficiency plot... the step used is {d}...'.format(c=cont, d=1.0 / (self.efficiency_subdiv * denominator)), ; sys.stdout.flush()
 		ySigmas = map(self.FindAsymmetricUncertaintiesWithDiscrete, numerator, [denominator for i in xrange(numerator.size)], [sigma_errbar for i in xrange(numerator.size)])
 		print 'Done'

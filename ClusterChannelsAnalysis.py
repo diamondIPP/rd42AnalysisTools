@@ -42,7 +42,7 @@ class ClusterChannelsAnalysis:
 
 		self.noise_varz = self.trans_grid.noise_varz
 
-		self.strips_for_analysis = np.arange(self.cluster_size, 'i4')
+		self.strips_for_analysis = np.arange(self.cluster_size, dtype='i4')
 
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
@@ -181,7 +181,7 @@ class ClusterChannelsAnalysis:
 		if arr:
 			self.strips_for_analysis = arr
 		else:
-			self.strips_for_analysis = np.arange(self.num_strips, 'i4')
+			self.strips_for_analysis = np.arange(self.num_strips, dtype='i4')
 			self.strips_for_analysis = self.strips_for_analysis if self.cluster_size > 3 else np.unique(np.append(self.strips_for_analysis, self.cluster_size - 1))
 
 if __name__ == '__main__':
