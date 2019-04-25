@@ -70,7 +70,7 @@ class TransparentGrid:
 		self.delta_offset_threshold = 0.01  # in mum
 		self.saturated_ADC = 0
 		self.bias = 0
-		self.row_info_diamond = {'num': 27, 'pitch': 50.0, 'x_off': 0.5, 'y_off': 48.0, '0': 3136.0, 'up': 4486.0} if self.col_pitch == 50 else {'num': 24, 'pitch': 100.0, 'x_off': 0.5, 'y_off': 90.0, '0': 3076.0, 'up': 5476.0} if self.col_pitch == 100 else {'num': 12, 'pitch': 150.0, 'x_off': 0.5, 'y_off': 130.0, '0': 3076.0, 'up': 5476.0}
+		self.row_info_diamond = {'num': 0, 'pitch': 50.0, 'x_off': 0.5, 'y_off': 48.0, '0': 3136.0, 'up': 4486.0} if self.col_pitch == 50 else {'num': 0, 'pitch': 100.0, 'x_off': 0.5, 'y_off': 90.0, '0': 3076.0, 'up': 5476.0} if self.col_pitch == 100 else {'num': 0, 'pitch': 150.0, 'x_off': 0.5, 'y_off': 130.0, '0': 3076.0, 'up': 5476.0}
 		self.bins_per_ch_x = 3 if self.col_pitch == 50 else 5 if self.col_pitch == 100 else 7
 		self.bins_per_ch_y = 3 if self.col_pitch == 50 else 5 if self.col_pitch == 100 else 7
 		self.length_central_region = 30 if self.col_pitch == 50 else 40 if self.col_pitch == 100 else 50
@@ -336,26 +336,50 @@ class TransparentGrid:
 				maxbiny = biny
 		miny, maxy = self.histo['vertical_limits_profile_py'].GetXaxis().GetBinLowEdge(minbiny), self.histo['vertical_limits_profile_py'].GetXaxis().GetBinLowEdge(maxbiny + 1)
 		self.histo['vertical_limits_profile_py'].GetXaxis().SetRangeUser(miny, maxy)
-		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-([3]-{p}))/[1])+1)/2-[2]*(TMath::Erf((x-[3])/[4])+1)/2+[5]'.format(p=self.row_info_diamond['num'] * self.row_info_diamond['pitch']), miny, maxy)
-		func.SetNpx(int(self.row_info_diamond['num'] * self.bins_per_ch_y * 10))
-		zmin, zmax = self.histo['vertical_limits_profile_py'].GetMinimum(), self.histo['vertical_limits_profile_py'].GetMaximum()
-		y1bin, y2bin = self.histo['vertical_limits_profile_py'].FindFirstBinAbove((zmin + zmax) / 2.0), self.histo['vertical_limits_profile_py'].FindLastBinAbove((zmin + zmax) / 2.0) + 1
-		y1, y2 = self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y1bin), self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y2bin)
-		z0, z1, z2 = self.histo['vertical_limits_profile_py'].GetBinContent(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinContent(int((y1bin + y2bin) / 2.0)), self.histo['vertical_limits_profile_py'].GetBinContent(int((maxbiny)))
-		func.SetParLimits(0, abs(z1 - z0) / 10.0, 2.0 * abs(z1 - z0))
-		func.SetParLimits(1, 0.1, 50)
-		func.SetParLimits(2, abs(z1 - z2) / 10.0, 2.0 * abs(z1 - z2))
-		func.SetParLimits(3, y2 - 200, y2 + 200)
-		func.SetParLimits(4, 0.1, 50)
-		func.SetParLimits(5, -100.0 * abs(z0), 100 * abs(z0))
-		params = np.array((abs(z1 - z0), 20, abs(z1 - z2), y2, 20, z0), 'float64')
-		func.SetParameters(params)
-		fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((maxbiny))))
-		params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5)), 'float64')
-		func.SetParameters(params)
-		fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', (miny), (maxy))
-		self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(3) - self.row_info_diamond['pitch'] * self.row_info_diamond['num']
-		self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(3)
+		if self.row_info_diamond['num'] != 0:
+			func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-([3]-{p}))/[1])+1)/2-[2]*(TMath::Erf((x-[3])/[4])+1)/2+[5]'.format(p=self.row_info_diamond['num'] * self.row_info_diamond['pitch']), miny, maxy)
+			func.SetNpx(int(self.row_info_diamond['num'] * self.bins_per_ch_y * 10))
+			zmin, zmax = self.histo['vertical_limits_profile_py'].GetMinimum(), self.histo['vertical_limits_profile_py'].GetMaximum()
+			y1bin, y2bin = self.histo['vertical_limits_profile_py'].FindFirstBinAbove((zmin + zmax) / 2.0), self.histo['vertical_limits_profile_py'].FindLastBinAbove((zmin + zmax) / 2.0) + 1
+			y1, y2 = self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y1bin), self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y2bin)
+			z0, z1, z2 = self.histo['vertical_limits_profile_py'].GetBinContent(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinContent(int((y1bin + y2bin) / 2.0)), self.histo['vertical_limits_profile_py'].GetBinContent(int((maxbiny)))
+			func.SetParLimits(0, abs(z1 - z0) / 100.0, 10.0 * abs(z1 - z0))
+			func.SetParLimits(1, 0.1, 50)
+			func.SetParLimits(2, abs(z1 - z2) / 100.0, 10.0 * abs(z1 - z2))
+			func.SetParLimits(3, y2 - 500, y2 + 500)
+			func.SetParLimits(4, 0.1, 50)
+			func.SetParLimits(5, -1000.0 * abs(z0), 1000.0 * abs(z0))
+			params = np.array((abs(z1 - z0), 20, abs(z1 - z2), y2, 20, z0), 'float64')
+			func.SetParameters(params)
+			fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((maxbiny))))
+			params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5)), 'float64')
+			func.SetParameters(params)
+			fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', (miny), (maxy))
+			self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(3) - self.row_info_diamond['pitch'] * self.row_info_diamond['num']
+			self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(3)
+		else:
+			func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-([3]-[6]*{p}))/[1])+1)/2-[2]*(TMath::Erf((x-[3])/[4])+1)/2+[5]'.format(p=self.row_info_diamond['pitch']), miny, maxy)
+			func.SetNpx(int(self.row_info_diamond['num'] * self.bins_per_ch_y * 10))
+			zmin, zmax = self.histo['vertical_limits_profile_py'].GetMinimum(), self.histo['vertical_limits_profile_py'].GetMaximum()
+			y1bin, y2bin = self.histo['vertical_limits_profile_py'].FindFirstBinAbove((zmin + zmax) / 2.0), self.histo['vertical_limits_profile_py'].FindLastBinAbove((zmin + zmax) / 2.0) + 1
+			y1, y2 = self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y1bin), self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y2bin)
+			z0, z1, z2 = self.histo['vertical_limits_profile_py'].GetBinContent(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinContent(int((y1bin + y2bin) / 2.0)), self.histo['vertical_limits_profile_py'].GetBinContent(int((maxbiny)))
+			func.SetParLimits(0, abs(z1 - z0) / 100.0, 10.0 * abs(z1 - z0))
+			func.SetParLimits(1, 0.1, 50)
+			func.SetParLimits(2, abs(z1 - z2) / 100.0, 10.0 * abs(z1 - z2))
+			func.SetParLimits(3, y2 - 500, y2 + 500)
+			func.SetParLimits(4, 0.1, 50)
+			func.SetParLimits(5, -1000.0 * abs(z0), 1000. * abs(z0))
+			func.SetParLimits(6, max(1, abs(y2 - y1) / self.row_info_diamond['pitch'] - 5), abs(y2 - y1) / self.row_info_diamond['pitch'] + 5)
+			params = np.array((abs(z1 - z0), 20, abs(z1 - z2), y2, 20, z0, abs(y2 - y1) / self.row_info_diamond['pitch']), 'float64')
+			func.SetParameters(params)
+			fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((maxbiny))))
+			params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5), fit_prof_proj_y.Parameter(6)), 'float64')
+			func.SetParameters(params)
+			fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', (miny), (maxy))
+			self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(3)
+			self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(3) - self.row_info_diamond['pitch'] * np.floor(fit_prof_proj_y.Parameter(6))
+
 
 	def FindBinningAndResolution(self):
 		if self.gridAreas:

@@ -48,6 +48,7 @@ class TestAreas:
 		self.trash = []
 		self.w = 0
 		self.num_rows = 0
+		self.rows_pitch = 0
 		self.saturated_ADC = 0
 		self.num_strips = 0
 		self.cluster_size = 0
@@ -69,8 +70,6 @@ class TestAreas:
 		self.final_ana = None
 		self.bias = self.trans_grid.bias
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
-		if self.num_rows != 0:
-			self.trans_grid.row_info_diamond['num'] = self.num_rows
 
 	def ReadConfigFile(self):
 		def unpack_row_col(string):
@@ -126,6 +125,8 @@ class TestAreas:
 					self.rows = unpack_row_col(rows)
 				if pars.has_option('ROWS', 'num'):
 					self.num_rows = pars.getint('ROWS', 'num')
+				if pars.has_option('ROWS', 'pitch'):
+					self.rows_pitch = pars.getfloat('ROWS', 'pitch')
 			if pars.has_section('COLUMNS'):
 				if pars.has_option('COLUMNS', 'cols'):
 					cols = pars.get('COLUMNS', 'cols')
@@ -472,6 +473,15 @@ class TestAreas:
 				self.trans_grid.SavePickle()
 			else:
 				print 'Run the noise and the cluster analysis to determine the neg_cut_snr and neg_cut_adc values'
+
+		if self.num_rows != 0:
+			self.trans_grid.row_info_diamond['num'] = self.num_rows
+		if self.rows_pitch != 0:
+			self.trans_grid.row_info_diamond['pitch'] = self.rows_pitch
+		else:
+			if self.trans_grid.row_info_diamond['pitch'] == 0:
+				self.trans_grid.row_info_diamond['pitch'] = 50.
+				self.rows_pitch = 50.
 
 		self.trans_grid.FindMaxMinVarz()
 		# Update cluster size:
