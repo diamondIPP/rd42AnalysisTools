@@ -185,10 +185,10 @@ void ReadInputs(int argc, char **argv){
         cout << "no parameter was given for silicon or diamond detectors. Won't do anything. Exiting";
         exit(0);
     }
-    cout << "will use a factor of " << dia << "% for diamond and " << sil_each[0] << "%, "<< sil_each[1] << "%, "<< sil_each[2] << "%, ";
+    cout << "will use a factor of " << dia << "% for diamond and " << sil << "% in general for silicon and " << sil_each[0] << "%, "<< sil_each[1] << "%, "<< sil_each[2] << "%, ";
     cout << sil_each[3] << "%, "<< sil_each[4] << "%, "<< sil_each[5] << "%, " << sil_each[6] << "%, " << sil_each[7] << "% for silicon planes: ";
     cout << "0, 1, 2, 3, 4, 5, 6 and 7 respectively."<<endl;
-    cout << "Using saturation on silicon of " << int(max_sil) << " and of diamond of " << int(max_dia) << "." << endl;
+    cout << "Using saturation on silicon of " << int(max_sil) << " and on diamond of " << int(max_dia) << "." << endl;
 }
 
 void PrintHelp(){
@@ -281,18 +281,28 @@ void ProgressBar(Long64_t i, Long64_t nEntries, int refresh, bool show, bool new
 }
 
 void UpdateSilicon(){
-    UShort_t det_max = 8;
-    for (UShort_t det = 0; det < det_max; det++){
-        Int_t signalpha = sil_each[det] >= 0 ? 1 : -1;
-        Double_t alpha = fabs(sil_each[det] / 100.0);
-        UShort_t startCh = signalpha > 0? 0 : 255;
-//        UShort_t endCh = 127;
-        UShort_t endCh = signalpha > 0? 255 : 0;
-        if(det == 2 || det == 6){
-//            startCh = 127;
-            startCh = signalpha > 0? 255 : 0;
-            endCh = signalpha > 0? 0 : 255;
+    int det_max = 8;
+    Int_t signalpha = 0;
+    Double_t alpha = 0;
+    UShort_t startCh = 0;
+    UShort_t endCh = 0;
+    for (int det = 0; det < det_max; det++){
+        if(sil_each_pos[det]){
+            signalpha = sil_each[det] >= 0 ? 1 : -1;
+            alpha = fabs(sil_each[det] / 100.0);
         }
+        else{
+            signalpha = sil >= 0 ? 1 : -1;
+            alpha = fabs(sil) / 100.0;
+        }
+        startCh = signalpha > 0? 0 : 255;
+//        endCh = 127;
+        endCh = signalpha > 0? 255 : 0;
+//        if(det == 2 || det == 6){
+////            startCh = 127;
+//            startCh = signalpha > 0? 255 : 0;
+//            endCh = signalpha > 0? 0 : 255;
+//        }
         bool finished = false;
 //        Double_t alpha = sil_each[det] / 100.0;
 //        UChar_t adc = 0;
@@ -315,12 +325,12 @@ void UpdateSilicon(){
             prev_sil_adc = newSilADC;
             finished = (ch == endCh);
 
-            if(det == 2 || det == 6){
-                ch = signalpha > 0? ch - 1 : ch + 1;
-            }
-            else{
+//            if(det == 2 || det == 6){
+//                ch = signalpha > 0? ch - 1 : ch + 1;
+//            }
+//            else{
                 ch = signalpha > 0? ch + 1 : ch - 1;
-            }
+//            }
         }
 
 //        for (UShort_t ch = startCh; !finished;){
@@ -412,8 +422,8 @@ void ResetArrays(){
     EventNumber = 0;
     for(int det = 0; det <= 8; det++){
         if(det < 8){
-            sil_each[det] = 0;
-            sil_each_pos[det] = false;
+//            sil_each[det] = 0;
+//            sil_each_pos[det] = false;
             for(int ch = 0; ch < 256; ch++){
                 Det_ADC[det][ch] = 0;
                 Det_ADCin[det][ch] = 0;
