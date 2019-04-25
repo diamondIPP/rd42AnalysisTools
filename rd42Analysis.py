@@ -581,11 +581,25 @@ class RD42Analysis:
 					self.current_dir = self.out_dir + '/cross_' + self.subdir + '/' + str(self.run)
 					os.chdir(self.current_dir)
 					if self.symlinks:
-						os.symlink('../../{d}/{r}/rawData.{r}0.root'.format(d=self.subdir, r=self.run), 'rawData.{r}.root'.format(r=self.run))
+						try:
+							os.symlink('../../{d}/{r}/rawData.{r}0.root'.format(d=self.subdir, r=self.run), 'rawData.{r}.root'.format(r=self.run))
+						except:
+							print 'Could not ln -s the corrected raw file for further anlysis. Do it manually.'
 					else:
-						shutil.copy('../../{d}/{r}/{n}'.format(d=self.subdir, r=self.run, n=os.readlink('../../{d}/{r}/rawData.{r}0.root'.format(d=self.subdir, r=self.run))), 'rawData.{r}.root'.format(r=self.run))
+						try:
+							shutil.copy('../../{d}/{r}/{n}'.format(d=self.subdir, r=self.run, n=os.readlink('../../{d}/{r}/rawData.{r}0.root'.format(d=self.subdir, r=self.run))), 'rawData.{r}.root'.format(r=self.run))
+						except Exception:
+							print 'Could not copy the corrected raw file for further anlysis. Do it manually.'
 					self.current_dir = self.working_dir
 					os.chdir(self.working_dir)
+					if not os.path.isdir('{d}/cross_{sd}'.format(d=self.settings_dir, sd=self.subdir)):
+						os.makedirs('{d}/cross_{sd}'.format(d=self.settings_dir, sd=self.subdir))
+					try:
+						shutil.copy('{d}/{sd}/settings.{r}.ini'.format(d=self.settings_dir, sd=self.subdir, r=self.run), '{d}/cross_{sd}/settings.{r}.ini'.format(d=self.settings_dir, sd=self.subdir, r=self.run))
+						print 'Copied settings file to: {d}/{sd}/settings.{r}.ini'.format(d=self.settings_dir, sd=self.subdir, r=self.run), '. Edit it if you want for the analysis with the feed-across corrected raw file.'
+					except Exception:
+						print 'Could not copy the settings file for further anlysis of the feed-across corrected data. Do it manually.'
+
 				else:
 					print "The crossTalkCorrectionFactors text file does not exist. Can't run the correction"
 			else:
