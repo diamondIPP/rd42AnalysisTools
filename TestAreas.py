@@ -39,7 +39,7 @@ class TestAreas:
 		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -65, 1, 2
 		self.min_snr, self.max_snr = -650, 650
 		self.min_adc, self.max_adc = -6500, 6500
-		self.delta_adc = 20
+		self.delta_adc = 0
 		self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -322.5, 322.5, 0.5
 		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = -32.25, 32.25, 0.05
 		self.minz = {t: {} for t in ['all', 'good', 'bad']}
@@ -143,7 +143,7 @@ class TestAreas:
 	def SetTest(self):
 		if self.do_threshold:
 			if self.threshold == 0:
-				self.trans_grid.FindThresholdCutFromCells('clusterCharge2', 0, 4000, 20)
+				self.trans_grid.FindThresholdCutFromCells('clusterCharge2', 'adc', self.phmin, self.phmax, self.delta_adc / 2.)
 				self.threshold = self.trans_grid.threshold
 			self.trans_grid.ResetAreas()
 			print 'Selecting areas with a ph2 greater or equal than', self.threshold, '...', ; sys.stdout.flush()
@@ -240,19 +240,23 @@ class TestAreas:
 		self.trans_grid.canvas['PH2_H_map_with_borders_py'].cd()
 		self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().SetRangeUser(miny, maxy)
 		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-({l}))/[1])+1)/2-[2]*(TMath::Erf((x-{u})/[3])+1)/2+[4]'.format(l=self.trans_grid.row_info_diamond['0'], u=self.trans_grid.row_info_diamond['up']), miny, maxy)
-		func.SetNpx(int(self.trans_grid.row_info_diamond['num'] * self.trans_grid.bins_per_ch_y * 10))
+		func.SetNpx(int(self.trans_grid.row_info_diamond['num'] * self.trans_grid.bins_per_ch_y * 100))
 		zmin, zmax = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetMinimum(), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetMaximum()
 		y1bin, y2bin = self.trans_grid.histo['PH2_H_map_with_borders_py'].FindFirstBinAbove((zmin + zmax) / 2.0), self.trans_grid.histo['PH2_H_map_with_borders_py'].FindLastBinAbove((zmin + zmax) / 2.0) + 1
 		y1, y2 = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinCenter(y1bin), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinCenter(y2bin)
 		z0, z1, z2 = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinContent(int((minbiny))), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinContent(int((y1bin + y2bin) / 2.0)), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinContent(int((maxbiny)))
-		func.SetParLimits(0, abs(z1 - z0) / 10.0, 2.0 * abs(z1 - z0))
+		func.SetParLimits(0, abs(z1 - z0) / 10.0, 10.0 * abs(z1 - z0))
 		func.SetParLimits(1, 0.1, 50)
-		func.SetParLimits(2, abs(z1 - z2) / 10.0, 2.0 * abs(z1 - z2))
+		func.SetParLimits(2, abs(z1 - z2) / 10.0, 10.0 * abs(z1 - z2))
 		func.SetParLimits(3, 0.1, 50)
-		func.SetParLimits(4, -2.0 * abs(z0), 10 * abs(z0))
+		func.SetParLimits(4, -100.0 * abs(z0), 100 * abs(z0))
 		params = np.array((abs(z1 - z0), 20, abs(z1 - z2), 20, z0), 'float64')
 		func.SetParameters(params)
-		self.trans_grid.fits['PH2_H_map_with_borders_py'] = self.trans_grid.histo['PH2_H_map_with_borders_py'].Fit('box_fcn', 'QIEBMS', 'goff', self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((minbiny))), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((maxbiny))))
+		self.trans_grid.fits['PH2_H_map_with_borders_py'] = self.trans_grid.histo['PH2_H_map_with_borders_py'].Fit('box_fcn', 'QIEBMSL', 'goff', self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((minbiny))), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((maxbiny))))
+		params = np.zeros(5, 'f8')
+		func.GetParameters(params)
+		func.SetParameters(params)
+		self.trans_grid.fits['PH2_H_map_with_borders_py'] = self.trans_grid.histo['PH2_H_map_with_borders_py'].Fit('box_fcn', 'QIEBMSL', 'goff', self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((minbiny))), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((maxbiny))))
 		self.PositionCanvas('PH2_H_map_with_borders_py')
 		ro.gPad.Update()
 
@@ -491,6 +495,8 @@ class TestAreas:
 		# update ph binning:
 		if self.delta_adc != 0:
 			self.trans_grid.phbins = RoundInt(float(self.phmax - self.phmin) / self.delta_adc)
+		else:
+			self.delta_adc = float(self.phmax - self.phmin) / float(self.trans_grid.phbins)
 		# ph binx x update:
 		if self.binsperx != 0:
 			self.trans_grid.bins_per_ch_x = self.binsperx

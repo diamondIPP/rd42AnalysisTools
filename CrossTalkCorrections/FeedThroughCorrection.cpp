@@ -19,7 +19,7 @@ void LoopSourceTree(TTree *tree0, TTree *out_tree);
 //void LoopSourceTree(TTree *tree0, TTree *out_tree, UChar_t (*pDet_ADCin)[8][256], UShort_t (*pDiaADCin)[128], UInt_t *pEventNumberin);
 void SetBranchAddresses(TTree *in_tree);
 //void SetBranchAddresses(TTree *in_tree, UChar_t (*pDet_ADCin)[8][256], UShort_t (*pDiaADCin)[128], UInt_t *pEventNumberin);
-void ProgressBar(int i, UInt_t nEntries, int refresh, bool show, bool newLine);
+void ProgressBar(Long64_t i, Long64_t nEntries, int refresh, bool show, bool newLine);
 void UpdateSilicon();
 void UpdateDiamond();
 void ResetArrays();
@@ -30,6 +30,10 @@ string outfile = "default";
 Float_t sil = 0;
 Float_t sil_each[8];
 bool sil_each_pos[8];
+UChar_t max_sil = 255;
+UShort_t max_dia = 4095;
+UChar_t measured_sil_adc = 0;
+UShort_t measured_dia_adc = 0;
 Float_t dia = 0;
 UChar_t Det_ADC[8][256];
 UChar_t Det_ADCin[8][256];
@@ -40,6 +44,13 @@ UInt_t EventNumberin = 0;
 TBranch *bDet_ADCin[8];
 TBranch *bDiaADCin;
 TBranch *bEventNumberin;
+Double_t real_sil_adc = 0;
+UChar_t newSilADC = 0;
+UChar_t prev_sil_adc = 0;
+Double_t real_dia_adc = 0;
+UShort_t newDiaADC = 0;
+UShort_t prev_dia_adc = 0;
+Long64_t entries_old = 0;
 
 int main(int argc, char **argv) {
 
@@ -59,20 +70,26 @@ int main(int argc, char **argv) {
     cout << "source file: " << file_path << endl;
     TFile *file0 = new TFile(file_path, "READ");
     TTree *tree0 = (TTree*)file0->Get("rawTree");
-
+    tree0->SetName("rawTreeOld");
+    entries_old = tree0->GetEntries();
+    SetBranchAddresses(tree0);
     if(sil==0 || dia==0)
         GetValuesFromTextFile();
     TString out_name = outfile == "default"? TString::Format("rawData.%d-%05d-%05d.root", run, int(sil*10000), int(dia*10000)) : TString::Format("%s", outfile.c_str());
     TString out_file_path = TString::Format("%s/%s", run_dir.c_str(), out_name.Data());
     cout << "Corrected file will be: " << out_name << endl;
     TFile *file1 = new TFile(out_file_path, "RECREATE");
-    TTree *out_tree = new TTree("rawTree2", "rawTree2");
+    TTree *out_tree = new TTree("rawTree", "rawTree");
+    out_tree->Reset();
     SetBranches(out_tree);
 //    LoopSourceTree(tree0, out_tree, pDet_ADCin, pDiaADCin, pEventNumberin);
     LoopSourceTree(tree0, out_tree);
+    out_tree->Print();
+    file1->Write();
     file0->Close();
-    out_tree->SetNameTitle("rawTree", "rawTree");
-    out_tree->Write("rawTree");
+//    file0->Close();
+//    out_tree->SetNameTitle("rawTree", "rawTree");
+//    out_tree->Write("rawTree");
     file1->Close();
 
     TUnixSystem bla;
@@ -147,6 +164,14 @@ void ReadInputs(int argc, char **argv){
             i++;
             outfile = string(argv[i]);
         }
+        if((string_arg == "-ss") && i+1 < argc){
+            i++;
+            max_sil = UChar_t(stoi(string(argv[i])));
+        }
+        if((string_arg == "-ds") && i+1 < argc){
+            i++;
+            max_dia = UShort_t(stoi(string(argv[i])));
+        }
     }
     if(run==0){
         cout << "run number was not given. exit" << endl;
@@ -162,16 +187,18 @@ void ReadInputs(int argc, char **argv){
     }
     cout << "will use a factor of " << dia << "% for diamond and " << sil_each[0] << "%, "<< sil_each[1] << "%, "<< sil_each[2] << "%, ";
     cout << sil_each[3] << "%, "<< sil_each[4] << "%, "<< sil_each[5] << "%, " << sil_each[6] << "%, " << sil_each[7] << "% for silicon planes: ";
-    cout << "0, 1, 2, 3, 4, 5, 6 and 7 respectively.";
+    cout << "0, 1, 2, 3, 4, 5, 6 and 7 respectively."<<endl;
+    cout << "Using saturation on silicon of " << int(max_sil) << " and of diamond of " << int(max_dia) << "." << endl;
 }
 
 void PrintHelp(){
     cout << "Showing help (this message is shown when -h flag is used)" << endl;
     cout << "Usage:" << endl;
-    cout << "crossTalkCorrection -o RUNDIRECTORY -r RUNNUMBER -s SILALPHA -d DIAALPHA"  << endl;
+    cout << "crossTalkCorrection -o RUNDIRECTORY -r RUNNUMBER -s SILALPHA -d DIAALPHA -ss SILSAT -ds DIASAT"  << endl;
     cout << "The values for SILALPHA and DIAALPHA are percentages of charge sharing estimated in the crossTalkCorrectionFactors text file"  << endl;
     cout << "Separate values can be given to silicon in addition to SILALPHA by setting -s0, -s1, -s2, ..., -s7" << endl;
     cout << "If one of them is not given, the program will use the text file." << endl;
+    cout << "The parameters SILSAT and DIASAT are optional and they set the saturation value for silicon and diamond respectively." << endl;
     cout << "If desired, can specify the name for the new file with -f OUTNAME"<<endl;
     cout << "If not specified, the output will be of the type 'rawData.<RUNNUMBER>0.root'" << endl;
     exit(0);
@@ -199,11 +226,11 @@ void SetBranches(TTree *out_tree){
 //void LoopSourceTree(TTree *tree0, TTree *out_tree, UChar_t (*pDet_ADCin)[8][256], UShort_t (*pDiaADCin)[128], UInt_t *pEventNumberin){
 void LoopSourceTree(TTree *tree0, TTree *out_tree){
 //    SetBranchAddresses(tree0, pDet_ADCin, pDiaADCin, pEventNumberin);
-    SetBranchAddresses(tree0);
-    tree0->SetBranchStatus("*", 1);
-    UInt_t nEntries = UInt_t(tree0->GetEntries());
-    for (int i=0; i<nEntries; i++){
-        ProgressBar(i, nEntries, 100, false, false);
+//    SetBranchAddresses(tree0);
+//    tree0->SetBranchStatus("*", 1);
+//    UInt_t nEntries = UInt_t(tree0->GetEntries());
+    for (Long64_t i=0; i<entries_old; i++){
+        ProgressBar(i, entries_old, 100, false, false);
         tree0->GetEntry(i);
         EventNumber = EventNumberin;
         UpdateSilicon();
@@ -237,7 +264,7 @@ void SetBranchAddresses(TTree *in_tree){
         in_tree->SetBranchAddress("DiaADC", DiaADCin);
 }
 
-void ProgressBar(int i, UInt_t nEntries, int refresh, bool show, bool newLine){
+void ProgressBar(Long64_t i, Long64_t nEntries, int refresh, bool show, bool newLine){
     if(i+1 >= nEntries) i++;
     cout.precision(3);
     int percentageLength = 50;
@@ -254,72 +281,146 @@ void ProgressBar(int i, UInt_t nEntries, int refresh, bool show, bool newLine){
 }
 
 void UpdateSilicon(){
-    UChar_t adcmax = 255;
     UShort_t det_max = 8;
     for (UShort_t det = 0; det < det_max; det++){
-        UShort_t startCh = 0;
+        Int_t signalpha = sil_each[det] >= 0 ? 1 : -1;
+        Double_t alpha = fabs(sil_each[det] / 100.0);
+        UShort_t startCh = signalpha > 0? 0 : 255;
 //        UShort_t endCh = 127;
-        UShort_t endCh = 255;
+        UShort_t endCh = signalpha > 0? 255 : 0;
         if(det == 2 || det == 6){
 //            startCh = 127;
-            startCh = 255;
-            endCh = 0;
+            startCh = signalpha > 0? 255 : 0;
+            endCh = signalpha > 0? 0 : 255;
         }
         bool finished = false;
-        Double_t alpha = sil_each[det] / 100.0;
-        UChar_t adc = 0;
+//        Double_t alpha = sil_each[det] / 100.0;
+//        UChar_t adc = 0;
+        prev_sil_adc = 0;
         for (UShort_t ch = startCh; !finished;){
-            UChar_t measured_adc = Det_ADCin[det][ch];
-//            if((measured_adc < adcmax) && (adc < adcmax)){
-                Double_t real_adc = Double_t(measured_adc) - Double_t(adc) * alpha / (1.0 - alpha);
-                UChar_t newADC = real_adc >= adcmax? adcmax : UChar_t(std::floor(real_adc + 0.5));
-                Det_ADC[det][ch] = newADC <= 0? 0 : newADC;
-                adc = Det_ADC[det][ch];
-                finished = (ch==endCh);
-//            }
-//            else{
-//                Det_ADC[det][ch] = measured_adc;
-//                adc = Det_ADC[det][ch];
-//            }
-            if(det==2 || det==6)
-                ch--;
-            else
-                ch++;
+            newSilADC = 0;
+            real_sil_adc = 0;
+            measured_sil_adc = Det_ADCin[det][ch];
+            real_sil_adc = (Double_t(measured_sil_adc) - Double_t(prev_sil_adc) * alpha) / (1.0 - alpha);
+            if(real_sil_adc < 0){
+                newSilADC = 0;
+            }
+            else if(real_sil_adc >= float(max_sil)){
+                newSilADC = max_sil;
+            }
+            else{
+                newSilADC = UShort_t(std::floor(real_sil_adc + 0.5));
+            }
+            Det_ADC[det][ch] = newSilADC;
+            prev_sil_adc = newSilADC;
+            finished = (ch == endCh);
+
+            if(det == 2 || det == 6){
+                ch = signalpha > 0? ch - 1 : ch + 1;
+            }
+            else{
+                ch = signalpha > 0? ch + 1 : ch - 1;
+            }
         }
+
+//        for (UShort_t ch = startCh; !finished;){
+//            UChar_t measured_adc = Det_ADCin[det][ch];
+//  //          if((measured_adc < max_sil) && (adc < max_sil)){
+//                Double_t real_adc = Double_t(measured_adc) - Double_t(adc) * alpha / (1.0 - alpha);
+//                UChar_t newADC = real_adc >= max_sil? max_sil : UChar_t(std::floor(real_adc + 0.5));
+//                Det_ADC[det][ch] = newADC <= 0? 0 : newADC;
+//                adc = Det_ADC[det][ch];
+//                finished = (ch==endCh);
+//          //  }
+//          //  else{
+//          //      Det_ADC[det][ch] = measured_adc;
+//          //      adc = Det_ADC[det][ch];
+//          //  }
+//            if(det==2 || det==6)
+//                ch--;
+//            else
+//                ch++;
+//        }
     }
 }
 
 void UpdateDiamond(){
-    UShort_t  adcmax = 4095;
-    UShort_t adc = 0;
+//    UShort_t prev_adc = 0;
+    prev_dia_adc = 0;
     TString out = TString::Format("%d_%5.3f: ", EventNumber, dia);
 //    bool bPrint = false;
-    Double_t alpha = dia / 100.0;
-    for (UChar_t ch=0; ch<128; ch++){
-        UShort_t measured_adc = DiaADCin[ch];
-        if((measured_adc < adcmax) && (adc < adcmax) ){
-            Double_t real_adc = Double_t(measured_adc) - Double_t(adc) * alpha / (1.0 - alpha);
-            UShort_t newADC = real_adc >= adcmax? adcmax : UShort_t(std::floor(real_adc + 0.5));
-            DiaADC[ch] = newADC <= 0? 0 : newADC;
-            adc = DiaADC[ch];
-        }
-        else{
-            DiaADC[ch] = measured_adc;
-            adc = DiaADC[ch];
+    Int_t signalpha = dia >= 0? 1 : -1;
+    Double_t alpha = fabs(dia / 100.0);
+
+    if (signalpha > 0){
+        for (int ch = 0; ch < 128; ch++){
+            newDiaADC = 0;
+            real_dia_adc = 0;
+            measured_dia_adc = DiaADCin[ch];
+            real_dia_adc = (Double_t(measured_dia_adc) - Double_t(prev_dia_adc) * alpha) / (1.0 - alpha);
+            if(real_dia_adc < 0){
+                newDiaADC = 0;
+            }
+            else if(real_dia_adc >= float(max_dia)){
+                newDiaADC = max_dia;
+            }
+            else{
+                newDiaADC = UShort_t(std::floor(real_dia_adc + 0.5));
+            }
+            DiaADC[ch] = newDiaADC;
+            prev_dia_adc = newDiaADC;
         }
     }
+    else{
+        for(int ch = 127; ch >= 0; ch--){
+            newDiaADC = 0;
+            real_dia_adc = 0;
+            measured_dia_adc = DiaADCin[ch];
+            real_dia_adc = (Double_t(measured_dia_adc) - Double_t(prev_dia_adc) * alpha) / (1.0 - alpha);
+            if(real_dia_adc <= 0){
+                newDiaADC = 0;
+            }
+            else if(real_dia_adc >= float(max_dia)){
+                newDiaADC = max_dia;
+            }
+            else{
+                newDiaADC = UShort_t(std::floor(real_dia_adc + 0.5));
+            }
+            DiaADC[ch] = newDiaADC;
+            prev_dia_adc = newDiaADC;
+        }
+    }
+//    for (int ch=0; ch<128; ch++){
+//        measured_dia_adc = DiaADCin[ch];
+//        if((measured_dia_adc < max_dia) && (prev_adc < max_dia) ){
+//            Double_t real_adc = (Double_t(measured_dia_adc) - Double_t(prev_adc) * alpha) / (1.0 - alpha);
+//            UShort_t newADC = real_adc >= max_dia? max_dia : UShort_t(std::floor(real_adc + 0.5));
+//            newADC = newADC <= 0? 0 : newADC;
+//            newADC = newADC > max_dia? max_dia : newADC;
+//            DiaADC[ch] = newADC;
+//            prev_adc = DiaADC[ch];
+//        }
+//        else{
+//            DiaADC[ch] = measured_dia_adc;
+//            prev_adc = DiaADC[ch];
+//        }
+//    }
 }
 
 void ResetArrays(){
     EventNumberin = 0;
     EventNumber = 0;
-    for(int det = 0; det < 8; det++){
-        sil_each[det] = 0;
-        sil_each_pos[det] = false;
-        for(int ch = 0; ch < 256; ch++){
-            Det_ADC[det][ch] = 0;
-            Det_ADCin[det][ch] = 0;
-            if(det == 0 && ch < 128){
+    for(int det = 0; det <= 8; det++){
+        if(det < 8){
+            sil_each[det] = 0;
+            sil_each_pos[det] = false;
+            for(int ch = 0; ch < 256; ch++){
+                Det_ADC[det][ch] = 0;
+                Det_ADCin[det][ch] = 0;
+            }
+        }
+        else{
+            for(int ch = 0; ch < 128; ch++){
                 DiaADC[ch] = 0;
                 DiaADCin[ch] = 0;
             }

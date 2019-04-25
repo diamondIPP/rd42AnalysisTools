@@ -561,13 +561,13 @@ class RD42Analysis:
 					sil_values = np.array(sil_list, 'f8')
 					sil_mean = sil_values.mean(dtype='f8')
 
-					print 'Running from run outpu directory:', self.cross_talk_correction_path, '-o', '.', '-r', str(self.run), '-s', str(sil_mean), '-s0', str(sil_values[0]), '-s1', str(sil_values[1]), '-s2', str(sil_values[2]), '-s3', str(sil_values[3]), '-s4', str(sil_values[4]), '-s5', str(sil_values[5]), '-s6', str(sil_values[6]), '-s7', str(sil_values[7]), '-d', str(dia)
+					print 'Running from run outpu directory:', self.cross_talk_correction_path, '-o', '.', '-r', str(self.run), '-s', str(sil_mean), '-s0', str(sil_values[0]), '-s1', str(sil_values[1]), '-s2', str(sil_values[2]), '-s3', str(sil_values[3]), '-s4', str(sil_values[4]), '-s5', str(sil_values[5]), '-s6', str(sil_values[6]), '-s7', str(sil_values[7]), '-d', str(dia), '-ss', str(255), '-ds', str(self.dia_saturation)
 
 					with open(os.devnull, 'w') as FNULL:
 						if self.batch:
-							self.sub_pro_crosstalk = subp.Popen([self.cross_talk_correction_path, '-o', '.', '-r', str(self.run), '-s', str(sil_mean), '-s0', str(sil_values[0]), '-s1', str(sil_values[1]), '-s2', str(sil_values[2]), '-s3', str(sil_values[3]), '-s4', str(sil_values[4]), '-s5', str(sil_values[5]), '-s6', str(sil_values[6]), '-s7', str(sil_values[7]), '-d', str(dia)], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, stderr=subp.STDOUT, close_fds=True)
+							self.sub_pro_crosstalk = subp.Popen([self.cross_talk_correction_path, '-o', '.', '-r', str(self.run), '-s', str(sil_mean), '-s0', str(sil_values[0]), '-s1', str(sil_values[1]), '-s2', str(sil_values[2]), '-s3', str(sil_values[3]), '-s4', str(sil_values[4]), '-s5', str(sil_values[5]), '-s6', str(sil_values[6]), '-s7', str(sil_values[7]), '-d', str(dia), '-ss', str(255), '-ds', str(self.dia_saturation)], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, stderr=subp.STDOUT, close_fds=True)
 						else:
-							self.sub_pro_crosstalk = subp.Popen([self.cross_talk_correction_path, '-o', '.', '-r', str(self.run), '-s', str(sil_mean), '-s0', str(sil_values[0]), '-s1', str(sil_values[1]), '-s2', str(sil_values[2]), '-s3', str(sil_values[3]), '-s4', str(sil_values[4]), '-s5', str(sil_values[5]), '-s6', str(sil_values[6]), '-s7', str(sil_values[7]), '-d', str(dia)], bufsize=-1, stdin=subp.PIPE, close_fds=True)
+							self.sub_pro_crosstalk = subp.Popen([self.cross_talk_correction_path, '-o', '.', '-r', str(self.run), '-s', str(sil_mean), '-s0', str(sil_values[0]), '-s1', str(sil_values[1]), '-s2', str(sil_values[2]), '-s3', str(sil_values[3]), '-s4', str(sil_values[4]), '-s5', str(sil_values[5]), '-s6', str(sil_values[6]), '-s7', str(sil_values[7]), '-d', str(dia), '-ss', str(255), '-ds', str(self.dia_saturation)], bufsize=-1, stdin=subp.PIPE, close_fds=True)
 						while self.sub_pro_crosstalk.poll() is None:
 							time.sleep(3)
 						if self.sub_pro_crosstalk.poll() == 0:

@@ -347,13 +347,13 @@ class TransparentGrid:
 		func.SetParLimits(2, abs(z1 - z2) / 10.0, 2.0 * abs(z1 - z2))
 		func.SetParLimits(3, y2 - 200, y2 + 200)
 		func.SetParLimits(4, 0.1, 50)
-		func.SetParLimits(5, -2.0 * abs(z0), 10 * abs(z0))
+		func.SetParLimits(5, -100.0 * abs(z0), 100 * abs(z0))
 		params = np.array((abs(z1 - z0), 20, abs(z1 - z2), y2, 20, z0), 'float64')
 		func.SetParameters(params)
-		fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMS', 'goff', self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((maxbiny))))
+		fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((maxbiny))))
 		params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5)), 'float64')
 		func.SetParameters(params)
-		fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMS', 'goff', (miny), (maxy))
+		fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', (miny), (maxy))
 		self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(3) - self.row_info_diamond['pitch'] * self.row_info_diamond['num']
 		self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(3)
 
@@ -779,16 +779,24 @@ class TransparentGrid:
 		ro.TFormula.SetMaxima(1000)
 
 	def GetMeanPHPerCell(self, var='clusterChargeN', typ='adc'):
+		means_temp = {}
 		if os.path.isfile('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ)):
 			with open('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ)) as pkl:
 				means_temp = pickle.load(pkl)
-				if 'var' in means_temp.keys():
-					if means_temp['var'] == var:
-						self.mean_ph_cell_dic[typ] = means_temp['dic']
+				if means_temp:
+					if var in means_temp.keys():
+						self.mean_ph_cell_dic[typ] = means_temp[var]
 						print 'Loaded pickle with mean PH info for each cell'
 						return
 					else:
-						print 'The existing file has info for {v} but the requested variable is {v2}. Will recalculate!'.format(v=means_temp['var'], v2=var)
+						print 'The existing file does not have the info for {v2}. Will calculate!'.format(v2=var)
+				# if 'var' in means_temp.keys():
+				# 	if means_temp['var'] == var:
+				# 		self.mean_ph_cell_dic[typ] = means_temp['dic']
+				# 		print 'Loaded pickle with mean PH info for each cell'
+				# 		return
+				# 	else:
+				# 		print 'The existing file has info for {v} but the requested variable is {v2}. Will recalculate!'.format(v=means_temp['var'], v2=var)
 		print 'Calculating the mean PH value for each cell:'
 		numcells = int(self.num_cols * self.row_info_diamond['num'])
 		tempbar = CreateProgressBarUtils(numcells)
@@ -807,7 +815,8 @@ class TransparentGrid:
 				del temph
 				tempbar.update(col * self.row_info_diamond['num'] + row + 1)
 		tempbar.finish()
-		meanph_obj = {'var': var, 'dic': self.mean_ph_cell_dic[typ]}
+		meanph_obj = means_temp
+		meanph_obj[var] = self.mean_ph_cell_dic[typ]
 		if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
 			os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
 		print 'Saving limits in pickle file', '{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ), '...', ; sys.stdout.flush()
@@ -826,14 +835,16 @@ class TransparentGrid:
 			self.GetMeanPHPerCell(var, typ)
 			self.SelectGoodAndBadByThreshold(val, var)
 
-	def FindThresholdCutFromCells(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4000, deltax=50):
+	def FindThresholdCutFromCells(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4000, deltax=50, it=0):
 		if len(self.mean_ph_cell_dic[typ].keys()) > 0:
 			self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax)
 			self.FitGaus('mean_ph_per_cell_' + typ, 2, 5)
-			if self.fits['mean_ph_per_cell_' + typ].Ndf() < 2:
-				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8)
-			elif 0.5 <= self.fits['mean_ph_per_cell_' + typ].Chi2() / self.fits['mean_ph_per_cell_' + typ].Ndf() < 0.9:
-				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8)
+			if self.GetHistoAverageBinContent(self.histo['mean_ph_per_cell_' + typ]) < 10 and it < 15:
+				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 1.25, it + 1)
+			elif self.fits['mean_ph_per_cell_' + typ].Ndf() < 2 and it < 15:
+				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8, it + 1)
+			elif 0.5 <= self.fits['mean_ph_per_cell_' + typ].Chi2() / self.fits['mean_ph_per_cell_' + typ].Ndf() < 0.9 and it < 15:
+				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8, it + 1)
 		else:
 			self.GetMeanPHPerCell(var, typ)
 			self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax)
@@ -847,6 +858,17 @@ class TransparentGrid:
 		self.line['threshold_' + typ].SetLineWidth(2)
 		self.line['threshold_' + typ].SetLineStyle(2)
 		self.line['threshold_' + typ].Draw('same')
+
+	def GetHistoAverageBinContent(self, histo):
+		sumbc = 0
+		bins = 0
+		if histo:
+			for b in xrange(1, histo.GetNbinsX() + 1):
+				binc = histo.GetBinContent(b)
+				if binc > 0:
+					bins += 1
+					sumbc += binc
+			return float(sumbc) / bins
 
 	def DrawMeanPHCellsHisto(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4000, deltax=50, draw_opt='e hist'):
 		if len(self.mean_ph_cell_dic[typ].keys()) > 0:
@@ -1104,7 +1126,11 @@ class TransparentGrid:
 					yinf = ymin_plot - lim_one_side
 					break
 		self.efficiency_subdiv = int(max(RoundInt(subf / denominator), 1)) if self.efficiency_subdiv == 1 else self.efficiency_subdiv
-		print 'Calculate uncertainties for efficiency plot... the step used is {d}...'.format(d=1.0 / (self.efficiency_subdiv * denominator)), ; sys.stdout.flush()
+		cont = 0
+		while (1.0 / (self.efficiency_subdiv * denominator)) < 1e-5 and cont < 1000000:
+			self.efficiency_subdiv = RoundInt(self.efficiency_subdiv * 0.95)
+			cont += 1
+		print '{c}. Calculate uncertainties for efficiency plot... the step used is {d}...'.format(c=cont, d=1.0 / (self.efficiency_subdiv * denominator)), ; sys.stdout.flush()
 		ySigmas = map(self.FindAsymmetricUncertaintiesWithDiscrete, numerator, [denominator for i in xrange(numerator.size)], [sigma_errbar for i in xrange(numerator.size)])
 		print 'Done'
 		yLowerSigmas = np.array([ysigma['lower'] for ysigma in ySigmas], 'float64')
