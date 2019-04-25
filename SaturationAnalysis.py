@@ -42,6 +42,8 @@ class SaturationAnalysis:
 
 		self.ph_cuts = self.trans_grid.cuts_man.GetPHCuts
 
+		self.strips_for_analysis = np.arange(self.cluster_size, 'i4')
+
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
 
@@ -86,7 +88,7 @@ class SaturationAnalysis:
 			self.PosCanvas(name)
 		tempcsat = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region_cut, self.ph_cuts('PH{c}_Ch'.format(c=self.cluster_size), isFriend)])
 		tempcnosat = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region_cut, self.ph_cuts('PH{c}_Ch'.format(c=self.cluster_size), isFriend)])
-		for ch in xrange(1, self.cluster_size + 1):
+		for ch in (self.strips_for_analysis + 1):
 			hname = 'PH{c}_Ch_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after) if not isFriend else 'PH{c}_Ch_buffer_{v}_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after, v=self.trans_grid.noise_friend_buffer)
 			DrawPHHisto(hname, self.phN_chs_var(ch, 'Ch', typ == 'snr', isFriend), 'PH{c} cluster chs [{t}]'.format(c=ch, t=typ.upper()), tempcsat)
 			hname = 'PH{c}_Ch_not_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after) if not isFriend else 'PH{c}_Ch_buffer_{v}_not_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch, t=typ.lower(), s=suffix, b=before, a=after, v=self.trans_grid.noise_friend_buffer)
@@ -109,7 +111,7 @@ class SaturationAnalysis:
 				self.PosCanvas('hit_map_' + name)
 
 		suffix = self.suffix[cells]
-		for ch in xrange(1, self.cluster_size + 1):
+		for ch in (self.strips_for_analysis + 1):
 			tempcsat = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region_cut, self.ph_cuts('PH{c}_Ch'.format(c=ch), isFriend)])
 			tempcnosat = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region_cut,  self.ph_cuts('PH{c}_Ch'.format(c=ch), isFriend)])
 			minz, maxz = min(self.minz['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())], 0), self.maxz['PH{c}_Ch_{t}'.format(c=ch, t=typ.lower())]
@@ -148,7 +150,7 @@ class SaturationAnalysis:
 
 		tempcsat = self.trans_grid.cuts_man.AndCuts([self.sat_evts_region_cut, self.ph_cuts('PH{c}_Ch'.format(c=self.cluster_size), isFriend)])
 		tempcnosat = self.trans_grid.cuts_man.AndCuts([self.not_sat_evts_region_cut, self.ph_cuts('PH{c}_Ch'.format(c=self.cluster_size), isFriend)])
-		for ch in xrange(1, self.cluster_size + 1):
+		for ch in (self.strips_for_analysis + 1):
 			minz, maxz = self.trans_grid.minz['PH_Ch{c}_{t}'.format(c=ch-1, t=typ.lower())], self.trans_grid.maxz['PH_Ch{c}_{t}'.format(c=ch-1, t=typ.lower())]
 			hname = 'PH_Ch{c}_Vs_strip_location_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch-1, s=suffix, b=before, a=after, t=typ.lower()) if not isFriend else 'PH_Ch{c}_buffer_{v}_Vs_strip_location_sat_events_{b}_before_{a}_after_{t}_{s}'.format(c=ch-1, s=suffix, b=before, a=after, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 			Draw2DHistogram(hname, minz, maxz, 'PH cluster ch{c} [{t}]'.format(c=ch-1, t=typ.upper()), self.ph_ch_var(ch - 1, 'Ch', typ == 'snr', isFriend), tempcsat)
@@ -175,6 +177,7 @@ class SaturationAnalysis:
 		Draw1DHistogram('strip_location_sat_events_{b}_before_{a}_after_{s}'.format(b=before, a=after, s=suffix), tempcsat)
 
 	def DoSaturationAnalysis(self, cells='all', before=0, after=1, typ='adc', isFriend=False):
+		self.SetStripsForAnalysis()
 		self.DoProfileMaps(before=0, after=1, typ=typ, isFriend=isFriend)
 		self.DoCellMaps(cells, before=0, after=1, typ=typ, isFriend=isFriend)
 		self.PlotStripHistograms(cells, before=0, after=1, typ=typ, isFriend=isFriend)
@@ -187,6 +190,13 @@ class SaturationAnalysis:
 		if self.trans_grid.trans_tree.GetFriend('satRegions'):
 			self.trans_grid.UnfriendTree(self.trans_grid.trans_tree.GetFriend('satRegions'))
 		self.trans_grid.AddFriendWithSaturationRegions(skipAfter=after, skipBefore=before)
+
+	def SetStripsForAnalysis(self, arr=None):
+		if arr:
+			self.strips_for_analysis = arr
+		else:
+			self.strips_for_analysis = np.arange(self.num_strips, 'i4')
+			self.strips_for_analysis = self.strips_for_analysis if self.cluster_size > 3 else np.unique(np.append(self.strips_for_analysis, self.cluster_size - 1))
 
 
 if __name__ == '__main__':

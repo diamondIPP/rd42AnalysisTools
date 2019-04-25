@@ -42,6 +42,8 @@ class ClusterChannelsAnalysis:
 
 		self.noise_varz = self.trans_grid.noise_varz
 
+		self.strips_for_analysis = np.arange(self.cluster_size, 'i4')
+
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
 
@@ -65,7 +67,7 @@ class ClusterChannelsAnalysis:
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
 		suffix = suffix + '_logScale' if doLog else suffix
 
-		for ch in xrange(self.cluster_size):
+		for ch in self.strips_for_analysis:
 			tempcuts = self.ph_cuts('PH_Ch{i}'.format(i=ch), isFriend)
 			minz, maxz = self.minz['PH_Ch{i}_{t}'.format(i=ch, t=typ.lower())], self.maxz['PH_Ch{i}_{t}'.format(i=ch, t=typ.lower())]
 			delta = self.delta_adc if typ == 'adc' else self.delta_snr
@@ -90,7 +92,7 @@ class ClusterChannelsAnalysis:
 			self.PosCanvas(name)
 
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
-		for ch in xrange(self.cluster_size):
+		for ch in self.strips_for_analysis:
 			tempcuts = self.ph_cuts('PH_Ch' + str(ch), isFriend)
 			minz, maxz = self.minz['PH_Ch{i}_adc'.format(i=ch)], self.maxz['PH_Ch{i}_adc'.format(i=ch)]
 			hname = 'PH_Ch{c}_map_{s}'.format(c=ch, s=suffix) if not isFriend else 'PH_Ch{c}_buffer_{v}_map_{s}'.format(c=ch, s=suffix, v=self.trans_grid.noise_friend_buffer)
@@ -112,7 +114,7 @@ class ClusterChannelsAnalysis:
 			self.PosCanvas(name)
 
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
-		for ch in xrange(self.cluster_size):
+		for ch in self.strips_for_analysis:
 			tempcuts = self.ph_cuts('PH_Ch{i}'.format(i=ch), isFriend)
 			minz, maxz = self.minz['PH_Ch{c}_{t}'.format(c=ch, t=typ.lower())], self.maxz['PH_Ch{c}_{t}'.format(c=ch, t=typ.lower())]
 			hname = 'PH_Ch{c}_Vs_strip_location_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower()) if not isFriend else 'PH_Ch{c}_buffer_{v}_Vs_strip_location_{t}_{s}'.format(v=self.trans_grid.noise_friend_buffer, c=ch, s=suffix, t=typ.lower())
@@ -146,8 +148,8 @@ class ClusterChannelsAnalysis:
 				self.trans_grid.DrawHisto2D(name, xmin_snr, xmax_snr, self.delta_snr * 4, xname, ymin, ymax, self.delta_snr * 4, yname, varx, vary, cuts)
 			self.PosCanvas(name)
 
-		for ch in xrange(self.cluster_size):
-			for ch2 in xrange(self.cluster_size):
+		for ch in self.strips_for_analysis:
+			for ch2 in self.strips_for_analysis:
 				if ch != self.cluster_size - 1:
 					# these will be the same as PH{c1}_Ch when c1 == self.cluster_size - 1, because it is all the channels in the cluster
 					ymin, ymax = (0, 4200) if typ == 'adc' else (0, 420)
@@ -168,12 +170,19 @@ class ClusterChannelsAnalysis:
 					DrawHistogram('PH_H{c1}_Vs_PH_Ch{c2}_{t}'.format(c1=ch+1, c2=ch2, t=typ.lower()), 'PH cluster ch{c2} [{t}]'.format(c2=ch2, t=typ.upper()), ymin2, ymax2, 'PH highest {c1}{sf} ch [{t}]'.format(c1=ch+1, t=typ.upper(), sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_ch_var(ch2, 'Ch', typ=='snr', isFriend), self.ph_ch_var(ch+1, 'H', typ=='snr', isFriend), tempcuts, typ)
 
 	def DoClusterStudies(self, cells='all', typ='adc', isFriend=False):
+		self.SetStripsForAnalysis()
 		self.Do2DProfileMaps(cells)
 		self.DoStrips2DHistograms(cells, typ=typ, isFriend=isFriend)
 		self.DoPHStripCorrelations(cells, typ=typ, isFriend=isFriend)
 		self.Do1DHistograms(cells, False, typ=typ, isFriend=isFriend)
 		# self.Do1DHistograms(cells, True, typ='adc')
 
+	def SetStripsForAnalysis(self, arr=None):
+		if arr:
+			self.strips_for_analysis = arr
+		else:
+			self.strips_for_analysis = np.arange(self.num_strips, 'i4')
+			self.strips_for_analysis = self.strips_for_analysis if self.cluster_size > 3 else np.unique(np.append(self.strips_for_analysis, self.cluster_size - 1))
 
 if __name__ == '__main__':
 	c = ClusterChannelsAnalysis(None, 0, 0)

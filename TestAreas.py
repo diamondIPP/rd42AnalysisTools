@@ -260,12 +260,14 @@ class TestAreas:
 		self.PositionCanvas('PH2_H_map_with_borders_py')
 		ro.gPad.Update()
 
-	def DoCellHistograms(self):
-		self.trans_grid.mean_ph_cell_dic = {'adc': {}, 'snr': {}}
-		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.GetPHNChsVar(2, 'H', True), 'snr', self.phmin / 10., self.phmax / 10., self.delta_adc / 20.)
-		self.PositionCanvas('mean_ph_per_cell_snr')
-		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.GetPHNChsVar(2, 'H', False), 'adc', self.phmin, self.phmax, self.delta_adc / 2.)
-		self.PositionCanvas('mean_ph_per_cell_adc')
+	def DoCellHistograms(self, typ='adc'):
+		self.trans_grid.mean_ph_cell_dic[typ] = {}
+		fact = 1. if typ == 'adc' else 10.
+		minx, maxx, deltax = self.phmin / fact, self.phmax / fact, self.delta_adc / (2. * fact)
+		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.GetPHNChsVar(self.num_strips, 'H', True), typ, minx, maxx, deltax)
+		self.PositionCanvas('mean_ph_per_cell_{t}'.format(t=typ))
+		# self.trans_grid.FindThresholdCutFromCells(self.trans_grid.GetPHNChsVar(self.num_strips, 'H', False), typ, self.phmin, self.phmax, self.delta_adc / 2.)
+		# self.PositionCanvas('mean_ph_per_cell_adc')
 
 	def DoNoiseStudiesDifferentBuffers(self, cells='good', typ='adc'):
 		suffix = self.suffix[cells]
@@ -424,17 +426,17 @@ class TestAreas:
 	def DoAutomatic(self, cells='good', types=['adc'], isFriend=False, SaveAllPlots=False, isFirst=False):
 		self.window_shift = 1
 		self.DoBorderPlots()
-		self.DoCellHistograms()
 		for typ in ['adc', 'snr']:
 			if typ in types:
+				self.DoCellHistograms(typ)
 				self.DoNoiseStudies(cells, typ, isFriend)
 				self.DoClusterStudies(cells, typ, isFriend)
 				if not isFirst:
 					self.DoNegativeEventsStudies(cells, typ, isFriend)
 					self.DoSaturationStudies(cells, typ, isFriend)
 					self.DoFinalStudies(typ, cummulative_chs=[self.num_strips], isFriend=isFriend)
-					# self.DoCenterCellStudies(cells)
-					# self.DoCenterCellSaturationStudies(cells)
+				# self.DoCenterCellStudies(cells)
+				# self.DoCenterCellSaturationStudies(cells)
 		# self.PlotTestClusterStudies(cells)
 		# self.PlotTestForNegative(cells)
 		# self.PlotTest()

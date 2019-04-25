@@ -37,6 +37,8 @@ class NegativeChargesAnalysis:
 		self.ph_ch_var = self.trans_grid.GetPHChVar
 		self.phN_chs_var = self.trans_grid.GetPHNChsVar
 
+		self.strips_for_analysis = np.arange(self.cluster_size, 'i4')
+
 
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
@@ -112,7 +114,7 @@ class NegativeChargesAnalysis:
 				self.trans_grid.DrawGoodAreasDiamondCenters('hit_map_' + name)
 				self.PosCanvas('hit_map_' + name)
 
-		for ch in xrange(self.cluster_size):
+		for ch in self.strips_for_analysis:
 			tempc = self.neg_ch_cut(ch, 'Ch', typ == 'snr', isFriend)
 			hname = 'PH_Ch{c}_neg_map_pred'.format(c=ch) if not isFriend else 'PH_Ch{c}_buffer_{v}_neg_map_pred'.format(c=ch, v=self.trans_grid.noise_friend_buffer)
 			DrawProfile2D('{n}_hit_snr'.format(n=hname), self.ph_ch_var(ch, 'Ch', typ == 'snr', isFriend), 'PH cluster ch{c} [{t}]'.format(c=ch, t=typ.upper()), tempc, getOccupancy=True)
@@ -129,7 +131,7 @@ class NegativeChargesAnalysis:
 			self.PosCanvas(name)
 
 		tempc = self.negN_chs_cut(self.cluster_size, 'Ch', typ == 'snr', isFriend)
-		for ch in xrange(1, self.cluster_size + 1):
+		for ch in (self.strips_for_analysis + 1):
 			hname = 'PH{c}_Ch_neg_events_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower()) if not isFriend else 'PH{c}_Ch_buffer_{v}_neg_events_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 			DrawPHHisto(hname, self.phN_chs_var(ch, 'Ch', typ == 'snr', isFriend), 'PH{c} cluster chs [{t}]'.format(c=ch, t=typ.upper()), tempc)
 			if ch != self.cluster_size:
@@ -143,7 +145,7 @@ class NegativeChargesAnalysis:
 
 		suffix = self.suffix[cells]
 		tempc = self.negN_chs_cut(self.cluster_size, 'Ch', typ == 'snr', isFriend)
-		for ch in xrange(1, self.cluster_size + 1):
+		for ch in (self.strips_for_analysis + 1):
 			hname = 'PH{c}_H_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix) if not isFriend else 'PH{c}_H_buffer_{v}_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix, v=self.trans_grid.noise_friend_buffer)
 			PlotCellsProfiles(hname, self.phN_chs_var(ch, 'H', typ == 'snr', isFriend), 'PH{c} highest chs [{t}]'.format(c=ch, t=typ.upper()), tempc)
 			# hname = 'PH{c}_Ch_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix) if not isFriend else 'PH{c}_Ch_buffer_{v}_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix, v=self.trans_grid.noise_friend_buffer)
@@ -165,7 +167,7 @@ class NegativeChargesAnalysis:
 
 		suffix = self.suffix[cells] if cells in self.suffix.keys() else ''
 		tempc = self.negN_chs_cut(self.cluster_size, 'Ch', typ == 'snr', isFriend)
-		for ch in xrange(1, self.cluster_size + 1):
+		for ch in (self.strips_for_analysis + 1):
 			minz, maxz = self.trans_grid.minz['PH_Ch{c}_{t}'.format(c=ch-1, t=typ.lower())], self.trans_grid.maxz['PH_Ch{c}_{t}'.format(c=ch-1, t=typ.lower())]
 			hname = 'PH_Ch{c}_Vs_strip_location_neg_events_{t}_{s}'.format(c=ch-1, s=suffix, t=typ.lower()) if not isFriend else 'PH_Ch{c}_buffer_{v}_Vs_strip_location_neg_events_{t}_{s}'.format(c=ch-1, s=suffix, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 			Draw2DHistogram(hname, minz, maxz, 'PH cluster ch{c} [{t}]'.format(c=ch-1, t=typ.upper()), self.ph_ch_var(ch - 1, 'Ch', typ == 'snr', isFriend), tempc, typ)
@@ -178,11 +180,19 @@ class NegativeChargesAnalysis:
 		Draw1DHistogram('strip_location_neg_events_{t}_{s}'.format(s=suffix, t=typ.lower()), tempc)
 
 	def DoNegativeAnalysis(self, cells='all', typ='adc', isFriend=False):
+		self.SetStripsForAnalysis()
 		# self.Do1DChSignalHistos(cells, False, typ, isFriend)
 		self.DoProfileMaps(typ=typ, isFriend=isFriend)
 		self.DoCellMaps(cells, typ, isFriend)
 		self.PlotStripHistograms(cells, typ, isFriend)
 		self.Do1DPHHistos(cells, typ, isFriend)
+
+	def SetStripsForAnalysis(self, arr=None):
+		if arr:
+			self.strips_for_analysis = arr
+		else:
+			self.strips_for_analysis = np.arange(self.num_strips, 'i4')
+			self.strips_for_analysis = self.strips_for_analysis if self.cluster_size > 3 else np.unique(np.append(self.strips_for_analysis, self.cluster_size - 1))
 
 
 if __name__ == '__main__':

@@ -1127,9 +1127,12 @@ class TransparentGrid:
 					break
 		self.efficiency_subdiv = int(max(RoundInt(subf / denominator), 1)) if self.efficiency_subdiv == 1 else self.efficiency_subdiv
 		cont = 0
-		while (1.0 / (self.efficiency_subdiv * denominator)) < 1e-5 and cont < 1000000:
-			self.efficiency_subdiv = RoundInt(self.efficiency_subdiv * 0.95)
-			cont += 1
+		while ((1.0 / (self.efficiency_subdiv * denominator)) < 1e-5 or (1.0 / (self.efficiency_subdiv * denominator)) > 1e-3 )and cont < 1000000:
+			if (1.0 / (self.efficiency_subdiv * denominator)) < 1e-5:
+				self.efficiency_subdiv = RoundInt(self.efficiency_subdiv * 0.95) if self.efficiency_subdiv > 1 else self.efficiency_subdiv * 0.5
+				cont += 1
+			elif (1.0 / (self.efficiency_subdiv * denominator)) > 1e-3:
+				self.efficiency_subdiv = RoundInt(self.efficiency_subdiv * 1.125)
 		print '{c}. Calculate uncertainties for efficiency plot... the step used is {d}...'.format(c=cont, d=1.0 / (self.efficiency_subdiv * denominator)), ; sys.stdout.flush()
 		ySigmas = map(self.FindAsymmetricUncertaintiesWithDiscrete, numerator, [denominator for i in xrange(numerator.size)], [sigma_errbar for i in xrange(numerator.size)])
 		print 'Done'
@@ -1340,12 +1343,12 @@ class TransparentGrid:
 			return self.FindAsymmetricUncertaintiesWithMinuit(k, n, sigm, max_iter, tolerance, low, up, is_last=True)
 
 	def FindAsymmetricUncertaintiesWithDiscrete(self, k, n, sigm):
-		subdiv = self.efficiency_subdiv
 		if k == 0 or k == n:
 			edge_value = np.subtract(1, np.power(np.subtract(1, sigm, dtype='float64'), np.divide(1, n + 1, dtype='float64'), dtype='float64'), dtype='float64')
 			low = 0 if k == 0 else edge_value
 			up = 0 if k == n else edge_value
 		else:
+			subdiv = self.efficiency_subdiv
 			eps_vect = np.append(np.arange(0, 1, np.divide(1, subdiv * n, dtype='float64'), dtype='float64'), 1)
 			beta_pdf = sps.beta(k + 1, n - k + 1)
 			prob_vect = beta_pdf.pdf(eps_vect).astype('float64')
