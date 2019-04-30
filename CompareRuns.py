@@ -21,7 +21,7 @@ class CompareRuns:
 		self.runs_settings = {}
 		self.run_numbers = []
 		self.runs_subidr = {}
-		# self.cellsize = cellsize
+		# self.col_pitch = col_pitch
 		# self.numstrips = numstrips
 		self.testnum = 0
 		self.ReadCompareConfig()
@@ -104,7 +104,7 @@ class CompareRuns:
 	def LoadRuns(self):
 		for run in self.run_numbers:
 			if os.path.isdir(self.runs_path[run]):
-				# self.runs_ta[run] = TestAreas(self.testnum, self.numstrips, self.runs_subidr[it], run, self.cellsize, self.do_fit)
+				# self.runs_ta[run] = TestAreas(self.testnum, self.numstrips, self.runs_subidr[it], run, self.col_pitch, self.do_fit)
 				self.runs_ta[run] = TestAreas(self.runs_settings[0], run)
 				self.runs_ta[run].SetTransparentGrid()
 				self.runs_ta[run].SetTest()
@@ -365,7 +365,7 @@ if __name__ == '__main__':
 	parser.add_option('-c', '--config', dest='config', type='string', help='Path to config file for comparing runs')
 	# parser.add_option('-r', '--runlist', dest='runlist', type='string', help='Path to the file containing the list of runs')
 	# parser.add_option('-o', '--outdir', dest='outdir', type='string', default='.' ,help='Path to the directory where the files will be saved')
-	# parser.add_option('-c', '--cellsize', dest='cellsize', type='int', default=50, help='cell size of the square 3D device')
+	# parser.add_option('-c', '--col_pitch', dest='col_pitch', type='int', default=50, help='cell size of the square 3D device')
 	# parser.add_option('-n', '--numstrips', dest='numstrips', type='int', default=2, help='Number of strips to use')
 	# parser.add_option('-t', '--test', dest='testnumber', type='int', default=1, help='Run a automatically one of the predefined tests')
 	# parser.add_option('-f', '--dofit', dest='dofit', default=False, action='store_true', help='Enables fitting')
@@ -375,7 +375,7 @@ if __name__ == '__main__':
 	config = str(options.config)
 	# runlist = str(options.runlist)
 	# outdir = str(options.outdir)
-	# cellsize = int(options.cellsize)
+	# col_pitch = int(options.col_pitch)
 	# numstrips = int(options.numstrips)
 	# testnum = int(options.testnumber)
 	# do_fit = bool(options.dofit)

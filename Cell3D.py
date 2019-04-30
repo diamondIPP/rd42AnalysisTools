@@ -3,10 +3,11 @@ import numpy as np
 import ROOT as ro
 
 class Cell3D:
-	def __init__(self, col_num=0, row_num=0, sides=0, run=0):
+	def __init__(self, col_num=0, row_num=0, sides=0, width_pitch_ratio=0, run=0):
 		self.col_num = col_num
 		self.row_num = row_num
 		self.sides = sides
+		self.width_pitch_ratio = width_pitch_ratio
 		self.run = run
 		self.xcenter = 0
 		self.ycenter = 0

@@ -24,15 +24,15 @@ class TestAreas:
 		self.clust_size = 2
 		self.dir = '.'
 		self.run = run
-		self.cellsize = 50
+		self.col_pitch = 50
 		self.cell_resolution = 0
 		self.phmin = 10000
 		self.phmax = -10000
 		self.binsperx = 0
 		self.binspery = 0
 		self.threshold = 800
-		self.skip_before_sat = 5
-		self.skip_after_sat = 95
+		self.skip_before_sat = 0
+		self.skip_after_sat = 1
 		self.do_threshold = False
 		self.efficiency_subdiv = 1
 		self.window_shift = 3
@@ -60,15 +60,14 @@ class TestAreas:
 		if self.config_file != '':
 			self.config_file = Correct_Path(self.config_file)
 			self.ReadConfigFile()
-		self.trans_grid = TransparentGrid(self.dir, self.run, self.cellsize)
-		self.trans_grid.pkl_sbdir = 'test' + str(self.num)
+		self.trans_grid = TransparentGrid(self.dir, self.run, self.col_pitch)
 		self.cluster_ch_ana = None
 		self.noise_ana = None
 		self.center_cells_ana = None
 		self.neg_ana = None
 		self.sat_ana = None
 		self.final_ana = None
-		self.bias = self.trans_grid.bias
+		self.bias = 0
 		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
 
 	def ReadConfigFile(self):
@@ -87,10 +86,10 @@ class TestAreas:
 					self.run = pars.getint('SETTINGS', 'run')
 				if pars.has_option('SETTINGS', 'dir'):
 					self.dir = Correct_Path(pars.get('SETTINGS', 'dir'))
+				if pars.has_option('SETTINGS', 'col_pitch'):
+					self.col_pitch = pars.getint('SETTINGS', 'col_pitch')
 				if pars.has_option('SETTINGS', 'cluster_size'):
 					self.cluster_size = pars.getint('SETTINGS', 'cluster_size')
-				if pars.has_option('SETTINGS', 'cell_size'):
-					self.cellsize = pars.getint('SETTINGS', 'cell_size')
 				if pars.has_option('SETTINGS', 'num_strips'):
 					self.num_strips = pars.getint('SETTINGS', 'num_strips')
 				if pars.has_option('SETTINGS', 'skip_before_sat'):
@@ -447,6 +446,38 @@ class TestAreas:
 			self.SaveCanvas()
 
 	def SetTransparentGrid(self):
+
+		if not self.trans_grid.loaded_default_pickle and not self.trans_grid.loaded_pickle:
+			print 'It is first time the analysis runs on this data set'
+
+			self.trans_grid.cluster_size = Get_From_User_Value('cluster size for run ' + str(self.run), 'int', self.trans_grid.cluster_size, True) if self.cluster_size == 0 else self.cluster_size
+			self.cluster_size = self.trans_grid.cluster_size
+			self.trans_grid.num_strips = Get_From_User_Value('number of strips for run ' + str(self.run), 'int', self.trans_grid.num_strips, True) if self.num_strips == 0 else self.num_strips
+			self.num_strips = self.trans_grid.num_strips
+			self.trans_grid.threshold = self.trans_grid.threshold if self.threshold == 0 else self.threshold
+			self.trans_grid.cell_resolution = self.trans_grid.cell_resolution if self.cell_resolution == 0 else self.cell_resolution
+			self.trans_grid.phmax = self.trans_grid.phmax if self.phmax == -10000 else self.phmax
+			self.trans_grid.phmin = self.trans_grid.phmin if self.phmin == 10000 else self.phmin
+			if self.delta_adc != 0:
+				self.trans_grid.phbins = RoundInt(float(self.phmax - self.phmin) / self.delta_adc)
+			else:
+				self.delta_adc = float(self.phmax - self.phmin) / float(self.trans_grid.phbins)
+			self.trans_grid.bins_per_ch_x = self.trans_grid.bins_per_ch_x if self.binsperx == 0 else self.binsperx
+			self.trans_grid.bins_per_ch_y = self.trans_grid.bins_per_ch_y if self.binspery == 0 else self.binspery
+			self.trans_grid.bins_per_ch_y = self.trans_grid.bins_per_ch_y if self.binspery == 0 else self.binspery
+			self.trans_grid.efficiency_subdiv = self.trans_grid.efficiency_subdiv if self.efficiency_subdiv == 1 else self.efficiency_subdiv
+			self.trans_grid.saturated_ADC = Get_From_User_Value('saturated_ADC for run ' + str(self.run), 'int', self.trans_grid.saturated_ADC, True) if self.saturated_ADC == 0 else self.saturated_ADC
+			self.trans_grid.row_info_diamond['num'] = self.trans_grid.row_info_diamond['num'] if self.num_rows == 0 else self.num_rows
+			self.trans_grid.row_info_diamond['pitch'] = self.trans_grid.row_info_diamond['pitch'] if self.rows_pitch == 0 else self.rows_pitch
+			self.trans_grid.row_info_diamond['pitch'] = self.trans_grid.row_info_diamond['pitch'] if self.rows_pitch == 0 else self.rows_pitch
+			self.trans_grid.bias = Get_From_User_Value('bias for run ' + str(self.run), 'float', self.trans_grid.bias, update=True)
+			self.trans_grid.SavePickle()
+
+		self.trans_grid.pkl_sbdir = 'test' + str(self.num)
+
+
+
+
 		if self.num_rows != 0:
 			self.trans_grid.row_info_diamond['num'] = self.num_rows
 		if self.rows_pitch != 0:
@@ -482,38 +513,17 @@ class TestAreas:
 			else:
 				print 'Run the noise and the cluster analysis to determine the neg_cut_snr and neg_cut_adc values'
 
+		if self.num_rows != 0:
+			self.trans_grid.row_info_diamond['num'] = self.num_rows
+		if self.rows_pitch != 0:
+			self.trans_grid.row_info_diamond['pitch'] = self.rows_pitch
+		else:
+			if self.trans_grid.row_info_diamond['pitch'] == 0:
+				self.trans_grid.row_info_diamond['pitch'] = 50.
+				self.rows_pitch = 50.
+
 		self.trans_grid.FindMaxMinVarz()
 		# Update cluster size:
-		if self.cluster_size == 0:
-			self.cluster_size = self.trans_grid.cluster_size
-		else:
-			self.trans_grid.cluster_size = self.cluster_size
-		# Update num_strips
-		if self.num_strips == 0:
-			self.num_strips = self.trans_grid.num_strips
-		else:
-			self.trans_grid.num_strips = self.num_strips
-		# Update phmax for value analysis
-		if self.phmax != -10000:
-			self.trans_grid.phmax = self.phmax
-		else:
-			self.phmax = self.trans_grid.phmax
-		# Update phmin for value analysis
-		if self.phmin != 10000:
-			self.trans_grid.phmin = self.phmin
-		else:
-			self.phmin = self.trans_grid.phmin
-		# update ph binning:
-		if self.delta_adc != 0:
-			self.trans_grid.phbins = RoundInt(float(self.phmax - self.phmin) / self.delta_adc)
-		else:
-			self.delta_adc = float(self.phmax - self.phmin) / float(self.trans_grid.phbins)
-		# ph binx x update:
-		if self.binsperx != 0:
-			self.trans_grid.bins_per_ch_x = self.binsperx
-		# ph bins y update:
-		if self.binspery != 0:
-			self.trans_grid.bins_per_ch_y = self.binspery
 		# efficiency subdiv
 		if self.efficiency_subdiv != 1:
 			self.trans_grid.efficiency_subdiv = self.efficiency_subdiv

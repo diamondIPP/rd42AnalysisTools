@@ -6,10 +6,11 @@ from RectangularCell3D import RectangularCell3D
 from HexagonalCell3D import HexagonalCell3D
 
 class DiamondCol:
-	def __init__(self, coln, numrows, xcenter, lowest_y, cell_height, sides, run):
+	def __init__(self, coln, numrows, xcenter, lowest_y, cell_height, sides, width_pitch_ratio, run):
 		self.col_num = coln
 		self.num_rows = numrows
 		self.sides = sides
+		self.width_pitch_ratio = 1 if self.sides == 4 else width_pitch_ratio
 		self.xcenter = xcenter
 		self.lowest_y = lowest_y
 		self.cell_height = cell_height
@@ -20,7 +21,7 @@ class DiamondCol:
 		if self.sides == 4:
 			self.cells = [RectangularCell3D(self.col_num, ri, self.cell_height, self.run) for ri in xrange(self.num_rows)]
 		elif self.sides == 6:
-			self.cells = [HexagonalCell3D(self.col_num, ri, self.cell_height, self.run) for ri in xrange(self.num_rows)]
+			self.cells = [HexagonalCell3D(self.col_num, ri, self.cell_height, self.width_pitch_ratio, self.run) for ri in xrange(self.num_rows)]
 		else:
 			ExitMessage('The number of sides is not 4 or 6 but {s}. Cannot create the cells in the column. Exiting'.format(s=self.sides), os.EX_SOFTWARE)
 		for ri, cell in enumerate(self.cells):

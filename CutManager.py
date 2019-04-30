@@ -38,6 +38,8 @@ class CutManager:
 		self.non_saturated = '(diaChADC!={s})'.format(s=self.sat_adc)
 		self.valid_ped_sigma = '(diaChPedSigmaCmc>0)'
 		self.valid_ped_friend_sigma = '(pedTree.diaChPedSigmaCmc>0)'
+		self.even_pred_chs = '(TMath::Floor(diaChXPred+0.5)%2==0)'
+		self.odd_pred_chs = '(TMath::Floor(diaChXPred+0.5)%2!=0)'
 
 		self.sat_evts = None
 		self.sat_evts_region = '(satRegion)'

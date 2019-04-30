@@ -5,15 +5,16 @@ from Cell3D import Cell3D
 
 class RectangularCell3D(Cell3D):
 	def __init__(self, col_num=0, row_num=0, height=0, run=0):
-		Cell3D.__init__(self, col_num, row_num, sides=4, run=run)
+		Cell3D.__init__(self, col_num, row_num, sides=4, width_pitch_ratio=1, run=run)
 		self.p = 1.0
 		self.h = height
+		self.w = self.p * self.width_pitch_ratio
 		self.cutg = None
 
 	def CreateTCutG(self):
 		tempx = np.add(self.xcenter, np.divide(np.array([-self.p, -self.p, self.p, self.p, -self.p], 'f8'), 2.0, dtype='f8'), dtype='f8')
 		tempy = np.add(self.ycenter, np.divide(np.array([-self.h, self.h, self.h, -self.h, -self.h], 'f8'), 2.0, dtype='f8'), dtype='f8')
-		tempname = 'cutg_dia_' + str(self.run) + '_{c}_{r}_rect'.format(c=self.col_num, r=self.row_num)
+		tempname = 'cutg_dia_' + str(self.run) + '_{c}_{r}_rect'.format(c=self.col_num, r=self.row_num, xo=self.xoff, yo=self.yoff)
 		self.cutg = ro.TCutG(tempname, 5, tempx, tempy)
 		self.cutg.SetNameTitle(tempname, tempname)
 		self.cutg.SetVarX('diaChXPred')

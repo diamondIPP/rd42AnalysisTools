@@ -86,6 +86,7 @@ class TransparentGrid:
 		self.conv_steps = 1000
 		self.sigma_conv = 5
 		self.efficiency_subdiv = 1
+		self.xoffset, self.yoffset = 0, 0
 		self.vertical_lines_diamond = []
 		self.vertical_lines_diamond_tline = []
 		self.horizontal_lines_diamond = []
@@ -136,6 +137,8 @@ class TransparentGrid:
 		self.ped_file = None
 		self.ped_tree = None
 		self.trash = []
+
+		self.LoadPickle()
 
 
 	def CheckFoldersAndFiles(self):
@@ -326,8 +329,8 @@ class TransparentGrid:
 		row_fact = 10000  # ~0.1nm
 		self.col_overlay_var = '(((diaChXPred-{ox})*({p}*{cf}))%({p}*{cf}))/{cf}'.format(ox=self.row_info_diamond['x_off'], p=self.col_pitch, cf=col_fact)
 		self.row_overlay_var = '(((diaChYPred-{oy})*{rf})%({rp}*{rf}))/{rf}'.format(oy=self.row_info_diamond['y_off'], rp=self.row_info_diamond['pitch'], rf=row_fact)
-		self.col_overlay_var2 = '({cp}*((x0-{xo})-TMath::Floor(0.5+(x0-{xo}))))'.format(cp=self.col_pitch, xo=self.row_info_diamond['x_off2'])
-		self.row_overlay_var2 = '({rp}*((y0-{yo})/{rp}-TMath::Floor(0.5+(y0-{yo})/{rp})))'.format(rp=self.row_info_diamond['pitch'], yo=self.row_info_diamond['y_off2'])
+		self.col_overlay_var2 = '({cp}*((x0-{xo})-TMath::Floor(0.5+(x0-{xo}))))'.format(cp=self.col_pitch, xo=self.xoffset)
+		self.row_overlay_var2 = '({rp}*((y0-{yo})/{rp}-TMath::Floor(0.5+(y0-{yo})/{rp})))'.format(rp=self.row_info_diamond['pitch'], yo=self.yoffset)
 
 	def FindHorizontalParametersThroughAlignment(self):
 		self.LoadAlignmentParameters()
@@ -382,7 +385,7 @@ class TransparentGrid:
 			self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(3)
 		else:
 			func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-([3]-[6]*{p}))/[1])+1)/2-[2]*(TMath::Erf((x-[3])/[4])+1)/2+[5]'.format(p=self.row_info_diamond['pitch']), miny, maxy)
-			func.SetNpx(int(self.row_info_diamond['num'] * self.bins_per_ch_y * 10))
+			func.SetNpx(1000)
 			zmin, zmax = self.histo['vertical_limits_profile_py'].GetMinimum(), self.histo['vertical_limits_profile_py'].GetMaximum()
 			y1bin, y2bin = self.histo['vertical_limits_profile_py'].FindFirstBinAbove((zmin + zmax) / 2.0), self.histo['vertical_limits_profile_py'].FindLastBinAbove((zmin + zmax) / 2.0) + 1
 			y1, y2 = self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y1bin), self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y2bin)
@@ -400,8 +403,9 @@ class TransparentGrid:
 			params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5), fit_prof_proj_y.Parameter(6)), 'float64')
 			func.SetParameters(params)
 			fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', (miny), (maxy))
+			self.row_info_diamond['num'] = np.floor(fit_prof_proj_y.Parameter(6))
 			self.row_info_diamond['up'] = fit_prof_proj_y.Parameter(3)
-			self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(3) - self.row_info_diamond['pitch'] * np.floor(fit_prof_proj_y.Parameter(6))
+			self.row_info_diamond['0'] = fit_prof_proj_y.Parameter(3) - self.row_info_diamond['pitch'] * self.row_info_diamond['num']
 
 
 	def FindBinningAndResolution(self):
@@ -425,7 +429,7 @@ class TransparentGrid:
 		self.cell_resolution = np.divide(self.col_pitch, cell_bins, dtype='float64') if cell_bins % 2 == 1 else np.divide(50.0, cell_bins + 1, dtype='float64')
 		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
 
-	def FindXandYOffests(self, factor=0.1, do_plot=True, cells='good'):
+	def FindXandYOffests(self, factor=0.2, do_plot=True, cells='good'):
 		self.FindXOffset(factor, do_plot, cells)
 		self.FindYOffset(factor, do_plot, cells)
 
@@ -461,7 +465,7 @@ class TransparentGrid:
 		self.row_info_diamond['y_off2'] += tempn * self.row_info_diamond['pitch']
 		self.SetOverlayVariables()
 
-	def FindXOffset(self, factor=0.1, do_plot=True, cells='good'):
+	def FindXOffset(self, factor=0.2, do_plot=True, cells='good'):
 		plot_option = 'prof colz' if do_plot else 'prof goff'
 		self.ShiftHalfXOffset(2)
 		delta_x = self.col_pitch
@@ -496,7 +500,7 @@ class TransparentGrid:
 		self.row_info_diamond['x_off'] = x_off_shifted - 0.5
 		self.SetOverlayVariables()
 
-	def FindYOffset(self, factor=0.1, do_plot=True, cells='good'):
+	def FindYOffset(self, factor=0.2, do_plot=True, cells='good'):
 		plot_option = 'prof colz' if do_plot else 'prof goff'
 		self.ShiftHalfYOffset(2)
 		delta_y = self.row_info_diamond['pitch']
@@ -612,8 +616,8 @@ class TransparentGrid:
 		self.CreateTCutGsDiamondCenter()
 		self.CreateGridText()
 		self.cuts_man = CutManager(self.trans_tree, self.num_strips, self.cluster_size, self.saturated_ADC, self.neg_cut_adc, self.neg_cut_snr)
-		# self.cuts_man.SetCuts(neg_cut_snr=self.neg_cut_snr, neg_cut_adc=self.neg_cut_adc)
-		# self.cuts_man.SetUpDownBorderCuts(lower=self.row_info_diamond['0'], upper=self.row_info_diamond['up'])
+	# self.cuts_man.SetCuts(neg_cut_snr=self.neg_cut_snr, neg_cut_adc=self.neg_cut_adc)
+	# self.cuts_man.SetUpDownBorderCuts(lower=self.row_info_diamond['0'], upper=self.row_info_diamond['up'])
 
 	def CreateTCutGsDiamond(self):
 		def GetNumpyArraysX(coli):
@@ -624,11 +628,11 @@ class TransparentGrid:
 			y0 = self.row_info_diamond['0'] + rowi * self.row_info_diamond['pitch']
 			y1 = self.row_info_diamond['0'] + (rowi + 1) * self.row_info_diamond['pitch']
 			return np.array((y0, y1, y1, y0, y0), 'f8')
-		self.dia_cols = DiamondColumns(self.num_cols, self.row_info_diamond['pitch'], self.num_sides, self.run)
+		self.CreateTCutGsDiaCols(self.row_info_diamond['x_off2'], self.row_info_diamond['y_off2'])
 		for col in xrange(self.num_cols):
-			self.tcutgs_diamond[col] = {}
 			self.dia_cols.SetupColumns(col, self.row_info_diamond['num'], self.ch_ini + col, self.row_info_diamond['0'])
 			self.dia_cols.cols[col].SetCellsInColumn()
+			self.tcutgs_diamond[col] = {}
 			for row in xrange(self.row_info_diamond['num']):
 				tempx = GetNumpyArraysX(col)
 				tempy = GetNumpyArraysY(row)
@@ -639,6 +643,12 @@ class TransparentGrid:
 				self.tcutgs_diamond[col][row].SetLineColor(ro.kBlack)
 				if col == self.num_cols -1 and row == self.row_info_diamond['num'] - 1:
 					self.row_info_diamond['up'] = tempy[2]
+
+	def CreateTCutGsDiaCols(self, xoff=0, yoff=0):
+		self.dia_cols = DiamondColumns(self.num_cols, self.row_info_diamond['pitch'], self.num_sides, self.run)
+		for col in xrange(self.num_cols):
+			self.dia_cols.SetupColumns(col, self.row_info_diamond['num'], self.ch_ini + col - xoff, self.row_info_diamond['0'] - yoff)
+			self.dia_cols.cols[col].SetCellsInColumn()
 
 	def CreateTCutGSymmetricRectangle(self, percentage=80):
 		self.gridAreas.CreateRectangleSymmetricCentralRegion(percentage, self.col_pitch, self.row_info_diamond['pitch'], self.col_overlay_var, self.row_overlay_var)
@@ -844,13 +854,13 @@ class TransparentGrid:
 						return
 					else:
 						print 'The existing file does not have the info for {v2}. Will calculate!'.format(v2=var)
-				# if 'var' in means_temp.keys():
-				# 	if means_temp['var'] == var:
-				# 		self.mean_ph_cell_dic[typ] = means_temp['dic']
-				# 		print 'Loaded pickle with mean PH info for each cell'
-				# 		return
-				# 	else:
-				# 		print 'The existing file has info for {v} but the requested variable is {v2}. Will recalculate!'.format(v=means_temp['var'], v2=var)
+					# if 'var' in means_temp.keys():
+					# 	if means_temp['var'] == var:
+					# 		self.mean_ph_cell_dic[typ] = means_temp['dic']
+					# 		print 'Loaded pickle with mean PH info for each cell'
+					# 		return
+					# 	else:
+					# 		print 'The existing file has info for {v} but the requested variable is {v2}. Will recalculate!'.format(v=means_temp['var'], v2=var)
 		print 'Calculating the mean PH value for each cell:'
 		numcells = int(self.num_cols * self.row_info_diamond['num'])
 		tempbar = CreateProgressBarUtils(numcells)
@@ -1129,7 +1139,7 @@ class TransparentGrid:
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
 		self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch, float(rowpitch) / self.bins_per_ch_y, 'dia Y [#mum]', '(((diaChXPred-{o})*{p})%{p})/10000'.format(o=xoff, p=self.col_pitch * 10000), 'diaChYPred', temp_cuts, transp_ev)
-		# self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch, float(rowpitch) / self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=xoff, p=self.col_pitch), 'diaChYPred', temp_cuts, transp_ev)
+	# self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch, float(rowpitch) / self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=xoff, p=self.col_pitch), 'diaChYPred', temp_cuts, transp_ev)
 
 	def DrawHisto2DDiamondRowOverlay(self, name, cells='all', cuts='', transp_ev=True):
 		y0, rowpitch, numrows, yoff = self.row_info_diamond['0'], self.row_info_diamond['pitch'], self.row_info_diamond['num'], self.row_info_diamond['y_off']
@@ -1443,7 +1453,7 @@ class TransparentGrid:
 		ps.Draw()
 		self.trash.append(ps)
 		ro.gPad.Update()
-		# print '{n}: <PH> ex= {f}'.format(n=name, f=fitmean)
+	# print '{n}: <PH> ex= {f}'.format(n=name, f=fitmean)
 
 	def DrawDoubleLangaus(self, name, name1, name2, color=ro.kBlack):
 		if self.langaus.has_key(name1) and self.langaus.has_key(name2):
@@ -1595,8 +1605,8 @@ class TransparentGrid:
 		satFile.Write()
 		satFile.Close()
 		bar.finish()
-		# self.CloseInputROOTFiles()
-		# self.OpenFileAndGetTree('UPDATE')
+	# self.CloseInputROOTFiles()
+	# self.OpenFileAndGetTree('UPDATE')
 
 	def AddFriendWithSaturationRegions(self, skipAfter=100, skipBefore=0):
 		suffix = '{sb}b{sa}a'.format(sb=skipBefore, sa=skipAfter)
@@ -1660,13 +1670,13 @@ class TransparentGrid:
 				j.join()
 		print ('Finished creating the pedTrees for buffers:', buffers_array) if len(buffers_array) > 0 else ('All pedTrees already exist ')
 
-	def AddFriendWithCells(self):
-		if not self.trans_tree.GetFriend('cells'):
+	def AddFriendWithCells(self, xoff=0, yoff=0):
+		if not self.trans_tree.GetFriend('cells{x}X{y}Y'.format(x=xoff, y=yoff)):
 			if os.path.isfile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run)):
-				self.trans_tree.AddFriend('cells', '{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run))
+				self.trans_tree.AddFriend('cells{x}X{y}Y'.format(x=xoff, y=yoff), '{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run))
 			else:
 				self.CreateFriendWithCells()
-				self.AddFriendWithCells()
+				self.AddFriendWithCells(xoff, yoff)
 
 	def CreateFriendWithCells(self):
 		if self.dia_cols:
@@ -1696,11 +1706,10 @@ class TransparentGrid:
 				dist = np.array([[cell.GetDistanceToCenter(x_vect[ev], y_vect[ev]) for cell in col.cells] for col in self.dia_cols.cols]).flatten()
 				cols = np.array([[cell.col_num for cell in col.cells] for col in self.dia_cols.cols]).flatten()
 				rows = np.array([[cell.row_num for cell in col.cells] for col in self.dia_cols.cols]).flatten()
-				# try:
+
 				argmin = dist.argmin()
 				colmin = cols[argmin]
 				rowmin = rows[argmin]
-				# except TypeError:
 
 				col_dic[ev_vect[ev]] = colmin
 				row_dic[ev_vect[ev]] = rowmin
@@ -1709,7 +1718,7 @@ class TransparentGrid:
 				bar.update(ev + 1)
 			bar.finish()
 
-			print 'Saving tree:'
+			print 'Saving trees:'
 			cellsFile = ro.TFile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run), 'RECREATE')
 			cellsTree = ro.TTree('cells', 'cells')
 			x0 = np.zeros(1, 'f4')
@@ -1750,8 +1759,8 @@ class TransparentGrid:
 				self.trans_file.Close()
 			if self.trans_tree:
 				del self.trans_tree
-		# self.trans_file = None
-		# self.trans_tree = None
+			# self.trans_file = None
+			# self.trans_tree = None
 
 	def CloseOriginalPedestalFile(self):
 		if self.ped_file:
