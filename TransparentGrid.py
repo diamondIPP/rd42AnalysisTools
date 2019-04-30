@@ -12,6 +12,7 @@ import os, sys, shutil
 from Utils import *
 import cPickle as pickle
 from Langaus import LanGaus
+from DiamondColumns import DiamondColumns
 from GridAreas import GridAreas
 from CutManager import CutManager
 from PedestalCalculations import PedestalCalculations
@@ -46,12 +47,15 @@ class TransparentGrid:
 		self.align_info = {'xoff': float(0), 'phi': float(0)}
 		self.col_overlay_var = ''
 		self.row_overlay_var = ''
+		self.col_overlay_var2 = ''
+		self.row_overlay_var2 = ''
 		self.hit_factor = 3
 		self.seed_factor = 4
 		self.cluster_size, self.num_strips = 0, 0
 		self.num_cols = 19 if col_pitch == 50 else 13
 		self.ch_ini = 0
 		self.ch_end = 84
+		self.num_sides = 4
 		self.threshold_criteria_in_sigmas = 2
 		self.threshold = 0
 		self.threshold_snr = 0
@@ -70,7 +74,12 @@ class TransparentGrid:
 		self.delta_offset_threshold = 0.01  # in mum
 		self.saturated_ADC = 0
 		self.bias = 0
-		self.row_info_diamond = {'num': 0, 'pitch': 50.0, 'x_off': 0.5, 'y_off': 48.0, '0': 3136.0, 'up': 4486.0} if self.col_pitch == 50 else {'num': 0, 'pitch': 100.0, 'x_off': 0.5, 'y_off': 90.0, '0': 3076.0, 'up': 5476.0} if self.col_pitch == 100 else {'num': 0, 'pitch': 150.0, 'x_off': 0.5, 'y_off': 130.0, '0': 3076.0, 'up': 5476.0}
+		if self.col_pitch == 50:
+			self.row_info_diamond = {'num': 0, 'pitch': 50.0, 'x_off': 0.5, 'y_off': 48.0, '0': 3136.0, 'up': 4486.0, 'x_off2': 0, 'y_off2': 0, '0_even': 0, '0_odd': 0, 'up_even': 12750, 'up_odd': 12750}
+		elif self.col_pitch == 100:
+			self.row_info_diamond = {'num': 0, 'pitch': 100.0, 'x_off': 0.5, 'y_off': 90.0, '0': 3076.0, 'up': 5476.0, 'x_off2': 0, 'y_off2': 0, '0_even': 0, '0_odd': 0, 'up_even': 12750, 'up_odd': 12750}
+		else:
+			self.row_info_diamond = {'num': 0, 'pitch': 150.0, 'x_off': 0.5, 'y_off': 130.0, '0': 3076.0, 'up': 5476.0, 'x_off2': 0, 'y_off2': 0, '0_even': 0, '0_odd': 0, 'up_even': 12750, 'up_odd': 12750}
 		self.bins_per_ch_x = 3 if self.col_pitch == 50 else 5 if self.col_pitch == 100 else 7
 		self.bins_per_ch_y = 3 if self.col_pitch == 50 else 5 if self.col_pitch == 100 else 7
 		self.length_central_region = 30 if self.col_pitch == 50 else 40 if self.col_pitch == 100 else 50
@@ -90,6 +99,7 @@ class TransparentGrid:
 		self.graph = {}
 		self.fits = {}
 		self.names = []
+		self.dia_cols = None
 		self.tcutgs_diamond = {}
 		self.tcutg_diamond_center = None
 		self.tcutgs_diamond_center = {}
@@ -195,6 +205,7 @@ class TransparentGrid:
 		object_dic['hit_factor'] = self.hit_factor
 		object_dic['seed_factor'] = self.seed_factor
 		object_dic['num_strips'] = self.num_strips
+		object_dic['num_sides'] = self.num_sides
 
 		if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
 			os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
@@ -229,6 +240,14 @@ class TransparentGrid:
 	def UnfoldPickle(self):
 		if 'row_info_diamond' in self.pkl.keys():
 			self.row_info_diamond = self.pkl['row_info_diamond']
+			if 'x_off2' not in self.row_info_diamond.keys() or 'y_off2' not in self.row_info_diamond.keys() or '0_even' not in self.row_info_diamond.keys() or '0_odd' not in self.row_info_diamond.keys() or 'up_even' not in self.row_info_diamond.keys() or 'up_odd' not in self.row_info_diamond.keys():
+				self.row_info_diamond['x_off2'] = 0
+				self.row_info_diamond['y_off2'] = 0
+				self.row_info_diamond['0_even'] = 0
+				self.row_info_diamond['0_odd'] = 0
+				self.row_info_diamond['up_even'] = 12750
+				self.row_info_diamond['up_odd'] = 12750
+
 		if 'align_info' in self.pkl.keys():
 			self.align_info = self.pkl['align_info']
 		if 'num_cols' in self.pkl.keys():
@@ -287,6 +306,8 @@ class TransparentGrid:
 			self.seed_factor = self.pkl['seed_factor']
 		if 'num_strips' in self.pkl.keys():
 			self.num_strips = self.pkl['num_strips']
+		if 'num_sides' in self.pkl.keys():
+			self.num_sides = self.pkl['num_sides']
 
 	def SetLines(self, try_align=True):
 		self.LoadPickle()
@@ -305,6 +326,8 @@ class TransparentGrid:
 		row_fact = 10000  # ~0.1nm
 		self.col_overlay_var = '(((diaChXPred-{ox})*({p}*{cf}))%({p}*{cf}))/{cf}'.format(ox=self.row_info_diamond['x_off'], p=self.col_pitch, cf=col_fact)
 		self.row_overlay_var = '(((diaChYPred-{oy})*{rf})%({rp}*{rf}))/{rf}'.format(oy=self.row_info_diamond['y_off'], rp=self.row_info_diamond['pitch'], rf=row_fact)
+		self.col_overlay_var2 = '({cp}*((x0-{xo})-TMath::Floor(0.5+(x0-{xo}))))'.format(cp=self.col_pitch, xo=self.row_info_diamond['x_off2'])
+		self.row_overlay_var2 = '({rp}*((y0-{yo})/{rp}-TMath::Floor(0.5+(y0-{yo})/{rp})))'.format(rp=self.row_info_diamond['pitch'], yo=self.row_info_diamond['y_off2'])
 
 	def FindHorizontalParametersThroughAlignment(self):
 		self.LoadAlignmentParameters()
@@ -324,8 +347,8 @@ class TransparentGrid:
 		self.FindXandYOffests(do_plot=do_offset_plots)
 		self.SavePickle()
 
-	def FindUpperAndLowerLines(self):
-		self.DrawProfile2DDiamond('vertical_limits_profile', 'clusterChargeN', '', transp_ev=True)
+	def FindUpperAndLowerLines(self, cut=''):
+		self.DrawProfile2DDiamond('vertical_limits_profile', 'clusterChargeN', cut, transp_ev=True)
 		xbinmin, xbinmax = int(self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5)), int(self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5) + self.num_cols * self.bins_per_ch_x - 1)
 		self.canvas['vertical_limits_profile_py'] = ro.TCanvas('c_vertical_limits_profile_py', 'c_vertical_limits_profile_py', 1)
 		self.canvas['vertical_limits_profile_py'].cd()
@@ -414,6 +437,8 @@ class TransparentGrid:
 			return
 		self.row_info_diamond['x_off'] += tempn
 		self.row_info_diamond['y_off'] += tempn * self.row_info_diamond['pitch']
+		self.row_info_diamond['x_off2'] += tempn
+		self.row_info_diamond['y_off2'] += tempn * self.row_info_diamond['pitch']
 		self.SetOverlayVariables()
 
 	def ShiftHalfXOffset(self, n=1):
@@ -423,6 +448,7 @@ class TransparentGrid:
 			print 'must give an integer different from 0'
 			return
 		self.row_info_diamond['x_off'] += tempn
+		self.row_info_diamond['x_off2'] += tempn
 		self.SetOverlayVariables()
 
 	def ShiftHalfYOffset(self, n=1):
@@ -432,6 +458,7 @@ class TransparentGrid:
 			print 'must give an integer different from 0'
 			return
 		self.row_info_diamond['y_off'] += tempn * self.row_info_diamond['pitch']
+		self.row_info_diamond['y_off2'] += tempn * self.row_info_diamond['pitch']
 		self.SetOverlayVariables()
 
 	def FindXOffset(self, factor=0.1, do_plot=True, cells='good'):
@@ -597,8 +624,11 @@ class TransparentGrid:
 			y0 = self.row_info_diamond['0'] + rowi * self.row_info_diamond['pitch']
 			y1 = self.row_info_diamond['0'] + (rowi + 1) * self.row_info_diamond['pitch']
 			return np.array((y0, y1, y1, y0, y0), 'f8')
+		self.dia_cols = DiamondColumns(self.num_cols, self.row_info_diamond['pitch'], self.num_sides, self.run)
 		for col in xrange(self.num_cols):
 			self.tcutgs_diamond[col] = {}
+			self.dia_cols.SetupColumns(col, self.row_info_diamond['num'], self.ch_ini + col, self.row_info_diamond['0'])
+			self.dia_cols.cols[col].SetCellsInColumn()
 			for row in xrange(self.row_info_diamond['num']):
 				tempx = GetNumpyArraysX(col)
 				tempy = GetNumpyArraysY(row)
@@ -1629,6 +1659,90 @@ class TransparentGrid:
 			for j in process:
 				j.join()
 		print ('Finished creating the pedTrees for buffers:', buffers_array) if len(buffers_array) > 0 else ('All pedTrees already exist ')
+
+	def AddFriendWithCells(self):
+		if not self.trans_tree.GetFriend('cells'):
+			if os.path.isfile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run)):
+				self.trans_tree.AddFriend('cells', '{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run))
+			else:
+				self.CreateFriendWithCells()
+				self.AddFriendWithCells()
+
+	def CreateFriendWithCells(self):
+		if self.dia_cols:
+			print 'Getting vectors to calculate cells...', ; sys.stdout.flush()
+			tempc = self.cuts_man.transp_ev
+			leng = self.trans_tree.Draw('event:diaChXPred:diaChYPred', tempc, 'goff')
+			if leng == -1:
+				ExitMessage('Error, could not get branches diaChXPred or diaChYPred. Check tree', os.EX_DATAERR)
+			while leng > self.trans_tree.GetEstimate():
+				self.trans_tree.SetEstimate(leng)
+				leng = self.trans_tree.Draw('event:diaChXPred:diaChYPred', tempc, 'goff')
+			tempev = self.trans_tree.GetVal(0)
+			tempx = self.trans_tree.GetVal(1)
+			tempy = self.trans_tree.GetVal(2)
+			ev_vect = [int(tempev[ev]) for ev in xrange(leng)]
+			x_vect = [tempx[ev] for ev in xrange(leng)]
+			y_vect = [tempy[ev] for ev in xrange(leng)]
+			print 'Done'
+			col_dic = {}
+			row_dic = {}
+			x0_dic = {}
+			y0_dic = {}
+			print 'Calculating cells for each transparent event:'
+			bar = CreateProgressBarUtils(leng)
+			bar.start()
+			for ev in xrange(leng):
+				dist = np.array([[cell.GetDistanceToCenter(x_vect[ev], y_vect[ev]) for cell in col.cells] for col in self.dia_cols.cols]).flatten()
+				cols = np.array([[cell.col_num for cell in col.cells] for col in self.dia_cols.cols]).flatten()
+				rows = np.array([[cell.row_num for cell in col.cells] for col in self.dia_cols.cols]).flatten()
+				# try:
+				argmin = dist.argmin()
+				colmin = cols[argmin]
+				rowmin = rows[argmin]
+				# except TypeError:
+
+				col_dic[ev_vect[ev]] = colmin
+				row_dic[ev_vect[ev]] = rowmin
+				x0_dic[ev_vect[ev]] = x_vect[ev] - self.dia_cols.cols[colmin].cells[rowmin].xcenter
+				y0_dic[ev_vect[ev]] = y_vect[ev] - self.dia_cols.cols[colmin].cells[rowmin].ycenter
+				bar.update(ev + 1)
+			bar.finish()
+
+			print 'Saving tree:'
+			cellsFile = ro.TFile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run), 'RECREATE')
+			cellsTree = ro.TTree('cells', 'cells')
+			x0 = np.zeros(1, 'f4')
+			y0 = np.zeros(1, 'f4')
+			col = np.zeros(1, 'uint8')
+			row = np.zeros(1, 'uint8')
+			cellsTree.Branch('x0', x0, 'x0/F')
+			cellsTree.Branch('y0', y0, 'y0/F')
+			cellsTree.Branch('col', col, 'col/b')
+			cellsTree.Branch('row', row, 'row/b')
+			ev0 = int(self.trans_tree.GetMinimum('event'))
+			evMax = int(self.trans_tree.GetMaximum('event') + 1)
+			nevents = evMax - ev0
+			bar = CreateProgressBarUtils(nevents)
+			bar.start()
+			for ev in xrange(ev0, evMax):
+				if ev in ev_vect:
+					x0.fill(x0_dic[ev])
+					y0.fill(y0_dic[ev])
+					col.fill(col_dic[ev])
+					row.fill(row_dic[ev])
+				else:
+					x0.fill(0)
+					y0.fill(0)
+					col.fill(0)
+					row.fill(0)
+				cellsTree.Fill()
+				bar.update(ev - ev0 + 1)
+			cellsFile.Write()
+			cellsFile.Close()
+			bar.finish()
+		else:
+			ExitMessage('Cant create friend with cell info. Check', os.EX_SOFTWARE)
 
 	def CloseInputROOTFiles(self):
 		if self.trans_file:
