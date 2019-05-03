@@ -51,12 +51,12 @@ class SaturationAnalysis:
 		self.DefineRegion(before=before, after=after)
 
 		xmin, xmax, deltax, xname = self.trans_grid.ch_ini - 1.5, self.trans_grid.ch_end + 1.5, 1.0/self.trans_grid.bins_per_ch_x, 'pred dia hit ch',
-		ymin, ymax, deltay, yname = self.trans_grid.row_info_diamond['0'] - RoundInt(float(self.trans_grid.row_info_diamond['0']) / self.trans_grid.row_info_diamond['pitch'], 'f8') * self.trans_grid.row_info_diamond['pitch'], self.trans_grid.row_info_diamond['0'] + (256 - RoundInt(float(self.trans_grid.row_info_diamond['0']) / self.trans_grid.row_info_diamond['pitch'], 'f8')) * self.trans_grid.row_info_diamond['pitch'], float(self.trans_grid.row_info_diamond['pitch'])/self.trans_grid.bins_per_ch_y, 'sil pred dia hit in Y [#mum]'
+		ymin, ymax, deltay, yname = self.trans_grid.row_cell_info_diamond['0'] - RoundInt(float(self.trans_grid.row_cell_info_diamond['0']) / self.trans_grid.row_cell_info_diamond['height'], 'f8') * self.trans_grid.row_cell_info_diamond['height'], self.trans_grid.row_cell_info_diamond['0'] + (256 - RoundInt(float(self.trans_grid.row_cell_info_diamond['0']) / self.trans_grid.row_cell_info_diamond['height'], 'f8')) * self.trans_grid.row_cell_info_diamond['height'], float(self.trans_grid.row_cell_info_diamond['height'])/self.trans_grid.bins_per_ch_y, 'sil pred dia hit in Y [#mum]'
 
 		def DrawProfile2D(name, varz, zmin, zmax, varzname, cut, xdelt=deltax, namex=xname, varx='diaChXPred', getOccupancy=False):
 			self.trans_grid.DrawProfile2D(name, xmin, xmax, xdelt, namex, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, varzname, cut)
 			self.trans_grid.profile[name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-			self.trans_grid.profile[name].GetYaxis().SetRangeUser(self.trans_grid.row_info_diamond['0'] - int(self.trans_grid.row_info_diamond['pitch'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_info_diamond['up'] + int(self.trans_grid.row_info_diamond['pitch'] / self.trans_grid.bins_per_ch_y))
+			self.trans_grid.profile[name].GetYaxis().SetRangeUser(self.trans_grid.row_cell_info_diamond['0'] - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_cell_info_diamond['up'] + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 			self.trans_grid.profile[name].SetMinimum(zmin)
 			self.trans_grid.profile[name].SetMaximum(zmax)
 			self.trans_grid.DrawTCutGs(name, 'diamond')
@@ -65,7 +65,7 @@ class SaturationAnalysis:
 			if getOccupancy:
 				self.trans_grid.GetOccupancyFromProfile(name)
 				self.trans_grid.histo['hit_map_' + name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-				self.trans_grid.histo['hit_map_' + name].GetYaxis().SetRangeUser(self.trans_grid.row_info_diamond['0'] - int(self.trans_grid.row_info_diamond['pitch'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_info_diamond['up'] + int(self.trans_grid.row_info_diamond['pitch'] / self.trans_grid.bins_per_ch_y))
+				self.trans_grid.histo['hit_map_' + name].GetYaxis().SetRangeUser(self.trans_grid.row_cell_info_diamond['0'] - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_cell_info_diamond['up'] + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 				self.trans_grid.DrawTCutGs('hit_map_' + name, 'diamond')
 				self.trans_grid.DrawGoodAreasDiamondCenters('hit_map_' + name)
 				self.PosCanvas('hit_map_' + name)
@@ -130,7 +130,7 @@ class SaturationAnalysis:
 
 	def PlotStripHistograms(self, cells='all', before=0, after=1, typ='adc', isFriend=False):
 		self.DefineRegion(before=before, after=after)
-		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_info_diamond['pitch']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
+		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_cell_info_diamond['height']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
 
 		def Draw2DHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
 			tempc = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=cuts, cells=cells)

@@ -23,9 +23,6 @@ class SeveralSecuential:
 			else:
 				testArea.trans_grid.FindPickleValues()
 				ExitMessage('Run it again to load the generated pickle :)', os.EX_OK)
-			if testArea.trans_grid.loaded_default_pickle:
-				testArea.trans_grid.FindBinningAndResolution()
-				testArea.trans_grid.SavePickle()
 
 	def DoRuns(self):
 		for run, testArea in self.ta.iteritems():

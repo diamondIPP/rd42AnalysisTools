@@ -104,7 +104,7 @@ class ClusterChannelsAnalysis:
 			DrawProfile(hname, 'clusterChannelHighest{c}'.format(c=ch+1), 'highest {c}{sf} ch'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_ch_var(ch + 1, 'H', False, isFriend), 'PH [ADC]', tempcuts, maxz, minz)
 
 	def DoStrips2DHistograms(self, cells='all', typ='adc', isFriend=False):
-		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_info_diamond['pitch']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
+		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_cell_info_diamond['height']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
 
 		def DrawHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
 			deltay = 4 * self.delta_adc if typ == 'adc' else 4 * self.delta_snr

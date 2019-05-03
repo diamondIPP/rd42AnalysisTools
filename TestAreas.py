@@ -30,10 +30,12 @@ class TestAreas:
 		self.phmax = -10000
 		self.binsperx = 0
 		self.binspery = 0
-		self.threshold = 800
+		self.threshold = 0
 		self.skip_before_sat = 0
 		self.skip_after_sat = 1
 		self.do_threshold = False
+		self.neg_cut_adc = 4100
+		self.neg_cut_snr = 410
 		self.efficiency_subdiv = 1
 		self.window_shift = 3
 		self.min_snr_neg, self.max_snr_neg, self.delta_snr = -65, 1, 2
@@ -47,11 +49,19 @@ class TestAreas:
 		self.neg_cut_lines = {}
 		self.trash = []
 		self.w = 0
-		self.num_rows = 0
+		self.num_rows_even = 0
+		self.num_rows_odd = 0
 		self.rows_pitch = 0
 		self.saturated_ADC = 0
 		self.num_strips = 0
 		self.cluster_size = 0
+		self.conv_steps = 0
+		self.sigma_conv = 0
+		self.mpshift = 0
+		self.num_parallel = 0
+		self.hit_factor = 0
+		self.seed_factor = 0
+		self.num_sides = 0
 		self.rows = []
 		self.cols = []
 		self.cells = []
@@ -92,16 +102,28 @@ class TestAreas:
 					self.cluster_size = pars.getint('SETTINGS', 'cluster_size')
 				if pars.has_option('SETTINGS', 'num_strips'):
 					self.num_strips = pars.getint('SETTINGS', 'num_strips')
-				if pars.has_option('SETTINGS', 'skip_before_sat'):
-					self.skip_before_sat = pars.getint('SETTINGS', 'skip_before_sat')
-				if pars.has_option('SETTINGS', 'skip_after_sat'):
-					self.skip_after_sat = pars.getint('SETTINGS', 'skip_after_sat')
 				if pars.has_option('SETTINGS', 'test_number'):
 					self.num = pars.getint('SETTINGS', 'test_number')
 				if pars.has_option('SETTINGS', 'threshold'):
 					self.threshold = pars.getfloat('SETTINGS', 'threshold')
 				if pars.has_option('SETTINGS', 'do_threshold'):
 					self.do_threshold = pars.getboolean('SETTINGS', 'do_threshold')
+				if pars.has_option('SETTINGS', 'saturated_ADC'):
+					self.saturated_ADC = pars.getint('SETTINGS', 'saturated_ADC')
+				if pars.has_option('SETTINGS', 'num_sides'):
+					self.num_sides = pars.getint('SETTINGS', 'num_sides')
+				if pars.has_option('SETTINGS', 'neg_cut_adc'):
+					self.neg_cut_adc = pars.getint('SETTINGS', 'neg_cut_adc')
+				if pars.has_option('SETTINGS', 'neg_cut_snr'):
+					self.neg_cut_snr = pars.getint('SETTINGS', 'neg_cut_snr')
+				if pars.has_option('SETTINGS', 'skip_before_sat'):
+					self.skip_before_sat = pars.getint('SETTINGS', 'skip_before_sat')
+				if pars.has_option('SETTINGS', 'skip_after_sat'):
+					self.skip_after_sat = pars.getint('SETTINGS', 'skip_after_sat')
+				if pars.has_option('SETTINGS', 'hit_factor'):
+					self.hit_factor = pars.getint('SETTINGS', 'hit_factor')
+				if pars.has_option('SETTINGS', 'seed_factor'):
+					self.seed_factor = pars.getint('SETTINGS', 'seed_factor')
 				if pars.has_option('SETTINGS', 'cell_resolution'):
 					self.cell_resolution = pars.getfloat('SETTINGS', 'cell_resolution')
 				if pars.has_option('SETTINGS', 'delta_adc'):
@@ -116,16 +138,32 @@ class TestAreas:
 					self.binspery = pars.getfloat('SETTINGS', 'binspery')
 				if pars.has_option('SETTINGS', 'efficiency_subdiv'):
 					self.efficiency_subdiv = pars.getfloat('SETTINGS', 'efficiency_subdiv')
-				if pars.has_option('SETTINGS', 'saturated_ADC'):
-					self.saturated_ADC = pars.getint('SETTINGS', 'saturated_ADC')
+				if pars.has_option('SETTINGS', 'ch_ini'):
+					self.ch_ini = pars.getint('SETTINGS', 'ch_ini')
+				if pars.has_option('SETTINGS', 'ch_end'):
+					self.ch_end = pars.getint('SETTINGS', 'ch_end')
+				if pars.has_option('SETTINGS', 'num_parallel'):
+					self.num_parallel = pars.getint('SETTINGS', 'num_parallel')
+				if pars.has_option('SETTINGS', 'conv_steps'):
+					self.conv_steps = pars.getint('SETTINGS', 'conv_steps')
+				if pars.has_option('SETTINGS', 'sigma_conv'):
+					self.sigma_conv = pars.getfloat('SETTINGS', 'sigma_conv')
+				if pars.has_option('SETTINGS', 'mpshift'):
+					self.mpshift = pars.getfloat('SETTINGS', 'mpshift')
+
 			if pars.has_section('ROWS'):
 				if pars.has_option('ROWS', 'rows'):
 					rows = pars.get('ROWS', 'rows')
 					self.rows = unpack_row_col(rows)
 				if pars.has_option('ROWS', 'num'):
-					self.num_rows = pars.getint('ROWS', 'num')
-				if pars.has_option('ROWS', 'pitch'):
-					self.rows_pitch = pars.getfloat('ROWS', 'pitch')
+					self.num_rows_even = pars.getint('ROWS', 'num')
+					self.num_rows_odd = pars.getint('ROWS', 'num')
+				if pars.has_option('ROWS', 'num_even'):
+					self.num_rows_even = pars.getint('ROWS', 'num_even')
+				if pars.has_option('ROWS', 'num_odd'):
+					self.num_rows_odd = pars.getint('ROWS', 'num_odd')
+				if pars.has_option('ROWS', 'height'):
+					self.rows_pitch = pars.getfloat('ROWS', 'height')
 			if pars.has_section('COLUMNS'):
 				if pars.has_option('COLUMNS', 'cols'):
 					cols = pars.get('COLUMNS', 'cols')
@@ -239,8 +277,8 @@ class TestAreas:
 		self.PositionCanvas('PH2_H_map_with_borders')
 		self.trans_grid.canvas['PH2_H_map_with_borders_py'].cd()
 		self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().SetRangeUser(miny, maxy)
-		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-({l}))/[1])+1)/2-[2]*(TMath::Erf((x-{u})/[3])+1)/2+[4]'.format(l=self.trans_grid.row_info_diamond['0'], u=self.trans_grid.row_info_diamond['up']), miny, maxy)
-		func.SetNpx(int(self.trans_grid.row_info_diamond['num'] * self.trans_grid.bins_per_ch_y * 100))
+		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-({l}))/[1])+1)/2-[2]*(TMath::Erf((x-{u})/[3])+1)/2+[4]'.format(l=self.trans_grid.row_cell_info_diamond['0'], u=self.trans_grid.row_cell_info_diamond['up']), miny, maxy)
+		func.SetNpx(int(self.trans_grid.row_cell_info_diamond['num'] * self.trans_grid.bins_per_ch_y * 100))
 		zmin, zmax = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetMinimum(), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetMaximum()
 		y1bin, y2bin = self.trans_grid.histo['PH2_H_map_with_borders_py'].FindFirstBinAbove((zmin + zmax) / 2.0), self.trans_grid.histo['PH2_H_map_with_borders_py'].FindLastBinAbove((zmin + zmax) / 2.0) + 1
 		y1, y2 = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinCenter(y1bin), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinCenter(y2bin)
@@ -446,89 +484,89 @@ class TestAreas:
 			self.SaveCanvas()
 
 	def SetTransparentGrid(self):
+		self.trans_grid.pkl_sbdir = 'test' + str(self.num)
+		self.trans_grid.LoadPickle()
 
-		if not self.trans_grid.loaded_default_pickle and not self.trans_grid.loaded_pickle:
-			print 'It is first time the analysis runs on this data set'
-
+		if not self.trans_grid.loaded_pickle:
+			print 'It is first time the analysis runs on this data set test' + str(self.num) + '. Creating pickle file:'
 			self.trans_grid.cluster_size = Get_From_User_Value('cluster size for run ' + str(self.run), 'int', self.trans_grid.cluster_size, True) if self.cluster_size == 0 else self.cluster_size
-			self.cluster_size = self.trans_grid.cluster_size
 			self.trans_grid.num_strips = Get_From_User_Value('number of strips for run ' + str(self.run), 'int', self.trans_grid.num_strips, True) if self.num_strips == 0 else self.num_strips
-			self.num_strips = self.trans_grid.num_strips
 			self.trans_grid.threshold = self.trans_grid.threshold if self.threshold == 0 else self.threshold
 			self.trans_grid.cell_resolution = self.trans_grid.cell_resolution if self.cell_resolution == 0 else self.cell_resolution
 			self.trans_grid.phmax = self.trans_grid.phmax if self.phmax == -10000 else self.phmax
 			self.trans_grid.phmin = self.trans_grid.phmin if self.phmin == 10000 else self.phmin
 			if self.delta_adc != 0:
 				self.trans_grid.phbins = RoundInt(float(self.phmax - self.phmin) / self.delta_adc)
-			else:
-				self.delta_adc = float(self.phmax - self.phmin) / float(self.trans_grid.phbins)
 			self.trans_grid.bins_per_ch_x = self.trans_grid.bins_per_ch_x if self.binsperx == 0 else self.binsperx
-			self.trans_grid.bins_per_ch_y = self.trans_grid.bins_per_ch_y if self.binspery == 0 else self.binspery
 			self.trans_grid.bins_per_ch_y = self.trans_grid.bins_per_ch_y if self.binspery == 0 else self.binspery
 			self.trans_grid.efficiency_subdiv = self.trans_grid.efficiency_subdiv if self.efficiency_subdiv == 1 else self.efficiency_subdiv
 			self.trans_grid.saturated_ADC = Get_From_User_Value('saturated_ADC for run ' + str(self.run), 'int', self.trans_grid.saturated_ADC, True) if self.saturated_ADC == 0 else self.saturated_ADC
-			self.trans_grid.row_info_diamond['num'] = self.trans_grid.row_info_diamond['num'] if self.num_rows == 0 else self.num_rows
-			self.trans_grid.row_info_diamond['pitch'] = self.trans_grid.row_info_diamond['pitch'] if self.rows_pitch == 0 else self.rows_pitch
-			self.trans_grid.row_info_diamond['pitch'] = self.trans_grid.row_info_diamond['pitch'] if self.rows_pitch == 0 else self.rows_pitch
+			self.trans_grid.row_cell_info_diamond['num_even'] = self.trans_grid.row_cell_info_diamond['num_even'] if self.num_rows_even == 0 else self.num_rows_even
+			self.trans_grid.row_cell_info_diamond['num_odd'] = self.trans_grid.row_cell_info_diamond['num_odd'] if self.num_rows_odd == 0 else self.num_rows_odd
+			self.trans_grid.row_cell_info_diamond['height'] = self.trans_grid.row_cell_info_diamond['height'] if self.rows_pitch == 0 else self.rows_pitch
 			self.trans_grid.bias = Get_From_User_Value('bias for run ' + str(self.run), 'float', self.trans_grid.bias, update=True)
+			self.trans_grid.neg_cut_adc = self.neg_cut_adc if self.neg_cut_adc != 4100 else self.trans_grid.neg_cut_adc
+			self.trans_grid.neg_cut_snr = self.neg_cut_snr if self.neg_cut_snr != 410 else self.trans_grid.neg_cut_snr
+			self.trans_grid.conv_steps = self.conv_steps if self.conv_steps != 0 else self.trans_grid.conv_steps
+			self.trans_grid.sigma_conv = self.trans_grid.sigma_conv if self.sigma_conv == 0 else self.sigma_conv
+			self.trans_grid.mpshift = self.trans_grid.mpshift if self.mpshift == 0 else self.mpshift
+			self.trans_grid.num_parallel = self.trans_grid.num_parallel if self.num_parallel == 0 else self.num_parallel
+			self.trans_grid.hit_factor = self.trans_grid.hit_factor if self.hit_factor == 0 else self.hit_factor
+			self.trans_grid.seed_factor = self.trans_grid.seed_factor if self.seed_factor == 0 else self.seed_factor
+			self.trans_grid.num_sides = self.trans_grid.num_sides if self.num_sides == 0 else self.num_sides
 			self.trans_grid.SavePickle()
-
-		self.trans_grid.pkl_sbdir = 'test' + str(self.num)
-
-
-
-
-		if self.num_rows != 0:
-			self.trans_grid.row_info_diamond['num'] = self.num_rows
-		if self.rows_pitch != 0:
-			self.trans_grid.row_info_diamond['pitch'] = self.rows_pitch
 		else:
-			if self.trans_grid.row_info_diamond['pitch'] == 0:
-				self.trans_grid.row_info_diamond['pitch'] = 50.
-				self.rows_pitch = 50.
-		self.trans_grid.SetLines()
-		self.trans_grid.CreateTCutGs()
-		if self.saturated_ADC == 0:
-			if self.trans_grid.saturated_ADC != 0:
-				self.saturated_ADC = self.trans_grid.saturated_ADC
-			else:
-				self.saturated_ADC = Get_From_User_Value('saturated_ADC for run ' + str(self.run), 'int', self.trans_grid.saturated_ADC, True)
-				self.trans_grid.saturated_ADC = self.saturated_ADC
-				self.trans_grid.SavePickle()
-		else:
-			self.trans_grid.saturated_ADC = self.saturated_ADC
-			self.trans_grid.SavePickle()
-		if self.trans_grid.bias != 0:
-			self.bias = self.trans_grid.bias
-		else:
-			self.bias = Get_From_User_Value('bias for run ' + str(self.run), 'float', self.trans_grid.bias, update=True)
-			self.trans_grid.bias = self.bias
-			self.trans_grid.SavePickle()
-		if self.trans_grid.neg_cut_adc == 4100:
-			if self.trans_grid.neg_cut_snr != 410:
-				self.trans_grid.DrawHisto1D('NoiseAllCells', -32.25, 32.25, 0.5, 'diaChSignal', 'signal not in cluster cmc [ADC]', self.trans_grid.cuts_man.not_in_transp_cluster, option='goff')
-				self.trans_grid.neg_cut_adc = self.trans_grid.neg_cut_snr * self.trans_grid.histo['NoiseAllCells'].GetRMS()
-				print 'Setting neg_cut_adc to', self.trans_grid.neg_cut_adc, '. If you wish to change it, do it and save the pickle again in the transparent grid object'
-				self.trans_grid.SavePickle()
-			else:
-				print 'Run the noise and the cluster analysis to determine the neg_cut_snr and neg_cut_adc values'
+			print 'Updating variables not saved in the pickle...', ; sys.stdout.flush()
+			self.cluster_size = self.trans_grid.cluster_size if self.cluster_size == 0 else self.cluster_size
+			self.threshold = self.trans_grid.threshold if self.threshold == 0 else self.threshold
+			self.num_strips = self.trans_grid.num_strips if self.num_strips == 0 else self.num_strips
+			self.phmax = self.trans_grid.phmax if self.phmax == -10000 else self.phmax
+			self.phmin = self.trans_grid.phmin if self.phmin == 10000 else self.phmin
+			self.delta_adc = float(self.phmax - self.phmin) / float(self.trans_grid.phbins) if self.delta_adc == 0 else self.delta_adc
+			self.binsperx = self.trans_grid.bins_per_ch_x if self.binsperx == 0 else self.binsperx
+			self.binxpery = self.trans_grid.bins_per_ch_y if self.binspery == 0 else self.binspery
+			self.efficiency_subdiv = self.trans_grid.efficiency_subdiv if self.efficiency_subdiv == 1 else self.efficiency_subdiv
+			self.saturated_ADC = self.trans_grid.saturated_ADC if self.saturated_ADC == 0 else self.saturated_ADC
+			self.num_rows_even = self.trans_grid.row_cell_info_diamond['num_even'] if self.num_rows_even == 0 else self.num_rows_even
+			self.num_rows_odd = self.trans_grid.row_cell_info_diamond['num_odd'] if self.num_rows_odd == 0 else self.num_rows_odd
+			self.rows_pitch = self.trans_grid.row_cell_info_diamond['height'] if self.rows_pitch == 0 else self.rows_pitch
+			self.bias = self.trans_grid.bias if self.bias == 0 else self.bias
+			self.neg_cut_adc = self.trans_grid.neg_cut_adc if self.neg_cut_adc == 4100 else self.neg_cut_adc
+			self.neg_cut_snr = self.trans_grid.neg_cut_snr if self.neg_cut_snr == 410 else self.neg_cut_snr
+			self.conv_steps = self.trans_grid.conv_steps if self.conv_steps == 0 else self.conv_steps
+			self.sigma_conv = self.trans_grid.sigma_conv if self.sigma_conv == 0 else self.sigma_conv
+			self.mpshift = self.trans_grid.mpshift if self.mpshift == 0 else self.mpshift
+			self.num_parallel = self.trans_grid.num_parallel if self.num_parallel == 0 else self.num_parallel
+			self.hit_factor = self.trans_grid.hit_factor if self.hit_factor == 0 else self.hit_factor
+			self.seed_factor = self.trans_grid.seed_factor if self.seed_factor == 0 else self.seed_factor
+			self.num_sides = self.trans_grid.num_sides if self.num_sides == 0 else self.num_sides
+			print 'Done'
 
-		if self.num_rows != 0:
-			self.trans_grid.row_info_diamond['num'] = self.num_rows
-		if self.rows_pitch != 0:
-			self.trans_grid.row_info_diamond['pitch'] = self.rows_pitch
-		else:
-			if self.trans_grid.row_info_diamond['pitch'] == 0:
-				self.trans_grid.row_info_diamond['pitch'] = 50.
-				self.rows_pitch = 50.
-
-		self.trans_grid.FindMaxMinVarz()
-		# Update cluster size:
-		# efficiency subdiv
-		if self.efficiency_subdiv != 1:
-			self.trans_grid.efficiency_subdiv = self.efficiency_subdiv
-
-
+		self.trans_grid.cluster_size = self.cluster_size
+		self.trans_grid.num_strips = self.num_strips
+		self.trans_grid.threshold = self.threshold
+		self.trans_grid.cell_resolution = self.cell_resolution
+		self.trans_grid.phmax = self.phmax
+		self.trans_grid.phmin = self.phmin
+		self.trans_grid.phbins = RoundInt(float(self.phmax - self.phmin) / self.delta_adc)
+		self.trans_grid.bins_per_ch_x = self.binsperx
+		self.trans_grid.bins_per_ch_y = self.binspery
+		self.trans_grid.efficiency_subdiv = self.efficiency_subdiv
+		self.trans_grid.saturated_ADC = self.saturated_ADC
+		self.trans_grid.row_cell_info_diamond['num_even'] = self.num_rows_even
+		self.trans_grid.row_cell_info_diamond['num_odd'] = self.num_rows_odd
+		self.trans_grid.row_cell_info_diamond['height'] = self.rows_pitch
+		self.trans_grid.bias = self.bias
+		self.trans_grid.neg_cut_adc = self.neg_cut_adc
+		self.trans_grid.neg_cut_snr = self.neg_cut_snr
+		self.trans_grid.conv_steps = self.conv_steps
+		self.trans_grid.sigma_conv = self.sigma_conv
+		self.trans_grid.mpshift = self.mpshift
+		self.trans_grid.num_parallel = self.num_parallel
+		self.trans_grid.hit_factor = self.hit_factor
+		self.trans_grid.seed_factor = self.seed_factor
+		self.trans_grid.num_sides = self.num_sides
+		self.trans_grid.SavePickle()
 
 if __name__ == '__main__':
 	parser = OptionParser()
@@ -553,9 +591,6 @@ if __name__ == '__main__':
 	else:
 		t.trans_grid.FindPickleValues(False)
 		ExitMessage('Run it again to load the generated pickle :)', os.EX_OK)
-	if t.trans_grid.loaded_default_pickle:
-		t.trans_grid.FindBinningAndResolution()
-		t.trans_grid.SavePickle()
 	if autom:
 		t.DoAutomatic('good', types=typ if not first else ['adc', 'snr'], SaveAllPlots=True, isFirst=first)
 

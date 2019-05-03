@@ -63,14 +63,14 @@ class FinalAnalysis:
 		def DrawProfile2D(name, varz, varzname, cut, getOccupancy=False):
 			self.trans_grid.DrawProfile2DDiamondMap(name, varz, varzname, cells, cut, 'prof colz')
 			self.trans_grid.profile[name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-			self.trans_grid.profile[name].GetYaxis().SetRangeUser(self.trans_grid.row_info_diamond['0'] - int(self.trans_grid.row_info_diamond['pitch'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_info_diamond['up'] + int(self.trans_grid.row_info_diamond['pitch'] / self.trans_grid.bins_per_ch_y))
+			self.trans_grid.profile[name].GetYaxis().SetRangeUser(self.trans_grid.row_cell_info_diamond['0'] - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_cell_info_diamond['up'] + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 			self.trans_grid.DrawTCutGs(name, 'diamond')
 			self.trans_grid.DrawGoodAreasDiamondCenters(name)
 			self.PosCanvas(name)
 			if getOccupancy:
 				self.trans_grid.GetOccupancyFromProfile(name)
 				self.trans_grid.histo['hit_map_' + name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-				self.trans_grid.histo['hit_map_' + name].GetYaxis().SetRangeUser(self.trans_grid.row_info_diamond['0'] - int(self.trans_grid.row_info_diamond['pitch'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_info_diamond['up'] + int(self.trans_grid.row_info_diamond['pitch'] / self.trans_grid.bins_per_ch_y))
+				self.trans_grid.histo['hit_map_' + name].GetYaxis().SetRangeUser(self.trans_grid.row_cell_info_diamond['0'] - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_cell_info_diamond['up'] + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 				self.trans_grid.DrawTCutGs('hit_map_' + name, 'diamond')
 				self.trans_grid.DrawGoodAreasDiamondCenters('hit_map_' + name)
 				self.PosCanvas('hit_map_' + name)
@@ -84,7 +84,7 @@ class FinalAnalysis:
 				DrawProfile2D(hname, self.phN_chs_var(ch, 'H', typ == 'snr', isFriend), 'PH{c} highest chs [{t}]'.format(c=ch, t=typ.upper()), tempc, False)
 
 	def DoStripHistograms(self, cells, cuts='', suffix='no_cuts', typ='adc', isFriend=False):
-		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_info_diamond['pitch']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
+		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_cell_info_diamond['height']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
 		def Draw2DHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
 			deltay = 4 * self.delta_adc if typ == 'adc' else 4 * self.delta_snr
 			histo_limits = Get1DLimits(zmin, zmax, deltay)
