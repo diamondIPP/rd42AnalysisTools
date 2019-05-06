@@ -40,6 +40,8 @@ class CutManager:
 		self.valid_ped_friend_sigma = '(pedTree.diaChPedSigmaCmc>0)'
 		self.even_pred_chs = '(TMath::Floor(diaChXPred+0.5)%2==0)'
 		self.odd_pred_chs = '(TMath::Floor(diaChXPred+0.5)%2!=0)'
+		self.even_cols = '(col%2==0)'
+		self.odd_cols = '(col%2==1)'
 
 		self.sat_evts = None
 		self.sat_evts_region = '(satRegion)'
@@ -197,7 +199,7 @@ class CutManager:
 			for cut in cuts:
 				if cut != '':
 					temp.append(cut)
-			return '(' + operator.join(cuts) + ')' if len(temp) > 0 else '(0)'
+			return '(' + operator.join(temp) + ')' if len(temp) > 0 else '(0)'
 
 	def ConcatenateCutWithCells(self, cut, cells='all', operator='&&'):
 		return self.ConcatenateCuts([self.selected_cells, cut], operator) if cells == 'good' else self.ConcatenateCuts([self.not_selected_cells, cut], operator) if cells == 'bad' else self.ConcatenateCuts([self.all_cells, cut], operator) if cells == 'all' else cut

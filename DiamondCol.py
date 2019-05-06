@@ -27,6 +27,7 @@ class DiamondCol:
 		for ri, cell in enumerate(self.cells):
 			cell.SetCellCenter(self.xcenter, self.lowest_y + (2 * ri + 1) * self.cell_height / 2.0)
 			cell.CreateTCutG()
+			cell.CreateTCutGCenter()
 
 	def GetYCenters(self):
 		return np.arange(self.lowest_y + self.cell_height / 2.0, self.lowest_y + (2 * self.num_rows + 1) * self.cell_height / 2.0, self.cell_height, 'f8')

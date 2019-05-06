@@ -3,7 +3,7 @@ import numpy as np
 import ROOT as ro
 
 class Cell3D:
-	def __init__(self, col_num=0, row_num=0, sides=0, width_pitch_ratio=0, run=0):
+	def __init__(self, col_num=0, row_num=0, sides=0, height=0, width_pitch_ratio=0, run=0):
 		self.col_num = col_num
 		self.row_num = row_num
 		self.sides = sides
@@ -11,6 +11,12 @@ class Cell3D:
 		self.run = run
 		self.xcenter = 0
 		self.ycenter = 0
+		self.p = 1.0
+		self.h = height
+		self.w = self.width_pitch_ratio * self.p
+		self.cutg = None
+		self.cutg_center = None
+
 
 	def SetCellCenter(self, x, y):
 		self.xcenter = x

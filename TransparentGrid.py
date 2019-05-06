@@ -131,7 +131,7 @@ class TransparentGrid:
 		self.ped_file = None
 		self.ped_tree = None
 		self.trash = []
-
+		self.LoadPickle()
 
 	def CheckFoldersAndFiles(self):
 		if not os.path.isdir(self.dir):
@@ -168,7 +168,7 @@ class TransparentGrid:
 		self.ch_end = int(temph.GetBinCenter(temph.FindLastBinAbove(1, 1)))
 		self.num_cols = self.ch_end - self.ch_ini + 1
 
-	def SavePickle(self):
+	def SavePickle(self, saveDefault=False):
 		object_dic = {}
 		object_dic['row_cell_info_diamond'] = self.row_cell_info_diamond
 		object_dic['align_info'] = self.align_info
@@ -202,20 +202,27 @@ class TransparentGrid:
 		object_dic['num_strips'] = self.num_strips
 		object_dic['num_sides'] = self.num_sides
 
-		if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
-			os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
-		picklepath = '{d}/{r}/{s}/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
+		if not saveDefault:
+			if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
+				os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
+			picklepath = '{d}/{r}/{s}/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
 
-		pickle.dump(object_dic, open(picklepath, 'wb'))
-
-		if not os.path.isdir('{d}/{r}/default'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
-			os.makedirs('{d}/{r}/default'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
-			picklepath = '{d}/{r}/default/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
 			pickle.dump(object_dic, open(picklepath, 'wb'))
+
+		else:
+			if not os.path.isdir('{d}/{r}/default'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
+				os.makedirs('{d}/{r}/default'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
+				picklepath = '{d}/{r}/default/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
+				pickle.dump(object_dic, open(picklepath, 'wb'))
 
 		print 'Saved pickle :D'
 
 	def LoadPickle(self):
+		"""
+		This method tries to read a pickle file in the subdirectory self.pkl_sbdir with configuration data for setting up the transparent grid
+		If it is successful, self.loaded_pickle is True, otherwise False
+		:return:
+		"""
 		picklepath = '{d}/{r}/{s}/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
 		if os.path.isfile(picklepath):
 			with open(picklepath, 'rb') as pkl:
@@ -224,17 +231,18 @@ class TransparentGrid:
 				self.loaded_pickle = True
 		else:
 			print 'Coult not find the pickle: {d}/{r}/{s}/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
+			self.loaded_pickle = False
 
 	def UnfoldPickle(self):
+		"""
+		This Method takes the loaded pickle object and unfolds it into the transparent grid variables
+		:return:
+		"""
 		if 'row_cell_info_diamond' in self.pkl.keys():
-			self.row_cell_info_diamond = self.pkl['row_cell_info_diamond']
-			if 'x_off2' not in self.row_cell_info_diamond.keys() or 'y_off2' not in self.row_cell_info_diamond.keys() or '0_even' not in self.row_cell_info_diamond.keys() or '0_odd' not in self.row_cell_info_diamond.keys() or 'up_even' not in self.row_cell_info_diamond.keys() or 'up_odd' not in self.row_cell_info_diamond.keys():
-				self.row_cell_info_diamond['x_off2'] = 0
-				self.row_cell_info_diamond['y_off2'] = 0
-				self.row_cell_info_diamond['0_even'] = 0
-				self.row_cell_info_diamond['0_odd'] = 0
-				self.row_cell_info_diamond['up_even'] = 12750
-				self.row_cell_info_diamond['up_odd'] = 12750
+			keys = self.row_cell_info_diamond.keys()
+			for key in keys:
+				if key in self.pkl['row_cell_info_diamond'].keys():
+					self.row_cell_info_diamond[key] = self.pkl['row_cell_info_diamond'][key]
 
 		if 'align_info' in self.pkl.keys():
 			self.align_info = self.pkl['align_info']
@@ -297,25 +305,27 @@ class TransparentGrid:
 		if 'num_sides' in self.pkl.keys():
 			self.num_sides = self.pkl['num_sides']
 
-	def SetLines(self, try_align=True):
-		self.LoadPickle()
-		if self.loaded_pickle:
-			self.UnfoldPickle()
-		elif try_align:
-			self.FindHorizontalParametersThroughAlignment()
-		else:
-			self.AskUserLowerYLines()
-			self.CreateLines()
-		self.gridAreas = GridAreas(self.num_cols, self.row_cell_info_diamond['num'], self.run)
+	def CreateGridAreas(self):
+		"""
+		This method creates GridAreas object which will contain the information of the selected areas, not selected areas in the transparent grid
+		:return:
+		"""
+		if self.gridAreas:
+			self.gridAreas = None
+		self.gridAreas = GridAreas(self.num_cols, self.row_cell_info_diamond['num_even'], self.row_cell_info_diamond['num_odd'], self.run)
 		self.SetOverlayVariables()
 
 	def SetOverlayVariables(self):
+		"""
+		This Method sets the variables for plots which overlay columns, rows or cells. Each time there is a change in self.xoffset or self.yoffset, it must be called to apply the changes
+		:return:
+		"""
 		col_fact = 10000  # ~0.1nm
 		row_fact = 10000  # ~0.1nm
 		self.col_overlay_var = '(((diaChXPred-{ox})*({p}*{cf}))%({p}*{cf}))/{cf}'.format(ox=self.row_cell_info_diamond['x_off'], p=self.col_pitch, cf=col_fact)
 		self.row_overlay_var = '(((diaChYPred-{oy})*{rf})%({rp}*{rf}))/{rf}'.format(oy=self.row_cell_info_diamond['y_off'], rp=self.row_cell_info_diamond['height'], rf=row_fact)
-		self.col_overlay_var2 = '({cp}*((x0-{xo})-TMath::Floor(0.5+(x0-{xo}))))'.format(cp=self.col_pitch, xo=self.xoffset)
-		self.row_overlay_var2 = '({rp}*((y0-{yo})/{rp}-TMath::Floor(0.5+(y0-{yo})/{rp})))'.format(rp=self.row_cell_info_diamond['height'], yo=self.yoffset)
+		self.col_overlay_var2 = '{cp}*((x0-{xo})-TMath::Floor(0.5+(x0-{xo})))'.format(cp=self.row_cell_info_diamond['width'], xo=self.xoffset)
+		self.row_overlay_var2 = '{rp}*((y0-{yo})/{rp}-TMath::Floor(0.5+(y0-{yo})/{rp}))'.format(rp=self.row_cell_info_diamond['height'], yo=self.yoffset)
 
 	def FindHorizontalParametersThroughAlignment(self):
 		self.LoadAlignmentParameters()
@@ -327,84 +337,138 @@ class TransparentGrid:
 			self.align_info['xoff'] = self.align_obj.GetXOffset(4)
 			self.align_info['phi'] = self.align_obj.GetPhiXOffset(4)
 
-	def FindPickleValues(self, do_offset_plots=True):
-		self.FindUpperAndLowerLines()
+	def FindPickleValues(self, do_offset_plots=True, do_binning=False):
+		self.FindUpperAndLowerLimitsInY()
 		self.SavePickle()
-		self.FindBinningAndResolution()
-		self.SavePickle()
-		self.FindXandYOffests(do_plot=do_offset_plots)
+		if do_binning:
+			self.FindBinningAndResolution()
+			self.SavePickle()
+		if self.trans_tree.GetFriend('cell{x}X{y}Y'.format(x=self.row_cell_info_diamond['x_off'], y=self.row_cell_info_diamond['y_off'])):
+			self.FindXandYOffests(do_plot=do_offset_plots)
 		self.SavePickle()
 
-	def FindUpperAndLowerLines(self, cut=''):
-		self.DrawProfile2DDiamond('vertical_limits_profile', 'clusterChargeN', cut, transp_ev=True)
-		xbinmin, xbinmax = int(self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5)), int(self.profile['vertical_limits_profile'].GetXaxis().FindBin(self.ch_ini - 0.5) + self.num_cols * self.bins_per_ch_x - 1)
-		self.canvas['vertical_limits_profile_py'] = ro.TCanvas('c_vertical_limits_profile_py', 'c_vertical_limits_profile_py', 1)
-		self.canvas['vertical_limits_profile_py'].cd()
-		self.histo['vertical_limits_profile_py'] = self.profile['vertical_limits_profile'].ProjectionY('h_vertical_limits_profile_py', xbinmin, xbinmax, 'e hist')
-		minbiny, maxbiny = self.histo['vertical_limits_profile_py'].FindFirstBinAbove(), self.histo['vertical_limits_profile_py'].FindLastBinAbove()
-		for biny in xrange(maxbiny, int(self.histo['vertical_limits_profile_py'].GetXaxis().GetNbins())):
-			if self.histo['vertical_limits_profile_py'].GetBinContent(biny) != 0:
-				maxbiny = biny
-		miny, maxy = self.histo['vertical_limits_profile_py'].GetXaxis().GetBinLowEdge(minbiny), self.histo['vertical_limits_profile_py'].GetXaxis().GetBinLowEdge(maxbiny + 1)
-		self.histo['vertical_limits_profile_py'].GetXaxis().SetRangeUser(miny, maxy)
-		if self.row_cell_info_diamond['num'] != 0:
-			func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-([3]-{p}))/[1])+1)/2-[2]*(TMath::Erf((x-[3])/[4])+1)/2+[5]'.format(p=self.row_cell_info_diamond['num'] * self.row_cell_info_diamond['height']), miny, maxy)
-			func.SetNpx(int(self.row_cell_info_diamond['num'] * self.bins_per_ch_y * 10))
-			zmin, zmax = self.histo['vertical_limits_profile_py'].GetMinimum(), self.histo['vertical_limits_profile_py'].GetMaximum()
-			y1bin, y2bin = self.histo['vertical_limits_profile_py'].FindFirstBinAbove((zmin + zmax) / 2.0), self.histo['vertical_limits_profile_py'].FindLastBinAbove((zmin + zmax) / 2.0) + 1
-			y1, y2 = self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y1bin), self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y2bin)
-			z0, z1, z2 = self.histo['vertical_limits_profile_py'].GetBinContent(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinContent(int((y1bin + y2bin) / 2.0)), self.histo['vertical_limits_profile_py'].GetBinContent(int((maxbiny)))
-			func.SetParLimits(0, abs(z1 - z0) / 100.0, 10.0 * abs(z1 - z0))
-			func.SetParLimits(1, 0.1, 50)
-			func.SetParLimits(2, abs(z1 - z2) / 100.0, 10.0 * abs(z1 - z2))
-			func.SetParLimits(3, y2 - 500, y2 + 500)
-			func.SetParLimits(4, 0.1, 50)
-			func.SetParLimits(5, -1000.0 * abs(z0), 1000.0 * abs(z0))
-			params = np.array((abs(z1 - z0), 20, abs(z1 - z2), y2, 20, z0), 'float64')
-			func.SetParameters(params)
-			fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((maxbiny))))
-			params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5)), 'float64')
-			func.SetParameters(params)
-			fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', (miny), (maxy))
-			self.row_cell_info_diamond['0'] = fit_prof_proj_y.Parameter(3) - self.row_cell_info_diamond['height'] * self.row_cell_info_diamond['num']
-			self.row_cell_info_diamond['up'] = fit_prof_proj_y.Parameter(3)
-		else:
-			func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-([3]-[6]*{p}))/[1])+1)/2-[2]*(TMath::Erf((x-[3])/[4])+1)/2+[5]'.format(p=self.row_cell_info_diamond['height']), miny, maxy)
-			func.SetNpx(1000)
-			zmin, zmax = self.histo['vertical_limits_profile_py'].GetMinimum(), self.histo['vertical_limits_profile_py'].GetMaximum()
-			y1bin, y2bin = self.histo['vertical_limits_profile_py'].FindFirstBinAbove((zmin + zmax) / 2.0), self.histo['vertical_limits_profile_py'].FindLastBinAbove((zmin + zmax) / 2.0) + 1
-			y1, y2 = self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y1bin), self.histo['vertical_limits_profile_py'].GetXaxis().GetBinCenter(y2bin)
-			z0, z1, z2 = self.histo['vertical_limits_profile_py'].GetBinContent(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinContent(int((y1bin + y2bin) / 2.0)), self.histo['vertical_limits_profile_py'].GetBinContent(int((maxbiny)))
-			func.SetParLimits(0, abs(z1 - z0) / 100.0, 10.0 * abs(z1 - z0))
-			func.SetParLimits(1, 0.1, 50)
-			func.SetParLimits(2, abs(z1 - z2) / 100.0, 10.0 * abs(z1 - z2))
-			func.SetParLimits(3, y2 - 500, y2 + 500)
-			func.SetParLimits(4, 0.1, 50)
-			func.SetParLimits(5, -1000.0 * abs(z0), 1000. * abs(z0))
-			func.SetParLimits(6, max(1, abs(y2 - y1) / self.row_cell_info_diamond['height'] - 5), abs(y2 - y1) / self.row_cell_info_diamond['height'] + 5)
-			params = np.array((abs(z1 - z0), 20, abs(z1 - z2), y2, 20, z0, abs(y2 - y1) / self.row_cell_info_diamond['height']), 'float64')
-			func.SetParameters(params)
-			fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((minbiny))), self.histo['vertical_limits_profile_py'].GetBinLowEdge(int((maxbiny))))
-			params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5), fit_prof_proj_y.Parameter(6)), 'float64')
-			func.SetParameters(params)
-			fit_prof_proj_y = self.histo['vertical_limits_profile_py'].Fit('box_fcn', 'QIEBMSL', 'goff', (miny), (maxy))
-			self.row_cell_info_diamond['num'] = np.floor(fit_prof_proj_y.Parameter(6))
-			self.row_cell_info_diamond['up'] = fit_prof_proj_y.Parameter(3)
-			self.row_cell_info_diamond['0'] = fit_prof_proj_y.Parameter(3) - self.row_cell_info_diamond['height'] * self.row_cell_info_diamond['num']
+	def FindUpperAndLowerLimitsInY(self, cut=''):
+		"""
+		This Method tries to find the lower and higher limits in the Y axis for the detector. t will find even and odd independently. If the tree still has no friend with cells information, it will use the predicted channel position from the transparent tree.
+		If it only has one column, then the values of odd and even are equal. If it is made of rectangles with equal number of rows, then it will average the values for even and odd.
+		:param cut: Is a string with the cut that could be applied in the Draw methods. If no cuts are applied (the default) it is equal to ''
+		:return:
+		"""
+		# Get the profile 2D map of the clusterChargeN
+		col_types = ['even', 'odd']
+		for col_type in col_types:
+			if col_type == 'even' or self.num_cols > 1:
+				if self.trans_tree.GetFriend('cells{x}X{y}Y'.format(x=self.row_cell_info_diamond['x_off'], y=self.row_cell_info_diamond['y_off'])):
+					cut_typ = self.cuts_man.even_cols if col_type == 'even' else self.cuts_man.odd_cols
+				else:
+					cut_typ = self.cuts_man.even_pred_chs if col_type == 'even' else self.cuts_man.odd_pred_chs
+				cuts = self.cuts_man.ConcatenateCuts([cut, cut_typ])
+				self.DrawProfile2DDiamond('vertical_limits_profile_' + col_type, 'clusterChargeN', cuts=cuts, transp_ev=True)
+				xbinmin, xbinmax = int(self.profile['vertical_limits_profile_' + col_type].GetXaxis().FindBin(self.ch_ini - 0.5)), int(self.profile['vertical_limits_profile_' + col_type].GetXaxis().FindBin(self.ch_ini - 0.5) + self.num_cols * self.bins_per_ch_x - 1)
+				self.canvas['vertical_limits_profile_{t}_py'.format(t=col_type)] = ro.TCanvas('c_vertical_limits_profile_{t}_py'.format(t=col_type), 'c_vertical_limits_profile_{t}_py'.format(t=col_type), 1)
+				self.canvas['vertical_limits_profile_{t}_py'.format(t=col_type)].cd()
+				self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)] = self.profile['vertical_limits_profile_' + col_type].ProjectionY('h_vertical_limits_profile_{t}_py'.format(t=col_type), xbinmin, xbinmax, 'e hist')
+				minbiny, maxbiny = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].FindFirstBinAbove(), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].FindLastBinAbove()
+				for biny in xrange(maxbiny, int(self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetXaxis().GetNbins())):
+					if self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetBinContent(biny) != 0:
+						maxbiny = biny
+				miny, maxy = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetXaxis().GetBinLowEdge(minbiny), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetXaxis().GetBinLowEdge(maxbiny + 1)
+				self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetXaxis().SetRangeUser(miny, maxy)
+				if self.row_cell_info_diamond['num_' + col_type] != 0:
+					# The number of cells on this type of column has been already established
+					func = ro.TF1('box_fcn_' + col_type, '[0]*(TMath::Erf((x-([3]-{p}))/[1])+1)/2-[2]*(TMath::Erf((x-[3])/[4])+1)/2+[5]'.format(p=self.row_cell_info_diamond['num_' + col_type] * self.row_cell_info_diamond['height']), miny, maxy)
+					func.SetNpx(10000)
+					zmin, zmax = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetMinimum(), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetMaximum()
+					y1bin, y2bin = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].FindFirstBinAbove((zmin + zmax) / 2.0), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].FindLastBinAbove((zmin + zmax) / 2.0) + 1
+					y1, y2 = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetXaxis().GetBinCenter(y1bin), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetXaxis().GetBinCenter(y2bin)
+					z0, z1, z2 = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetBinContent(int((minbiny))), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetBinContent(int((y1bin + y2bin) / 2.0)), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetBinContent(int((maxbiny)))
+					func.SetParLimits(0, abs(z1 - z0) / 100.0, 10.0 * abs(z1 - z0))
+					func.SetParLimits(1, 0.1, 50)
+					func.SetParLimits(2, abs(z1 - z2) / 100.0, 10.0 * abs(z1 - z2))
+					func.SetParLimits(3, y2 - 500, y2 + 500)
+					func.SetParLimits(4, 0.1, 50)
+					func.SetParLimits(5, -1000.0 * abs(z0), 1000.0 * abs(z0))
+					params = np.array((abs(z1 - z0), 20, abs(z1 - z2), y2, 20, z0), 'float64')
+					func.SetParameters(params)
+					fit_prof_proj_y = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].Fit('box_fcn_' + col_type, 'QIEBMSL', 'goff', self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetBinLowEdge(int((minbiny))), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetBinLowEdge(int((maxbiny))))
+					params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5)), 'float64')
+					func.SetParameters(params)
+					fit_prof_proj_y = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].Fit('box_fcn_' + col_type, 'QIEBMSL', 'goff', (miny), (maxy))
+					self.row_cell_info_diamond['0_' + col_type] = fit_prof_proj_y.Parameter(3) - self.row_cell_info_diamond['height'] * self.row_cell_info_diamond['num_' + col_type]
+					self.row_cell_info_diamond['up_' + col_type] = fit_prof_proj_y.Parameter(3)
+				else:
+					# the number of cells on this type of column has not been stablishe. It will be established by fitting
+					func = ro.TF1('box_fcn_' + col_type, '[0]*(TMath::Erf((x-([3]-[6]*{p}))/[1])+1)/2-[2]*(TMath::Erf((x-[3])/[4])+1)/2+[5]'.format(p=self.row_cell_info_diamond['height']), miny, maxy)
+					func.SetNpx(10000)
+					zmin, zmax = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetMinimum(), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetMaximum()
+					y1bin, y2bin = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].FindFirstBinAbove((zmin + zmax) / 2.0), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].FindLastBinAbove((zmin + zmax) / 2.0) + 1
+					y1, y2 = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetXaxis().GetBinCenter(y1bin), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetXaxis().GetBinCenter(y2bin)
+					z0, z1, z2 = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetBinContent(int((minbiny))), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetBinContent(int((y1bin + y2bin) / 2.0)), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetBinContent(int((maxbiny)))
+					func.SetParLimits(0, abs(z1 - z0) / 100.0, 10.0 * abs(z1 - z0))
+					func.SetParLimits(1, 0.1, 50)
+					func.SetParLimits(2, abs(z1 - z2) / 100.0, 10.0 * abs(z1 - z2))
+					func.SetParLimits(3, y2 - 500, y2 + 500)
+					func.SetParLimits(4, 0.1, 50)
+					func.SetParLimits(5, -1000.0 * abs(z0), 1000. * abs(z0))
+					func.SetParLimits(6, max(1, abs(y2 - y1) / self.row_cell_info_diamond['height'] - 5), abs(y2 - y1) / self.row_cell_info_diamond['height'] + 5)
+					params = np.array((abs(z1 - z0), 20, abs(z1 - z2), y2, 20, z0, abs(y2 - y1) / self.row_cell_info_diamond['height']), 'float64')
+					func.SetParameters(params)
+					fit_prof_proj_y = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].Fit('box_fcn_' + col_type, 'QIEBMSL', 'goff', self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetBinLowEdge(int((minbiny))), self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].GetBinLowEdge(int((maxbiny))))
+					params = np.array((fit_prof_proj_y.Parameter(0), fit_prof_proj_y.Parameter(1), fit_prof_proj_y.Parameter(2), fit_prof_proj_y.Parameter(3), fit_prof_proj_y.Parameter(4), fit_prof_proj_y.Parameter(5), fit_prof_proj_y.Parameter(6)), 'float64')
+					func.SetParameters(params)
+					fit_prof_proj_y = self.histo['vertical_limits_profile_{t}_py'.format(t=col_type)].Fit('box_fcn_' + col_type, 'QIEBMSL', 'goff', (miny), (maxy))
+					self.row_cell_info_diamond['num_' + col_type] = np.floor(fit_prof_proj_y.Parameter(6))
+					self.row_cell_info_diamond['up_' + col_type] = fit_prof_proj_y.Parameter(3)
+					self.row_cell_info_diamond['0_' + col_type] = fit_prof_proj_y.Parameter(3) - self.row_cell_info_diamond['height'] * self.row_cell_info_diamond['num_' + col_type]
 
+		if self.num_cols == 1:
+			self.row_cell_info_diamond['0_odd'] = self.row_cell_info_diamond['0_even']
+			self.row_cell_info_diamond['up_odd'] = self.row_cell_info_diamond['up_even']
+			self.row_cell_info_diamond['num_odd'] = self.row_cell_info_diamond['num_even']
+
+		if self.num_sides == 4 and self.row_cell_info_diamond['num_even'] == self.row_cell_info_diamond['num_odd']:
+			# if the cells are rectangles and the number of cells for even and odd columns is the same, then it is the old type and the values for even and odd will be averaged
+			y_0 = np.array([self.row_cell_info_diamond['0_even'], self.row_cell_info_diamond['0_odd']]).mean()
+			y_up = np.array([self.row_cell_info_diamond['up_even'], self.row_cell_info_diamond['up_odd']]).mean()
+			for col_type in col_types:
+				self.row_cell_info_diamond['0_' + col_type] = y_0
+				self.row_cell_info_diamond['up_' + col_type] = y_up
+
+	def ShiftVerticalLimits(self, yoff=0, updatePickle=False):
+		self.row_cell_info_diamond['0_even'] += yoff
+		self.row_cell_info_diamond['0_odd'] += yoff
+		self.row_cell_info_diamond['up_odd'] += yoff
+		self.row_cell_info_diamond['up_even'] += yoff
+		if updatePickle:
+			self.SavePickle()
 
 	def FindBinningAndResolution(self):
 		if self.gridAreas:
 			if len(self.gridAreas.goodAreas_index) == 0:
 				self.ResetLines()
 				self.ResetAreas()
-				self.SetLines()
+				self.CreateGridAreas()
 				self.CreateTCutGs()
-				self.SelectGoodAndBadByThreshold()
+				if self.threshold != 0:
+					self.SelectGoodAndBadByThreshold()
+				else:
+					self.FindThresholdCutFromCells()
+					self.SelectGoodAndBadByThreshold()
+				self.AddRemainingToBadAreas()
+				self.gridAreas.SimplifyGoodAndBadAreas()
+				self.cuts_man.SetCells(selection=self.gridAreas.goodAreasCutNames_simplified_diamond, not_selection=self.gridAreas.badAreasCutNames_simplified_diamond)
 		else:
-			self.SetLines()
+			self.CreateGridAreas()
 			self.CreateTCutGs()
 			self.SelectGoodAndBadByThreshold()
+			if self.threshold != 0:
+				self.SelectGoodAndBadByThreshold()
+			else:
+				self.FindThresholdCutFromCells()
+				self.SelectGoodAndBadByThreshold()
+			self.AddRemainingToBadAreas()
+			self.gridAreas.SimplifyGoodAndBadAreas()
+			self.cuts_man.SetCells(selection=self.gridAreas.goodAreasCutNames_simplified_diamond, not_selection=self.gridAreas.badAreasCutNames_simplified_diamond)
 		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
 		histo_entries = float(self.histo['binning_temp'].GetEntries())
 		temp = np.abs(np.subtract(ph_bins_options, histo_entries * 240.0 / 4800.0, dtype='float32'), dtype='float32')
@@ -414,7 +478,14 @@ class TransparentGrid:
 		self.cell_resolution = np.divide(self.col_pitch, cell_bins, dtype='float64') if cell_bins % 2 == 1 else np.divide(50.0, cell_bins + 1, dtype='float64')
 		self.DrawPHGoodAreas('binning_temp', 'clusterCharge1')
 
-	def FindXandYOffests(self, factor=0.2, do_plot=True, cells='good'):
+	def FindXandYOffests(self, factor=0.2, do_plot=False, cells='all'):
+		"""
+		Method to find offsets in x and y
+		:param factor: factor used for the increment in each iteration. It should be > 0 and it is recommended to be <= 1
+		:param do_plot: Show plots
+		:param cells: Choose which cells to use for the fine alignment
+		:return:
+		"""
 		self.FindXOffset(factor, do_plot, cells)
 		self.FindYOffset(factor, do_plot, cells)
 
@@ -424,10 +495,10 @@ class TransparentGrid:
 		if tempn == 0:
 			print 'must give an integer different from 0'
 			return
-		self.row_cell_info_diamond['x_off'] += tempn
-		self.row_cell_info_diamond['y_off'] += tempn * self.row_cell_info_diamond['height']
-		self.row_cell_info_diamond['x_off2'] += tempn
-		self.row_cell_info_diamond['y_off2'] += tempn * self.row_cell_info_diamond['height']
+		# self.row_cell_info_diamond['x_off'] += tempn
+		# self.row_cell_info_diamond['y_off'] += tempn * self.row_cell_info_diamond['height']
+		self.xoffset += tempn * self.row_cell_info_diamond['width'] / float(self.col_pitch)
+		self.yoffset += tempn * self.row_cell_info_diamond['height']
 		self.SetOverlayVariables()
 
 	def ShiftHalfXOffset(self, n=1):
@@ -436,8 +507,8 @@ class TransparentGrid:
 		if tempn == 0:
 			print 'must give an integer different from 0'
 			return
-		self.row_cell_info_diamond['x_off'] += tempn
-		self.row_cell_info_diamond['x_off2'] += tempn
+		# self.row_cell_info_diamond['x_off'] += tempn
+		self.xoffset += tempn * self.row_cell_info_diamond['width'] / float(self.col_pitch)
 		self.SetOverlayVariables()
 
 	def ShiftHalfYOffset(self, n=1):
@@ -446,14 +517,21 @@ class TransparentGrid:
 		if tempn == 0:
 			print 'must give an integer different from 0'
 			return
-		self.row_cell_info_diamond['y_off'] += tempn * self.row_cell_info_diamond['height']
-		self.row_cell_info_diamond['y_off2'] += tempn * self.row_cell_info_diamond['height']
+		# self.row_cell_info_diamond['y_off'] += tempn * self.row_cell_info_diamond['height']
+		self.yoffset += tempn * self.row_cell_info_diamond['height']
 		self.SetOverlayVariables()
 
-	def FindXOffset(self, factor=0.2, do_plot=True, cells='good'):
+	def FindXOffset(self, factor=0.2, do_plot=False, cells='all'):
+		"""
+		Find the offset on X
+		:param factor: factor used for the increment in each iteration. It should be > 0 and it is recommended to be <= 1
+		:param do_plot: Show plots while calculating
+		:param cells: Choose which cells to use for the fine alignment. Could be 'good', 'bad' , 'all'
+		:return:
+		"""
 		plot_option = 'prof colz' if do_plot else 'prof goff'
 		self.ShiftHalfXOffset(2)
-		delta_x = self.col_pitch
+		delta_x = self.row_cell_info_diamond['width']
 		# proj_width = self.row_cell_info_diamond['height'] / 5.0  # in mum
 		proj_width = self.row_cell_info_diamond['height']  # in mum
 		proj_bins = RoundInt(float(proj_width) / self.cell_resolution)
@@ -461,35 +539,45 @@ class TransparentGrid:
 		proj_low = int(RoundInt(RoundInt(self.row_cell_info_diamond['height'] / float(self.cell_resolution), 'f8') / 2.0, 'f8') - (RoundInt(proj_bins / 2.0, 'f8') - 1) + 1)
 		proj_high = proj_low + proj_bins - 1
 		iteration = 0
-		min_delta = self.col_pitch
+		min_delta = self.row_cell_info_diamond['width']
 		x_off_shifted, x_min = 0.0, 0.0
 		while (abs(delta_x) > self.delta_offset_threshold and iteration < 100) or iteration < 10:
-			self.row_cell_info_diamond['x_off'] -= np.divide(delta_x, self.col_pitch, dtype='float64') * (np.exp(-iteration) * (1 - factor) + factor)
+			self.xoffset -= np.divide(delta_x, self.row_cell_info_diamond['width'], dtype='f8') * (np.exp(-iteration) * (1 - factor) + factor)
+			# self.row_cell_info_diamond['x_off'] -= np.divide(delta_x, self.col_pitch, dtype='float64') * (np.exp(-iteration) * (1 - factor) + factor)
 			self.SetOverlayVariables()
 			self.DrawProfile2DDiamondCellOverlay('x_off_alignment', 'clusterCharge1', cells, plot_option=plot_option)
 			# h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high)
 			h_proj_x = self.profile['x_off_alignment'].ProjectionX('x_off_alignment_px', proj_low, proj_high, 'e hist')
-			h_proj_x.GetXaxis().SetRangeUser(0.1, self.col_pitch - 0.1)
+			h_proj_x.GetXaxis().SetRangeUser(-self.row_cell_info_diamond['width'] / 2.0 + 0.1, self.row_cell_info_diamond['width'] / 2.0 - 0.1)
 			minx = h_proj_x.GetBinCenter(h_proj_x.GetMinimumBin())
-			minx = minx if abs(minx - self.row_cell_info_diamond['height'] / 2.0) > self.cell_resolution * 1.5 else self.row_cell_info_diamond['height'] / 2.0
+			minx = minx if abs(minx - self.row_cell_info_diamond['width'] / 2.0) > self.cell_resolution * 1.5 else self.row_cell_info_diamond['width'] / 2.0
 			bins_fit_range = max(RoundInt(2.0 * 7 / self.cell_resolution, 'f8'), 3)
-			fit_px = h_proj_x.Fit('pol2', 'QEFSN', '', max(minx - bins_fit_range * self.cell_resolution / 2.0, 0), min(minx + bins_fit_range * self.cell_resolution / 2.0, self.col_pitch))
+			fit_px = h_proj_x.Fit('pol2', 'QEFSN', '', max(minx - bins_fit_range * self.cell_resolution / 2.0, -self.row_cell_info_diamond['width'] / 2.0), min(minx + bins_fit_range * self.cell_resolution / 2.0, self.row_cell_info_diamond['width'] / 2.0))
 			x_min = -fit_px.Parameter(1) / (2 * fit_px.Parameter(2))
-			delta_x = self.col_pitch / 2.0 - x_min
+			delta_x = 0 - x_min
 			if abs(delta_x) < min_delta:
 				min_delta = abs(delta_x)
-				x_off_shifted = self.row_cell_info_diamond['x_off']
+				x_off_shifted = self.xoffset
 			iteration += 1
 			print iteration, x_min, delta_x
 		print 'final', min_delta
-		self.row_cell_info_diamond['x_off'] = x_off_shifted - 0.5
+		# self.row_cell_info_diamond['x_off'] = x_off_shifted - 0.5
+		self.xoffset = x_off_shifted - 0.5 * self.row_cell_info_diamond['width'] / float(self.col_pitch)
 		self.SetOverlayVariables()
 
-	def FindYOffset(self, factor=0.2, do_plot=True, cells='good'):
+	def FindYOffset(self, factor=0.2, do_plot=False, cells='all'):
+		"""
+		Find the offset on Y
+		:param factor: factor used for the increment in each iteration. It should be > 0 and it is recommended to be <= 1
+		:param do_plot: Show plots while calculating
+		:param cells: Choose which cells to use for the fine alignment. Could be 'good', 'bad' , 'all'
+		:return:
+		"""
 		plot_option = 'prof colz' if do_plot else 'prof goff'
 		self.ShiftHalfYOffset(2)
 		delta_y = self.row_cell_info_diamond['height']
-		proj_width = self.col_pitch / 5.0  # in mum
+		proj_width = self.row_cell_info_diamond['width']  # in mum
+		# proj_width = self.col_pitch / 5.0  # in mum
 		proj_bins = RoundInt(float(proj_width) / self.cell_resolution)
 		proj_bins = proj_bins if proj_bins % 2 == 1 else proj_bins + 1
 		proj_low = int(RoundInt(RoundInt(float(self.col_pitch) / self.cell_resolution, 'f8') / 2.0, 'f8') - (RoundInt(proj_bins / 2.0, 'f8') - 1) + 1)
@@ -498,23 +586,25 @@ class TransparentGrid:
 		min_delta = self.row_cell_info_diamond['height']
 		y_off_shifted, y_min = 0.0, 0.0
 		while (abs(delta_y) > self.delta_offset_threshold and iteration < 100) or iteration < 10:
-			self.row_cell_info_diamond['y_off'] -= delta_y * (np.exp(-iteration) * (1 - factor) + factor)
+			self.yoffset -= delta_y * (np.exp(-iteration) * (1 - factor) + factor)
+			# self.row_cell_info_diamond['y_off'] -= delta_y * (np.exp(-iteration) * (1 - factor) + factor)
 			self.SetOverlayVariables()
 			self.DrawProfile2DDiamondCellOverlay('y_off_alignment', 'clusterCharge1', cells, plot_option=plot_option)
 			h_proj_y = self.profile['y_off_alignment'].ProjectionY('y_off_alignment_py', proj_low, proj_high, 'e hist')
-			h_proj_y.GetXaxis().SetRangeUser(0.1, self.row_cell_info_diamond['height'] - 0.1)
+			h_proj_y.GetXaxis().SetRangeUser(-self.row_cell_info_diamond['height'] / 2.0 + 0.1, self.row_cell_info_diamond['height'] / 2.0 - 0.1)
 			miny = h_proj_y.GetBinCenter(h_proj_y.GetMinimumBin())
-			miny = miny if abs(miny - self.col_pitch / 2.0) > self.cell_resolution * 1.5 else self.col_pitch / 2.0
-			fit_py = h_proj_y.Fit('pol2', 'QEFSN', '', max(miny - 2.5 * self.cell_resolution - 1e-12, 0), min(miny + 2.5 * self.cell_resolution + 1e-12, self.row_cell_info_diamond['height']))
+			miny = miny if abs(miny - self.row_cell_info_diamond['height'] / 2.0) > self.cell_resolution * 1.5 else self.row_cell_info_diamond['height'] / 2.0
+			fit_py = h_proj_y.Fit('pol2', 'QEFSN', '', max(miny - 2.5 * self.cell_resolution - 1e-12, -self.row_cell_info_diamond['height'] / 2.0), min(miny + 2.5 * self.cell_resolution + 1e-12, self.row_cell_info_diamond['height'] / 2.0))
 			y_min = -fit_py.Parameter(1) / (2 * fit_py.Parameter(2))
-			delta_y = self.row_cell_info_diamond['height'] / 2.0 - y_min
+			delta_y = 0 - y_min
 			if abs(delta_y) < min_delta:
 				min_delta = abs(delta_y)
-				y_off_shifted = self.row_cell_info_diamond['y_off']
+				y_off_shifted = self.yoffset
 			iteration += 1
 			print iteration, y_min, delta_y
 		print 'final', min_delta
-		self.row_cell_info_diamond['y_off'] = y_off_shifted - self.row_cell_info_diamond['height'] / 2.0
+		# self.row_cell_info_diamond['y_off'] = y_off_shifted - self.row_cell_info_diamond['height'] / 2.0
+		self.yoffset = y_off_shifted - 0.5 * self.row_cell_info_diamond['height']
 		self.SetOverlayVariables()
 
 	def AskUserLowerYLines(self):
@@ -596,100 +686,63 @@ class TransparentGrid:
 			for linev in self.vertical_lines_diamond_tline:
 				linev.Draw('same')
 
+	def SetupCutManager(self):
+		if self.cuts_man:
+			self.cuts_man = None
+		self.cuts_man = CutManager(self.trans_tree, self.num_strips, self.cluster_size, self.saturated_ADC, self.neg_cut_adc, self.neg_cut_snr)
+
 	def CreateTCutGs(self):
 		self.CreateTCutGsDiamond()
-		self.CreateTCutGsDiamondCenter()
+		# self.CreateTCutGsDiamondCenter()
 		self.CreateGridText()
-		self.cuts_man = CutManager(self.trans_tree, self.num_strips, self.cluster_size, self.saturated_ADC, self.neg_cut_adc, self.neg_cut_snr)
+		if not self.cuts_man:
+			self.SetupCutManager()
 	# self.cuts_man.SetCuts(neg_cut_snr=self.neg_cut_snr, neg_cut_adc=self.neg_cut_adc)
 	# self.cuts_man.SetUpDownBorderCuts(lower=self.row_cell_info_diamond['0'], upper=self.row_cell_info_diamond['up'])
 
 	def CreateTCutGsDiamond(self):
-		def GetNumpyArraysX(coli):
-			x0 = self.ch_ini - 0.5 + coli
-			x1 = self.ch_ini + 0.5 + coli
-			return np.array((x0, x0, x1, x1, x0), 'f8')
-		def GetNumpyArraysY(rowi):
-			y0 = self.row_cell_info_diamond['0'] + rowi * self.row_cell_info_diamond['height']
-			y1 = self.row_cell_info_diamond['0'] + (rowi + 1) * self.row_cell_info_diamond['height']
-			return np.array((y0, y1, y1, y0, y0), 'f8')
-		self.CreateTCutGsDiaCols(self.row_cell_info_diamond['x_off2'], self.row_cell_info_diamond['y_off2'])
-		for col in xrange(self.num_cols):
-			self.dia_cols.SetupColumns(col, self.row_cell_info_diamond['num'], self.ch_ini + col, self.row_cell_info_diamond['0'])
-			self.dia_cols.cols[col].SetCellsInColumn()
-			self.tcutgs_diamond[col] = {}
-			for row in xrange(self.row_cell_info_diamond['num']):
-				tempx = GetNumpyArraysX(col)
-				tempy = GetNumpyArraysY(row)
-				self.tcutgs_diamond[col][row] = ro.TCutG('cutg_dia_' + str(self.run) + '_{c}_{r}'.format(c=col, r=row), 5, tempx, tempy)
-				self.tcutgs_diamond[col][row].SetNameTitle('cutg_dia_' + str(self.run) + '_{c}_{r}'.format(c=col, r=row), 'cutg_dia_' + str(self.run) + '_{c}_{r}'.format(c=col, r=row))
-				self.tcutgs_diamond[col][row].SetVarX('diaChXPred')
-				self.tcutgs_diamond[col][row].SetVarY('diaChYPred')
-				self.tcutgs_diamond[col][row].SetLineColor(ro.kBlack)
-				if col == self.num_cols -1 and row == self.row_cell_info_diamond['num'] - 1:
-					self.row_cell_info_diamond['up'] = tempy[2]
+		self.CreateTCutGsDiaCols(self.row_cell_info_diamond['x_off'], self.row_cell_info_diamond['y_off'])
 
 	def CreateTCutGsDiaCols(self, xoff=0, yoff=0):
-		self.dia_cols = DiamondColumns(self.num_cols, self.row_cell_info_diamond['height'], self.num_sides, self.run)
+		if self.dia_cols:
+			self.dia_cols = None
+		self.dia_cols = DiamondColumns(self.num_cols, self.row_cell_info_diamond['height'], self.num_sides, self.run, self.row_cell_info_diamond['width'] / float(self.col_pitch))
 		for col in xrange(self.num_cols):
-			self.dia_cols.SetupColumns(col, self.row_cell_info_diamond['num'], self.ch_ini + col - xoff, self.row_cell_info_diamond['0'] - yoff)
-			self.dia_cols.cols[col].SetCellsInColumn()
+			if RoundInt(self.ch_ini + col + xoff) % 2 == 0:
+				self.dia_cols.SetupColumns(col, self.row_cell_info_diamond['num_even'], self.ch_ini + col + xoff, self.row_cell_info_diamond['0_even'] + yoff)
+				self.dia_cols.cols[col].SetCellsInColumn()
+			else:
+				self.dia_cols.SetupColumns(col, self.row_cell_info_diamond['num_odd'], self.ch_ini + col + xoff, self.row_cell_info_diamond['0_odd'] + yoff)
+				self.dia_cols.cols[col].SetCellsInColumn()
 
 	def CreateTCutGSymmetricRectangle(self, percentage=80):
 		self.gridAreas.CreateRectangleSymmetricCentralRegion(percentage, self.col_pitch, self.row_cell_info_diamond['height'], self.col_overlay_var, self.row_overlay_var)
 		self.cuts_man.in_central_rect_region[percentage] = '(' + self.gridAreas.center_rectangles[percentage]['name'] + ')'
 		self.cuts_man.out_central_rect_region[percentage] = '(!' + self.gridAreas.center_rectangles[percentage]['name'] + ')'
 
-	def CreateTCutGsDiamondCenter(self):
-		def GetNumpyArraysX(coli):
-			x0 = self.ch_ini - self.length_central_region/(2.0*self.col_pitch) + coli
-			x1 = self.ch_ini + self.length_central_region/(2.0*self.col_pitch) + coli
-			return np.array((x0, x0, x1, x1, x0), 'f8')
-
-		def GetNumpyArraysY(rowi):
-			y0 = self.row_cell_info_diamond['0'] + rowi * self.row_cell_info_diamond['height'] + self.row_cell_info_diamond['height']/2.0 - self.length_central_region/2.0
-			y1 = self.row_cell_info_diamond['0'] + (rowi + 1) * self.row_cell_info_diamond['height'] - self.row_cell_info_diamond['height']/2.0 + self.length_central_region/2.0
-			return np.array((y0, y1, y1, y0, y0), 'f8')
-
-		x0i = self.col_pitch / 2.0 - self.length_central_region / 2.0
-		x1i = self.col_pitch / 2.0 + self.length_central_region / 2.0
-		y0i = self.row_cell_info_diamond['height'] / 2.0 - self.length_central_region / 2.0
-		y1i = self.row_cell_info_diamond['height'] / 2.0 + self.length_central_region / 2.0
-		tempi = np.array((x0i, x0i, x1i, x1i, x0i), 'f8')
-		tempj = np.array((y0i, y1i, y1i, y0i, y0i), 'f8')
-		self.tcutg_diamond_center = ro.TCutG('cutg_dia_' + str(self.run) + '_center', 5, tempi, tempj)
-		self.tcutg_diamond_center.SetNameTitle('cutg_dia_' + str(self.run) + '_center', 'cutg_dia_' + str(self.run) + '_center')
-		self.tcutg_diamond_center.SetVarX('diaChXPred')
-		self.tcutg_diamond_center.SetVarY('diaChYPred')
-		self.tcutg_diamond_center.SetLineColor(ro.kViolet)
-
-		for col in xrange(self.num_cols):
-			self.tcutgs_diamond_center[col] = {}
-			for row in xrange(self.row_cell_info_diamond['num']):
-				tempx = GetNumpyArraysX(col)
-				tempy = GetNumpyArraysY(row)
-				self.tcutgs_diamond_center[col][row] = ro.TCutG('cutg_dia_' + str(self.run) + '_center_{c}_{r}'.format(c=col, r=row), 5, tempx, tempy)
-				self.tcutgs_diamond_center[col][row].SetNameTitle('cutg_dia_' + str(self.run) + '_center_{c}_{r}'.format(c=col, r=row), 'cutg_center_dia_{c}_{r}'.format(c=col, r=row))
-				self.tcutgs_diamond_center[col][row].SetVarX('diaChXPred')
-				self.tcutgs_diamond_center[col][row].SetVarY('diaChYPred')
-				self.tcutgs_diamond_center[col][row].SetLineColor(ro.kViolet)
-
 	def CreateGridText(self):
-		self.gridTextDiamond = ro.TH2F('gridText_diamond', 'gridText_diamond', int(RoundInt(128.0 * self.bins_per_ch_x, 'f8') + 2), -0.5 - 1.0 / self.bins_per_ch_x, 127.5 + 1.0 / self.bins_per_ch_x, int(RoundInt(256 * self.bins_per_ch_y, 'f8') + 2), self.row_cell_info_diamond['0'] - RoundInt(float(self.row_cell_info_diamond['0']) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'] - (float(self.row_cell_info_diamond['height']) / self.bins_per_ch_y), self.row_cell_info_diamond['0'] + (256 - RoundInt(float(self.row_cell_info_diamond['0']) / self.row_cell_info_diamond['height'], 'f8')) * self.row_cell_info_diamond['height'] + (float(self.row_cell_info_diamond['height']) / self.bins_per_ch_y))
-		x0, x1, y0, y1 = np.zeros(1, 'f8'), np.zeros(1, 'f8'), np.zeros(1, 'f8'), np.zeros(1, 'f8')
+		miny = min(self.row_cell_info_diamond['0_even'], self.row_cell_info_diamond['0_odd'])
+		self.gridTextDiamond = ro.TH2F('gridText_diamond', 'gridText_diamond', int(RoundInt(128.0 * self.bins_per_ch_x, 'f8') + 2), -0.5 - 1.0 / self.bins_per_ch_x, 127.5 + 1.0 / self.bins_per_ch_x, int(self.bins_per_ch_y * RoundInt(256 * 50. / self.row_cell_info_diamond['height'], 'f8') + 2), miny - RoundInt(float(miny) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'] - (float(self.row_cell_info_diamond['height']) / self.bins_per_ch_y), miny - RoundInt(float(miny) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'] + 256 * 50 + (float(self.row_cell_info_diamond['height']) / self.bins_per_ch_y))
 		for col in xrange(0, self.num_cols):
-			self.tcutgs_diamond[col][0].GetPoint(0, x0, y0)
-			self.tcutgs_diamond[col][0].GetPoint(3, x1, y0)
-			self.gridTextDiamond.Fill(np.mean((x0, x1)), y0[0]-0.1, (col + 0.01))
-		for row in xrange(0, self.row_cell_info_diamond['num']):
-			self.tcutgs_diamond[0][row].GetPoint(0, x0, y0)
-			self.tcutgs_diamond[0][row].GetPoint(1, x0, y1)
-			self.gridTextDiamond.Fill(x0[0]-0.1, np.mean((y0, y1)), (row + 0.01))
+			x0 = self.dia_cols.cols[col].cells[0].xcenter
+			y0 = self.dia_cols.cols[col].cells[0].ycenter - self.row_cell_info_diamond['height'] / 2.0
+			self.gridTextDiamond.Fill(x0, y0 - 0.1, (col + 0.01))
+		max_num_rows = max(self.row_cell_info_diamond['num_even'], self.row_cell_info_diamond['num_odd'])
+		for row in xrange(0, max_num_rows):
+			if row < len(self.dia_cols.cols[0].cells):
+				x0 = self.dia_cols.cols[0].cells[row].xcenter - self.dia_cols.cols[0].cells[row].w / 2.0
+				y0 = self.dia_cols.cols[0].cells[row].ycenter
+				self.gridTextDiamond.Fill(x0 - 0.1, y0, (row + 0.01))
+			if self.num_cols > 1:
+				if row < len(self.dia_cols.cols[1].cells):
+					y0 = self.dia_cols.cols[1].cells[row].ycenter
+					self.gridTextDiamond.Fill(x0 - 1.1, y0, (row + 0.01))
 		self.gridTextDiamond.SetMarkerSize(0.8)
 
 	def DrawProfile2DDiamond(self, name, varz='clusterChargeN', varname='PH [ADC]', cells='', cuts='', transp_ev=True, plot_option='prof colz'):
 		xmin, xmax, deltax, xname = -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch'
-		ymin, ymax, deltay, yname = self.row_cell_info_diamond['0'] - RoundInt(float(self.row_cell_info_diamond['0']) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'], self.row_cell_info_diamond['0'] + (256 - RoundInt(float(self.row_cell_info_diamond['0']) / self.row_cell_info_diamond['height'], 'f8')) * self.row_cell_info_diamond['height'], float(self.row_cell_info_diamond['height'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
+		ymin = self.row_cell_info_diamond['0_even'] - RoundInt(float(self.row_cell_info_diamond['0_even']) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'] if self.row_cell_info_diamond['0_even'] <= self.row_cell_info_diamond['0_odd'] else self.row_cell_info_diamond['0_odd'] - RoundInt(float(self.row_cell_info_diamond['0_odd']) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height']
+		ymax, deltay, yname = ymin + (256 * 50.), float(self.row_cell_info_diamond['height'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
 		tempc = self.cuts_man.ConcatenateCutWithCells(cut=cuts, cells=cells)
 		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, varname, tempc, transp_ev, plot_option)
 
@@ -762,12 +815,12 @@ class TransparentGrid:
 			self.profile[name].Draw('same colz')
 		elif name in self.histo.keys():
 			self.histo[name].Draw('same colz')
-		for col in xrange(0, self.num_cols):
-			for row in xrange(0, self.row_cell_info_diamond['num']):
+		for col in xrange(self.num_cols):
+			for row in xrange(self.dia_cols.cols[col].num_rows):
 				if type == 'diamond':
-					self.tcutgs_diamond[col][row].Draw('same')
+					self.dia_cols.cols[col].cells[row].cutg.Draw('same')
 				elif type == 'centers':
-					self.tcutgs_diamond_center[col][row].Draw('same')
+					self.dia_cols.cols[col].cells[row].cutg_center.Draw('same')
 		ro.gPad.Update()
 
 	def GetOccupancyFromProfile(self, name, plot_option='colz'):
@@ -828,6 +881,13 @@ class TransparentGrid:
 		ro.TFormula.SetMaxima(1000)
 
 	def GetMeanPHPerCell(self, var='clusterChargeN', typ='adc'):
+		"""
+		This method tries to load a pickle with the average value of var of type typ ('adc' or 'snr'). If the pickle does not have that info, it will be calculated and saved.
+		The result is stored in the dictionary self.mean_ph_cell_dic[typ]
+		:param var: variable to calculate the mean ph of each cell
+		:param typ: it tells if it is in snr or adc. It can take values 'adc' or 'snr'
+		:return:
+		"""
 		means_temp = {}
 		if os.path.isfile('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ)):
 			with open('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ)) as pkl:
@@ -847,22 +907,22 @@ class TransparentGrid:
 					# 	else:
 					# 		print 'The existing file has info for {v} but the requested variable is {v2}. Will recalculate!'.format(v=means_temp['var'], v2=var)
 		print 'Calculating the mean PH value for each cell:'
-		numcells = int(self.num_cols * self.row_cell_info_diamond['num'])
+		numcells = int(self.dia_cols.num_cols * max(self.row_cell_info_diamond['num_even'], self.row_cell_info_diamond['num_odd']))
 		tempbar = CreateProgressBarUtils(numcells)
 		tempbar.start()
-		for col in xrange(self.num_cols):
+		for col in xrange(self.dia_cols.num_cols):
 			self.mean_ph_cell_dic[typ][col] = {}
-			for row in xrange(self.row_cell_info_diamond['num']):
+			for row in xrange(self.dia_cols.cols[col].num_rows):
 				if typ == 'adc':
-					self.trans_tree.Draw(var+'>>temphrc(200,0,4000)', 'transparentEvent&&({n})'.format(n=self.tcutgs_diamond[col][row].GetName()), 'goff')
+					self.trans_tree.Draw(var + '>>temphrc(200,0,4800)', 'transparentEvent&&({n})'.format(n=self.dia_cols.cols[col].cells[row].cutg.GetName()), 'goff')
 				else:
-					self.trans_tree.Draw(var + '>>temphrc(20,0,400)', 'transparentEvent&&({n})'.format(n=self.tcutgs_diamond[col][row].GetName()), 'goff')
+					self.trans_tree.Draw(var + '>>temphrc(200,0,480)', 'transparentEvent&&({n})'.format(n=self.dia_cols.cols[col].cells[row].cutg.GetName()), 'goff')
 				temph = ro.gDirectory.Get('temphrc')
 				self.mean_ph_cell_dic[typ][col][row] = temph.GetMean()
 				temph.Reset('ICES')
 				temph.Delete()
 				del temph
-				tempbar.update(col * self.row_cell_info_diamond['num'] + row + 1)
+				tempbar.update(col * self.dia_cols.cols[col].num_rows + row + 1)
 		tempbar.finish()
 		meanph_obj = means_temp
 		meanph_obj[var] = self.mean_ph_cell_dic[typ]
@@ -873,22 +933,40 @@ class TransparentGrid:
 		print 'Done'
 
 	def SelectGoodAndBadByThreshold(self, val=500, var='clusterChargeN', typ='adc'):
+		"""
+		This method will classify each cell as 'good' or 'bad' (selection or not in selection) depending on a threshold given by val, a variable var of type typ.
+		The results are stored in the object gridAreas
+		:param val: threshold to use for classification
+		:param var: variable of ph used for discrimination
+		:param typ: type 'adc' or 'snr' used for classification. The variable var has to be of this type.
+		:return:
+		"""
 		if len(self.mean_ph_cell_dic[typ].keys()) > 0:
-			for col in xrange(self.num_cols):
-				for row in xrange(self.row_cell_info_diamond['num']):
+			for col in xrange(self.dia_cols.num_cols):
+				for row in xrange(self.dia_cols.cols[col].num_rows):
 					if self.mean_ph_cell_dic[typ][col][row] > val:
-						self.gridAreas.AddGoodAreas(col, row, self.tcutgs_diamond, self.tcutgs_diamond_center)
+						self.gridAreas.AddGoodAreas(col, row, self.dia_cols)
 					else:
-						self.gridAreas.AddBadAreas(col, row, self.tcutgs_diamond, self.tcutgs_diamond_center)
+						self.gridAreas.AddBadAreas(col, row, self.dia_cols)
 		else:
 			self.GetMeanPHPerCell(var, typ)
 			self.SelectGoodAndBadByThreshold(val, var)
 
-	def FindThresholdCutFromCells(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4000, deltax=50, it=0):
+	def FindThresholdCutFromCells(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4800, deltax=50, it=0):
+		"""
+		This method finds the threshold cut using the distribution of PH for each cell. The threshold is set as a number of sigmas (self.threshold_criteria_in_sigmas) below the mean of the gaussian fit of the distribution of PH
+		:param var: variable of type 'typ' used for classification
+		:param typ: type of variable 'var' used. It has to be either 'adc' or 'snr'
+		:param xmin: min value of the distribution of PH determined by var
+		:param xmax: max value of the distribution of PH determined by var
+		:param deltax: bin width of the distribution of PH determined by var
+		:param it: number of iterations in this method to prevent infinite recursion
+		:return:
+		"""
 		if len(self.mean_ph_cell_dic[typ].keys()) > 0:
 			self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax)
 			self.FitGaus('mean_ph_per_cell_' + typ, 2, 5)
-			if self.GetHistoAverageBinContent(self.histo['mean_ph_per_cell_' + typ]) < 10 and it < 15:
+			if GetHistoAverageBinContent(self.histo['mean_ph_per_cell_' + typ]) < 10 and it < 15:
 				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 1.25, it + 1)
 			elif self.fits['mean_ph_per_cell_' + typ].Ndf() < 2 and it < 15:
 				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8, it + 1)
@@ -899,6 +977,9 @@ class TransparentGrid:
 			self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax)
 		if typ == 'adc':
 			self.threshold = self.fits['mean_ph_per_cell_' + typ].Parameter(1) - self.threshold_criteria_in_sigmas * self.fits['mean_ph_per_cell_' + typ].Parameter(2)
+			if self.threshold <= deltax:
+				self.threshold_criteria_in_sigmas /= 2.0
+				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax, it)
 		else:
 			self.threshold_snr = self.fits['mean_ph_per_cell_' + typ].Parameter(1) - self.threshold_criteria_in_sigmas * self.fits['mean_ph_per_cell_' + typ].Parameter(2)
 		thresh = self.threshold if typ == 'adc' else self.threshold_snr
@@ -908,25 +989,24 @@ class TransparentGrid:
 		self.line['threshold_' + typ].SetLineStyle(2)
 		self.line['threshold_' + typ].Draw('same')
 
-	def GetHistoAverageBinContent(self, histo):
-		sumbc = 0
-		bins = 0
-		if histo:
-			for b in xrange(1, histo.GetNbinsX() + 1):
-				binc = histo.GetBinContent(b)
-				if binc > 0:
-					bins += 1
-					sumbc += binc
-			return float(sumbc) / bins
-
-	def DrawMeanPHCellsHisto(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4000, deltax=50, draw_opt='e hist'):
+	def DrawMeanPHCellsHisto(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4800, deltax=50, draw_opt='e hist', supress0=True):
+		"""
+		This method plots the PH distribution of variable 'var' of type 'typ' with at least 10 bins
+		:param var: variable of type 'typ' used for the distribution
+		:param typ: type of variable 'var'. Has to be either 'adc' or 'snr'
+		:param xmin: min value of the distribution of PH determined by var
+		:param xmax: max value of the distribution of PH determined by var
+		:param deltax: bin width of the distribution of PH determined by var
+		:param draw_opt: draw option of the histogram. Default 'e hist'
+		:return:
+		"""
 		if len(self.mean_ph_cell_dic[typ].keys()) > 0:
 			nameh = 'mean_ph_per_cell_' + typ
 			if nameh in self.histo.keys():
 				self.histo[nameh].Reset('ICES')
 				self.histo[nameh].Delete()
 				del self.histo[nameh]
-			limsh = Get1DLimits(xmin, xmax, deltax)
+			limsh = Get1DLimits(xmin, xmax, deltax) if not supress0 else Get1DLimits(deltax, xmax, deltax)
 			self.histo[nameh] = ro.TH1F('h_' + nameh, 'h_' + nameh, int(RoundInt((limsh['max'] - limsh['min']) / deltax)), limsh['min'], limsh['max'])
 			for col, rowMean in self.mean_ph_cell_dic[typ].iteritems():
 				for row, meanh in rowMean.iteritems():
@@ -940,10 +1020,10 @@ class TransparentGrid:
 				ro.gPad.Update()
 			SetDefault1DStats(self.histo[nameh])
 			if(self.histo[nameh].FindLastBinAbove() - self.histo[nameh].FindFirstBinAbove() + 1) < 10:
-				self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax * 0.8, draw_opt)
+				self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax * 0.8, draw_opt, supress0)
 		else:
 			self.GetMeanPHPerCell(var, typ)
-			self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax, draw_opt)
+			self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax, draw_opt, supress0)
 
 	def DrawCentralArea(self, name, percent):
 		self.canvas[name].cd()
@@ -1004,24 +1084,64 @@ class TransparentGrid:
 		self.ResetCanvas()
 
 	def AddGoodAreas(self, col, row):
-		self.gridAreas.AddGoodAreas(col, row, self.tcutgs_diamond, self.tcutgs_diamond_center)
+		"""
+		Tags a cell identified by column 'col' and row 'row' as good (in selection)
+		:param col: cell's column number
+		:param row: cell's row number
+		:return:
+		"""
+		self.gridAreas.AddGoodAreas(col, row, self.dia_cols)
 
 	def AddBadAreas(self, col, row):
-		self.gridAreas.AddBadAreas(col, row, self.tcutgs_diamond, self.tcutgs_diamond_center)
+		"""
+		Tags a cell identified by column 'col' and row 'row' as bad (not in selection)
+		:param col: cell's column number
+		:param row: cell's row number
+		:return:
+		"""
+		self.gridAreas.AddBadAreas(col, row, self.dia_cols)
 
 	def AddGoodAreasRow(self, row, coli=0, colf=0):
-		self.gridAreas.AddGoodAreasRow(row, coli, colf, self.tcutgs_diamond, self.tcutgs_diamond_center)
+		"""
+		Tags all the cells between 'coli' and 'colf' inclusively in the row 'row' as good (in selection)
+		:param row: number of the row used for the addition
+		:param coli: starting column
+		:param colf: finishing column
+		:return:
+		"""
+		self.gridAreas.AddGoodAreasRow(row, coli, colf, self.dia_cols)
 
 	def AddGoodAreasCol(self, col, rowi=0, rowf=0):
-		self.gridAreas.AddGoodAreasCol(col, rowi, rowf, self.tcutgs_diamond, self.tcutgs_diamond_center)
+		"""
+		Tags all the cells between 'rowi' and 'rowf' inclusively in the column 'col' as good (in selection)
+		:param col: number of the column used for the addition
+		:param rowi: starting row
+		:param rowf: finishing row
+		:return:
+		"""
+		self.gridAreas.AddGoodAreasCol(col, rowi, rowf, self.dia_cols)
 
 	def AddRemainingToBadAreas(self):
-		self.gridAreas.AddRemainingToBadAreas(self.tcutgs_diamond, self.tcutgs_diamond_center)
+		"""
+		Calls the gridAreas method to mark the remaining cells as bad (not in selection)
+		:return:
+		"""
+		self.gridAreas.AddRemainingToBadAreas(self.dia_cols)
 
 	def RemoveFromGoodArea(self, col, row):
-		self.gridAreas.RemoveFromGoodArea(col, row, self.tcutgs_diamond, self.tcutgs_diamond_center)
+		"""
+		Tags a cell identified by column 'col' and row 'row' as bad (not in selection) if it was previously tagged as good (in selection) it is removed from the corresponding lists
+		:param col: cell's column nomber
+		:param row: cell's row number
+		:return:
+		"""
+		self.gridAreas.RemoveFromGoodArea(col, row, self.dia_cols)
 
 	def ResetAreas(self):
+		"""
+		Calls the method from gridAreas object to reset the areas
+		:return:
+		"""
 		self.gridAreas.ResetAreas()
 
 	def DrawPHInArea(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
@@ -1103,12 +1223,12 @@ class TransparentGrid:
 		self.DrawProfile2D(name, -0.5, 127.5, self.cell_resolution, 'dia X ch', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', self.row_overlay_var, var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
 
 	def DrawProfile2DDiamondCellOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz', varname='PH[ADC]', typ='adc'):
-		y0, rowpitch, numrows, xoff, yoff = self.row_cell_info_diamond['0'], self.row_cell_info_diamond['height'], self.row_cell_info_diamond['num'], self.row_cell_info_diamond['x_off'], self.row_cell_info_diamond['y_off']
+		rowpitch= self.row_cell_info_diamond['height']
 		list_cuts = [self.cuts_man.selected_cells if cells == 'good' else self.cuts_man.not_selected_cells if cells == 'bad' else self.cuts_man.all_cells]
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
-		self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', self.col_overlay_var, self.row_overlay_var, var, varname, temp_cuts, transp_ev, plot_option)
+		self.DrawProfile2D(name, -self.row_cell_info_diamond['width'] / 2.0, self.row_cell_info_diamond['width'] / 2.0, self.cell_resolution, 'dia X [#mum]', -rowpitch/2, rowpitch/2, self.cell_resolution, 'dia Y [#mum]', self.col_overlay_var2, self.row_overlay_var2, var, varname, temp_cuts, transp_ev, plot_option)
 		if typ == 'adc':
 			self.profile[name].GetZaxis().SetRangeUser(self.phmin, self.phmax)
 		else:
@@ -1657,15 +1777,42 @@ class TransparentGrid:
 				j.join()
 		print ('Finished creating the pedTrees for buffers:', buffers_array) if len(buffers_array) > 0 else ('All pedTrees already exist ')
 
-	def AddFriendWithCells(self, xoff=0, yoff=0):
-		if not self.trans_tree.GetFriend('cells{x}X{y}Y'.format(x=xoff, y=yoff)):
+	def AddFriendWithCells(self, xoff=0, yoff=0, overWrite=False):
+		"""
+		Tries to add a friend with cell information with a xoff in width_units and a yoff in um. If it is not in the root file, it will try to create one. The tree name has the offset in nm with 100s of nm in resolution
+		:param xoff: offset in x in cell's width units
+		:param yoff: offset in y in um
+		:param overWrite: if True, deletes tree and creates new one
+		:return:
+		"""
+		xoff_nm = int(RoundInt(xoff * self.row_cell_info_diamond['width'] * 10) * 100)
+		yoff_nm = int(RoundInt(yoff * 10) * 100)
+		x_prefix = '' if xoff >= 0 else 'Neg'
+		y_prefix = '' if yoff >= 0 else 'Neg'
+		treename = 'cells{xp}{x}X{yp}{y}Y'.format(x=abs(xoff_nm), xp=x_prefix, yp=y_prefix, y=abs(yoff_nm))
+		if not self.trans_tree.GetFriend(treename):
 			if os.path.isfile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run)):
-				self.trans_tree.AddFriend('cells{x}X{y}Y'.format(x=xoff, y=yoff), '{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run))
+				if overWrite and xoff==0 and yoff==0:
+					os.remove('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run))
+					self.CreateFriendWithCells(xoff, yoff)
+					self.AddFriendWithCells(xoff, yoff)
+				else:
+					if not self.trans_tree.AddFriend(treename, '{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run)):
+						self.CreateFriendWithCells(xoff, yoff)
+						self.AddFriendWithCells(xoff, yoff)
 			else:
-				self.CreateFriendWithCells()
+				self.CreateFriendWithCells(xoff, yoff)
+				self.AddFriendWithCells(xoff, yoff)
+		else:
+			if overWrite and xoff==0 and yoff==0:
+				self.UnfriendTree(self.trans_tree.GetFriend(treename))
+				if os.path.isfile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run)):
+					os.remove('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run))
+				self.CreateFriendWithCells(xoff, yoff)
 				self.AddFriendWithCells(xoff, yoff)
 
-	def CreateFriendWithCells(self):
+
+	def CreateFriendWithCells(self, xoff=0, yoff=0):
 		if self.dia_cols:
 			print 'Getting vectors to calculate cells...', ; sys.stdout.flush()
 			tempc = self.cuts_man.transp_ev
@@ -1705,9 +1852,14 @@ class TransparentGrid:
 				bar.update(ev + 1)
 			bar.finish()
 
-			print 'Saving trees:'
-			cellsFile = ro.TFile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run), 'RECREATE')
-			cellsTree = ro.TTree('cells', 'cells')
+			print 'Saving tree:'
+			xoff_nm = int(RoundInt(xoff * self.row_cell_info_diamond['width'] * 10) * 100)
+			yoff_nm = int(RoundInt(yoff * 10) * 100)
+			x_prefix = '' if xoff >= 0 else 'Neg'
+			y_prefix = '' if yoff >= 0 else 'Neg'
+			treename = 'cells{xp}{x}X{yp}{y}Y'.format(x=abs(xoff_nm), xp=x_prefix, yp=y_prefix, y=abs(yoff_nm))
+			cellsFile = ro.TFile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run), 'UPDATE') if os.path.isfile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run)) else ro.TFile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run), 'RECREATE')
+			cellsTree = ro.TTree(treename, treename)
 			x0 = np.zeros(1, 'f4')
 			y0 = np.zeros(1, 'f4')
 			col = np.zeros(1, 'uint8')

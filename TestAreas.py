@@ -52,6 +52,7 @@ class TestAreas:
 		self.num_rows_even = 0
 		self.num_rows_odd = 0
 		self.rows_pitch = 0
+		self.cells_width = 0
 		self.saturated_ADC = 0
 		self.num_strips = 0
 		self.cluster_size = 0
@@ -164,6 +165,8 @@ class TestAreas:
 					self.num_rows_odd = pars.getint('ROWS', 'num_odd')
 				if pars.has_option('ROWS', 'height'):
 					self.rows_pitch = pars.getfloat('ROWS', 'height')
+				if pars.has_option('ROWS', 'width'):
+					self.cells_width = pars.getfloat('ROWS', 'width')
 			if pars.has_section('COLUMNS'):
 				if pars.has_option('COLUMNS', 'cols'):
 					cols = pars.get('COLUMNS', 'cols')
@@ -179,18 +182,24 @@ class TestAreas:
 			print 'Done'
 
 	def SetTest(self):
+		"""
+		This method selects the cells to take into account from the region from the selection analysis.
+		This is done either by giving a detailed list of coloumns, rows or cells in the config file,
+		or by giving a threshold and setting do_threshold as True to automatically select cells above the threshold
+		:return: Nothing
+		"""
 		if self.do_threshold:
 			if self.threshold == 0:
-				self.trans_grid.FindThresholdCutFromCells('clusterCharge2', 'adc', self.phmin, self.phmax, self.delta_adc / 2.)
+				self.trans_grid.FindThresholdCutFromCells('clusterChargeN', 'adc', self.phmin, self.phmax, self.delta_adc / 2.)
 				self.threshold = self.trans_grid.threshold
 			self.trans_grid.ResetAreas()
 			print 'Selecting areas with a ph2 greater or equal than', self.threshold, '...', ; sys.stdout.flush()
-			self.trans_grid.SelectGoodAndBadByThreshold(self.threshold, 'clusterCharge2')
+			self.trans_grid.SelectGoodAndBadByThreshold(self.threshold, 'clusterChargeN')
 			print 'Done'
 			self.trans_grid.AddRemainingToBadAreas()
 			print 'Marked the remaining cells as bad'
 			if len(self.trans_grid.gridAreas.goodAreas_diamond) < 2:
-				print 'There is only', len(self.trans_grid.gridAreas.goodAreas_diamond), 'cell in the selection. Check the thresholds or the area config file. Break'
+				print 'There is only', len(self.trans_grid.gridAreas.goodAreas_diamond), 'cell in the selection. Check the thresholds or the area config file'
 				if self.do_threshold:
 					self.threshold = int(RoundInt(self.threshold * 0.75))
 					print 'Trying with a new threshold of', self.threshold
@@ -256,6 +265,11 @@ class TestAreas:
 			self.w += self.window_shift
 
 	def DoBorderPlots(self):
+		"""
+		This Method creates a 2D Profile Map of all the transparent events showing the cells divistion and which cells will be used for the analysis.
+		Then it makes a projection in the Y axis and shows the fit that it was used to determine the edges Y limits.
+		:return: Nothing
+		"""
 		self.trans_grid.DrawProfile2DDiamond('PH2_H_map_with_borders', self.trans_grid.GetPHNChsVar(2, 'H', False))
 		self.trans_grid.DrawTCutGs('PH2_H_map_with_borders', 'diamond')
 		self.trans_grid.DrawGoodAreasDiamondCenters('PH2_H_map_with_borders')
@@ -277,8 +291,8 @@ class TestAreas:
 		self.PositionCanvas('PH2_H_map_with_borders')
 		self.trans_grid.canvas['PH2_H_map_with_borders_py'].cd()
 		self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().SetRangeUser(miny, maxy)
-		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-({l}))/[1])+1)/2-[2]*(TMath::Erf((x-{u})/[3])+1)/2+[4]'.format(l=self.trans_grid.row_cell_info_diamond['0'], u=self.trans_grid.row_cell_info_diamond['up']), miny, maxy)
-		func.SetNpx(int(self.trans_grid.row_cell_info_diamond['num'] * self.trans_grid.bins_per_ch_y * 100))
+		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-({l}))/[1])+1)/2-[2]*(TMath::Erf((x-{u})/[3])+1)/2+[4]'.format(l=np.array([self.trans_grid.row_cell_info_diamond['0_even'], self.trans_grid.row_cell_info_diamond['0_odd']]).mean(), u=np.array([self.trans_grid.row_cell_info_diamond['up_even'], self.trans_grid.row_cell_info_diamond['up_even']]).mean()), miny, maxy)
+		func.SetNpx(10000)
 		zmin, zmax = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetMinimum(), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetMaximum()
 		y1bin, y2bin = self.trans_grid.histo['PH2_H_map_with_borders_py'].FindFirstBinAbove((zmin + zmax) / 2.0), self.trans_grid.histo['PH2_H_map_with_borders_py'].FindLastBinAbove((zmin + zmax) / 2.0) + 1
 		y1, y2 = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinCenter(y1bin), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinCenter(y2bin)
@@ -462,6 +476,16 @@ class TestAreas:
 		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys())
 
 	def DoAutomatic(self, cells='good', types=['adc'], isFriend=False, SaveAllPlots=False, isFirst=False):
+		"""
+		Makes a complete analysis
+		:param cells: Specify which cells to analyse. Options are: "good": selected cells, "bad": not selected cells, "all": all the cells in the transparent grid
+		:param types: Is a list that contains the type of variable to analyse. It can be ['adc'] (only adc), ['snr'] (only snr) or ['adc', 'snr'] (both adc and snr)
+		:param isFriend: This flag is to do the analysis with a different pedestal calculation whose data is stored in a pedTree which should be a friend of the transparentTree. The method AddFriendWithNewPedestalBuffer should have been used before.
+		:param SaveAllPlots: If true, all the plots created and which have a corresponding Canvas, will be stored as png and root files
+		:param isFirst: If it is true, then the analysis will stop after DoClusterStudies, so that the user can select accurate values for neg_cut_adc and neg_cut_snr and then save the pickle.
+		:return: Nothing
+		"""
+
 		self.window_shift = 1
 		self.DoBorderPlots()
 		for typ in ['adc', 'snr']:
@@ -484,26 +508,40 @@ class TestAreas:
 			self.SaveCanvas()
 
 	def SetTransparentGrid(self):
+		"""
+		This method tries to load a saved pickle from the test subdirectory. If it has not been created,
+		it will create it with info from the config file and also by asking the user. Then it will update certain
+		parameters that are set by the user in the config file. At the end it save the pickle file to take into account
+		all the modifications
+		:return: Nothing
+		"""
 		self.trans_grid.pkl_sbdir = 'test' + str(self.num)
 		self.trans_grid.LoadPickle()
 
+		is_first_time = False
 		if not self.trans_grid.loaded_pickle:
+			is_first_time = True
 			print 'It is first time the analysis runs on this data set test' + str(self.num) + '. Creating pickle file:'
-			self.trans_grid.cluster_size = Get_From_User_Value('cluster size for run ' + str(self.run), 'int', self.trans_grid.cluster_size, True) if self.cluster_size == 0 else self.cluster_size
-			self.trans_grid.num_strips = Get_From_User_Value('number of strips for run ' + str(self.run), 'int', self.trans_grid.num_strips, True) if self.num_strips == 0 else self.num_strips
-			self.trans_grid.threshold = self.trans_grid.threshold if self.threshold == 0 else self.threshold
-			self.trans_grid.cell_resolution = self.trans_grid.cell_resolution if self.cell_resolution == 0 else self.cell_resolution
 			self.trans_grid.phmax = self.trans_grid.phmax if self.phmax == -10000 else self.phmax
 			self.trans_grid.phmin = self.trans_grid.phmin if self.phmin == 10000 else self.phmin
 			if self.delta_adc != 0:
 				self.trans_grid.phbins = RoundInt(float(self.phmax - self.phmin) / self.delta_adc)
+			self.trans_grid.row_cell_info_diamond['num_even'] = self.trans_grid.row_cell_info_diamond['num_even'] if self.num_rows_even == 0 else self.num_rows_even
+			self.trans_grid.row_cell_info_diamond['num_odd'] = self.trans_grid.row_cell_info_diamond['num_odd'] if self.num_rows_odd == 0 else self.num_rows_odd
+			self.trans_grid.row_cell_info_diamond['height'] = self.trans_grid.row_cell_info_diamond['height'] if self.rows_pitch == 0 else self.rows_pitch
+			self.trans_grid.row_cell_info_diamond['width'] = self.trans_grid.row_cell_info_diamond['width'] if self.cells_width == 0 else self.cells_width
+
+			self.trans_grid.SetupCutManager()
+			self.trans_grid.FindPickleValues(True, True)
+
+			self.trans_grid.cluster_size = Get_From_User_Value('cluster size for run ' + str(self.run), 'int', self.trans_grid.cluster_size, True) if self.cluster_size == 0 else self.cluster_size
+			self.trans_grid.num_strips = Get_From_User_Value('number of strips for run ' + str(self.run), 'int', self.trans_grid.num_strips, True) if self.num_strips == 0 else self.num_strips
+			self.trans_grid.threshold = self.trans_grid.threshold if self.threshold == 0 else self.threshold
+			self.trans_grid.cell_resolution = self.trans_grid.cell_resolution if self.cell_resolution == 0 else self.cell_resolution
 			self.trans_grid.bins_per_ch_x = self.trans_grid.bins_per_ch_x if self.binsperx == 0 else self.binsperx
 			self.trans_grid.bins_per_ch_y = self.trans_grid.bins_per_ch_y if self.binspery == 0 else self.binspery
 			self.trans_grid.efficiency_subdiv = self.trans_grid.efficiency_subdiv if self.efficiency_subdiv == 1 else self.efficiency_subdiv
 			self.trans_grid.saturated_ADC = Get_From_User_Value('saturated_ADC for run ' + str(self.run), 'int', self.trans_grid.saturated_ADC, True) if self.saturated_ADC == 0 else self.saturated_ADC
-			self.trans_grid.row_cell_info_diamond['num_even'] = self.trans_grid.row_cell_info_diamond['num_even'] if self.num_rows_even == 0 else self.num_rows_even
-			self.trans_grid.row_cell_info_diamond['num_odd'] = self.trans_grid.row_cell_info_diamond['num_odd'] if self.num_rows_odd == 0 else self.num_rows_odd
-			self.trans_grid.row_cell_info_diamond['height'] = self.trans_grid.row_cell_info_diamond['height'] if self.rows_pitch == 0 else self.rows_pitch
 			self.trans_grid.bias = Get_From_User_Value('bias for run ' + str(self.run), 'float', self.trans_grid.bias, update=True)
 			self.trans_grid.neg_cut_adc = self.neg_cut_adc if self.neg_cut_adc != 4100 else self.trans_grid.neg_cut_adc
 			self.trans_grid.neg_cut_snr = self.neg_cut_snr if self.neg_cut_snr != 410 else self.trans_grid.neg_cut_snr
@@ -515,32 +553,35 @@ class TestAreas:
 			self.trans_grid.seed_factor = self.trans_grid.seed_factor if self.seed_factor == 0 else self.seed_factor
 			self.trans_grid.num_sides = self.trans_grid.num_sides if self.num_sides == 0 else self.num_sides
 			self.trans_grid.SavePickle()
-		else:
-			print 'Updating variables not saved in the pickle...', ; sys.stdout.flush()
-			self.cluster_size = self.trans_grid.cluster_size if self.cluster_size == 0 else self.cluster_size
-			self.threshold = self.trans_grid.threshold if self.threshold == 0 else self.threshold
-			self.num_strips = self.trans_grid.num_strips if self.num_strips == 0 else self.num_strips
-			self.phmax = self.trans_grid.phmax if self.phmax == -10000 else self.phmax
-			self.phmin = self.trans_grid.phmin if self.phmin == 10000 else self.phmin
-			self.delta_adc = float(self.phmax - self.phmin) / float(self.trans_grid.phbins) if self.delta_adc == 0 else self.delta_adc
-			self.binsperx = self.trans_grid.bins_per_ch_x if self.binsperx == 0 else self.binsperx
-			self.binxpery = self.trans_grid.bins_per_ch_y if self.binspery == 0 else self.binspery
-			self.efficiency_subdiv = self.trans_grid.efficiency_subdiv if self.efficiency_subdiv == 1 else self.efficiency_subdiv
-			self.saturated_ADC = self.trans_grid.saturated_ADC if self.saturated_ADC == 0 else self.saturated_ADC
-			self.num_rows_even = self.trans_grid.row_cell_info_diamond['num_even'] if self.num_rows_even == 0 else self.num_rows_even
-			self.num_rows_odd = self.trans_grid.row_cell_info_diamond['num_odd'] if self.num_rows_odd == 0 else self.num_rows_odd
-			self.rows_pitch = self.trans_grid.row_cell_info_diamond['height'] if self.rows_pitch == 0 else self.rows_pitch
-			self.bias = self.trans_grid.bias if self.bias == 0 else self.bias
-			self.neg_cut_adc = self.trans_grid.neg_cut_adc if self.neg_cut_adc == 4100 else self.neg_cut_adc
-			self.neg_cut_snr = self.trans_grid.neg_cut_snr if self.neg_cut_snr == 410 else self.neg_cut_snr
-			self.conv_steps = self.trans_grid.conv_steps if self.conv_steps == 0 else self.conv_steps
-			self.sigma_conv = self.trans_grid.sigma_conv if self.sigma_conv == 0 else self.sigma_conv
-			self.mpshift = self.trans_grid.mpshift if self.mpshift == 0 else self.mpshift
-			self.num_parallel = self.trans_grid.num_parallel if self.num_parallel == 0 else self.num_parallel
-			self.hit_factor = self.trans_grid.hit_factor if self.hit_factor == 0 else self.hit_factor
-			self.seed_factor = self.trans_grid.seed_factor if self.seed_factor == 0 else self.seed_factor
-			self.num_sides = self.trans_grid.num_sides if self.num_sides == 0 else self.num_sides
-			print 'Done'
+
+			print 'It is suggested to run the FindPickleValues method in transparent_grid to find the remaining parameters'
+
+		print 'Updating variables not saved in the pickle...', ; sys.stdout.flush()
+		self.cluster_size = self.trans_grid.cluster_size if self.cluster_size == 0 else self.cluster_size
+		self.threshold = self.trans_grid.threshold if self.threshold == 0 else self.threshold
+		self.num_strips = self.trans_grid.num_strips if self.num_strips == 0 else self.num_strips
+		self.phmax = self.trans_grid.phmax if self.phmax == -10000 else self.phmax
+		self.phmin = self.trans_grid.phmin if self.phmin == 10000 else self.phmin
+		self.delta_adc = float(self.phmax - self.phmin) / float(self.trans_grid.phbins) if self.delta_adc == 0 else self.delta_adc
+		self.binsperx = self.trans_grid.bins_per_ch_x if self.binsperx == 0 else self.binsperx
+		self.binxpery = self.trans_grid.bins_per_ch_y if self.binspery == 0 else self.binspery
+		self.efficiency_subdiv = self.trans_grid.efficiency_subdiv if self.efficiency_subdiv == 1 else self.efficiency_subdiv
+		self.saturated_ADC = self.trans_grid.saturated_ADC if self.saturated_ADC == 0 else self.saturated_ADC
+		self.num_rows_even = self.trans_grid.row_cell_info_diamond['num_even'] if self.num_rows_even == 0 else self.num_rows_even
+		self.num_rows_odd = self.trans_grid.row_cell_info_diamond['num_odd'] if self.num_rows_odd == 0 else self.num_rows_odd
+		self.rows_pitch = self.trans_grid.row_cell_info_diamond['height'] if self.rows_pitch == 0 else self.rows_pitch
+		self.cells_width = self.trans_grid.row_cell_info_diamond['width'] if self.cells_width == 0 else self.cells_width
+		self.bias = self.trans_grid.bias if self.bias == 0 else self.bias
+		self.neg_cut_adc = self.trans_grid.neg_cut_adc if self.neg_cut_adc == 4100 else self.neg_cut_adc
+		self.neg_cut_snr = self.trans_grid.neg_cut_snr if self.neg_cut_snr == 410 else self.neg_cut_snr
+		self.conv_steps = self.trans_grid.conv_steps if self.conv_steps == 0 else self.conv_steps
+		self.sigma_conv = self.trans_grid.sigma_conv if self.sigma_conv == 0 else self.sigma_conv
+		self.mpshift = self.trans_grid.mpshift if self.mpshift == 0 else self.mpshift
+		self.num_parallel = self.trans_grid.num_parallel if self.num_parallel == 0 else self.num_parallel
+		self.hit_factor = self.trans_grid.hit_factor if self.hit_factor == 0 else self.hit_factor
+		self.seed_factor = self.trans_grid.seed_factor if self.seed_factor == 0 else self.seed_factor
+		self.num_sides = self.trans_grid.num_sides if self.num_sides == 0 else self.num_sides
+		print 'Done'
 
 		self.trans_grid.cluster_size = self.cluster_size
 		self.trans_grid.num_strips = self.num_strips
@@ -556,6 +597,7 @@ class TestAreas:
 		self.trans_grid.row_cell_info_diamond['num_even'] = self.num_rows_even
 		self.trans_grid.row_cell_info_diamond['num_odd'] = self.num_rows_odd
 		self.trans_grid.row_cell_info_diamond['height'] = self.rows_pitch
+		self.trans_grid.row_cell_info_diamond['width'] = self.cells_width
 		self.trans_grid.bias = self.bias
 		self.trans_grid.neg_cut_adc = self.neg_cut_adc
 		self.trans_grid.neg_cut_snr = self.neg_cut_snr
@@ -567,6 +609,11 @@ class TestAreas:
 		self.trans_grid.seed_factor = self.seed_factor
 		self.trans_grid.num_sides = self.num_sides
 		self.trans_grid.SavePickle()
+
+
+		self.trans_grid.CreateGridAreas()
+		self.trans_grid.CreateTCutGs()
+		self.trans_grid.AddFriendWithCells(self.trans_grid.row_cell_info_diamond['x_off'], self.trans_grid.row_cell_info_diamond['y_off'])
 
 if __name__ == '__main__':
 	parser = OptionParser()
@@ -586,11 +633,6 @@ if __name__ == '__main__':
 	t = TestAreas(config, run)
 	t.SetTransparentGrid()
 	t.SetTest()
-	if t.trans_grid.loaded_pickle:
-		t.trans_grid.LoadPickle()
-	else:
-		t.trans_grid.FindPickleValues(False)
-		ExitMessage('Run it again to load the generated pickle :)', os.EX_OK)
 	if autom:
 		t.DoAutomatic('good', types=typ if not first else ['adc', 'snr'], SaveAllPlots=True, isFirst=first)
 

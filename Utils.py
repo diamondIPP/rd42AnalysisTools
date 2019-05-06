@@ -487,6 +487,18 @@ def SetDefault1DCanvasSettings(canvas):
 	canvas.SetTicky()
 	ro.gPad.Update()
 
+def GetHistoAverageBinContent(histo):
+	sumbc = 0
+	bins = 0
+	if histo:
+		for b in xrange(1, histo.GetNbinsX() + 1):
+			binc = histo.GetBinContent(b)
+			if binc > 0:
+				bins += 1
+				sumbc += binc
+		return float(sumbc) / bins
+	return 0
+
 def FindLeafInTree(tree, leaf):
 	if tree.FindLeaf(leaf):
 		return True
