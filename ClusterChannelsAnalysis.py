@@ -24,8 +24,6 @@ class ClusterChannelsAnalysis:
 		self.trash = []
 		self.w = 0
 		self.trans_grid = trans_grid
-		self.minz = self.trans_grid.minz
-		self.maxz = self.trans_grid.maxz
 		self.num_strips = numstrips
 		self.cluster_size = clustersize
 		self.noise_ana = noise_ana
@@ -183,6 +181,8 @@ class ClusterChannelsAnalysis:
 		else:
 			self.strips_for_analysis = np.arange(self.num_strips, dtype='i4')
 			self.strips_for_analysis = self.strips_for_analysis if self.cluster_size > 3 else np.unique(np.append(self.strips_for_analysis, self.cluster_size - 1))
+		self.minz = self.trans_grid.minz
+		self.maxz = self.trans_grid.maxz
 
 if __name__ == '__main__':
 	c = ClusterChannelsAnalysis(None, 0, 0)

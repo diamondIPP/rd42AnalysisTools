@@ -97,19 +97,22 @@ class NegativeChargesAnalysis:
 
 	def DoProfileMaps(self, typ='adc', isFriend=False):
 		xmin, xmax, deltax, xname = self.trans_grid.ch_ini - 1.5, self.trans_grid.ch_end + 1.5, 1.0/self.trans_grid.bins_per_ch_x, 'pred dia hit ch',
-		ymin, ymax, deltay, yname = self.trans_grid.row_cell_info_diamond['0'] - RoundInt(float(self.trans_grid.row_cell_info_diamond['0']) / self.trans_grid.row_cell_info_diamond['height'], 'f8') * self.trans_grid.row_cell_info_diamond['height'], self.trans_grid.row_cell_info_diamond['0'] + (256 - RoundInt(float(self.trans_grid.row_cell_info_diamond['0']) / self.trans_grid.row_cell_info_diamond['height'], 'f8')) * self.trans_grid.row_cell_info_diamond['height'], float(self.trans_grid.row_cell_info_diamond['height'])/self.trans_grid.bins_per_ch_y, 'sil pred dia hit in Y [#mum]'
+		ymin = min(self.trans_grid.row_cell_info_diamond['0_even'], self.trans_grid.row_cell_info_diamond['0_odd'])
+		yup_max = max(self.trans_grid.row_cell_info_diamond['up_even'], self.trans_grid.row_cell_info_diamond['up_odd'])
+		ymin = ymin - RoundInt(float(ymin) / self.trans_grid.row_cell_info_diamond['height'], 'f8') * self.trans_grid.row_cell_info_diamond['height']
+		ymax, deltay, yname = ymin + 256 * 50., float(self.trans_grid.row_cell_info_diamond['height'])/self.trans_grid.bins_per_ch_y, 'sil pred dia hit in Y [#mum]'
 
 		def DrawProfile2D(name, varz, varzname, cut, xdelt=deltax, namex=xname, varx='diaChXPred', getOccupancy=False):
 			self.trans_grid.DrawProfile2D(name, xmin, xmax, xdelt, namex, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, varzname, cut)
 			self.trans_grid.profile[name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-			self.trans_grid.profile[name].GetYaxis().SetRangeUser(self.trans_grid.row_cell_info_diamond['0'] - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_cell_info_diamond['up'] + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
+			self.trans_grid.profile[name].GetYaxis().SetRangeUser(ymin - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), yup_max + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 			self.trans_grid.DrawTCutGs(name, 'diamond')
 			self.trans_grid.DrawGoodAreasDiamondCenters(name)
 			self.PosCanvas(name)
 			if getOccupancy:
 				self.trans_grid.GetOccupancyFromProfile(name)
 				self.trans_grid.histo['hit_map_' + name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-				self.trans_grid.histo['hit_map_' + name].GetYaxis().SetRangeUser(self.trans_grid.row_cell_info_diamond['0'] - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_cell_info_diamond['up'] + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
+				self.trans_grid.histo['hit_map_' + name].GetYaxis().SetRangeUser(ymin - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), yup_max + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 				self.trans_grid.DrawTCutGs('hit_map_' + name, 'diamond')
 				self.trans_grid.DrawGoodAreasDiamondCenters('hit_map_' + name)
 				self.PosCanvas('hit_map_' + name)

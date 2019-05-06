@@ -316,7 +316,7 @@ class TestAreas:
 		self.trans_grid.mean_ph_cell_dic[typ] = {}
 		fact = 1. if typ == 'adc' else 10.
 		minx, maxx, deltax = self.phmin / fact, self.phmax / fact, self.delta_adc / (2. * fact)
-		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.GetPHNChsVar(self.num_strips, 'H', True), typ, minx, maxx, deltax)
+		self.trans_grid.FindThresholdCutFromCells(self.trans_grid.GetPHNChsVar(self.num_strips, 'H', typ == 'snr'), typ, minx, maxx, deltax)
 		self.PositionCanvas('mean_ph_per_cell_{t}'.format(t=typ))
 		# self.trans_grid.FindThresholdCutFromCells(self.trans_grid.GetPHNChsVar(self.num_strips, 'H', False), typ, self.phmin, self.phmax, self.delta_adc / 2.)
 		# self.PositionCanvas('mean_ph_per_cell_adc')
@@ -507,7 +507,7 @@ class TestAreas:
 		if SaveAllPlots and not isFirst:
 			self.SaveCanvas()
 
-	def SetTransparentGrid(self):
+	def SetTransparentGrid(self, isFirst=False):
 		"""
 		This method tries to load a saved pickle from the test subdirectory. If it has not been created,
 		it will create it with info from the config file and also by asking the user. Then it will update certain
@@ -519,7 +519,7 @@ class TestAreas:
 		self.trans_grid.LoadPickle()
 
 		is_first_time = False
-		if not self.trans_grid.loaded_pickle:
+		if not self.trans_grid.loaded_pickle or isFirst:
 			is_first_time = True
 			print 'It is first time the analysis runs on this data set test' + str(self.num) + '. Creating pickle file:'
 			self.trans_grid.phmax = self.trans_grid.phmax if self.phmax == -10000 else self.phmax
@@ -532,7 +532,8 @@ class TestAreas:
 			self.trans_grid.row_cell_info_diamond['width'] = self.trans_grid.row_cell_info_diamond['width'] if self.cells_width == 0 else self.cells_width
 
 			self.trans_grid.SetupCutManager()
-			self.trans_grid.FindPickleValues(True, True)
+			if self.trans_grid.row_cell_info_diamond['0_even'] == 0 and self.trans_grid.row_cell_info_diamond['0_odd'] == 0:
+				self.trans_grid.FindPickleValues(True, True)
 
 			self.trans_grid.cluster_size = Get_From_User_Value('cluster size for run ' + str(self.run), 'int', self.trans_grid.cluster_size, True) if self.cluster_size == 0 else self.cluster_size
 			self.trans_grid.num_strips = Get_From_User_Value('number of strips for run ' + str(self.run), 'int', self.trans_grid.num_strips, True) if self.num_strips == 0 else self.num_strips
@@ -553,6 +554,9 @@ class TestAreas:
 			self.trans_grid.seed_factor = self.trans_grid.seed_factor if self.seed_factor == 0 else self.seed_factor
 			self.trans_grid.num_sides = self.trans_grid.num_sides if self.num_sides == 0 else self.num_sides
 			self.trans_grid.SavePickle()
+
+			del self.trans_grid.cuts_man
+			self.trans_grid.cuts_man = None
 
 			print 'It is suggested to run the FindPickleValues method in transparent_grid to find the remaining parameters'
 
@@ -610,7 +614,8 @@ class TestAreas:
 		self.trans_grid.num_sides = self.num_sides
 		self.trans_grid.SavePickle()
 
-
+		if self.trans_grid.gridAreas:
+			self.trans_grid.ResetAreas()
 		self.trans_grid.CreateGridAreas()
 		self.trans_grid.CreateTCutGs()
 		self.trans_grid.AddFriendWithCells(self.trans_grid.row_cell_info_diamond['x_off'], self.trans_grid.row_cell_info_diamond['y_off'])
@@ -631,8 +636,8 @@ if __name__ == '__main__':
 	first = bool(options.first)
 
 	t = TestAreas(config, run)
-	t.SetTransparentGrid()
+	t.SetTransparentGrid(first)
 	t.SetTest()
 	if autom:
-		t.DoAutomatic('good', types=typ if not first else ['adc', 'snr'], SaveAllPlots=True, isFirst=first)
+		t.DoAutomatic('good', types=typ if not first else ['adc', 'snr'], SaveAllPlots=False, isFirst=first)
 

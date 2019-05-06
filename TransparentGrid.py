@@ -162,6 +162,10 @@ class TransparentGrid:
 					self.ped_tree.SetBranchStatus(branch, 1)
 
 	def FindDiamondChannelLimits(self):
+		"""
+		Automatically finds the upper and lower channels. The difference between the two limits will define the number of columns in the transparent grid
+		:return:
+		"""
 		temph = ro.TH1F('temph', 'temph', 128, -0.5, 127.5)
 		self.trans_tree.Draw('diaChXPred>>temph', 'transparentEvent', 'goff')
 		self.ch_ini = int(temph.GetBinCenter(temph.FindFirstBinAbove(1, 1)))
@@ -169,6 +173,11 @@ class TransparentGrid:
 		self.num_cols = self.ch_end - self.ch_ini + 1
 
 	def SavePickle(self, saveDefault=False):
+		"""
+		Save the pickle object inside the sub-directory pkl_sbdir
+		:param saveDefault: If saveDefault is true, it will also create a subfolder for default
+		:return:
+		"""
 		object_dic = {}
 		object_dic['row_cell_info_diamond'] = self.row_cell_info_diamond
 		object_dic['align_info'] = self.align_info
@@ -327,17 +336,13 @@ class TransparentGrid:
 		self.col_overlay_var2 = '{cp}*((x0-{xo})-TMath::Floor(0.5+(x0-{xo})))'.format(cp=self.row_cell_info_diamond['width'], xo=self.xoffset)
 		self.row_overlay_var2 = '{rp}*((y0-{yo})/{rp}-TMath::Floor(0.5+(y0-{yo})/{rp}))'.format(rp=self.row_cell_info_diamond['height'], yo=self.yoffset)
 
-	def FindHorizontalParametersThroughAlignment(self):
-		self.LoadAlignmentParameters()
-
-	def LoadAlignmentParameters(self):
-		if os.path.isfile('{d}/{r}/alignment.{r}.root'.format(d=self.dir, r=self.run)):
-			self.align_file = ro.TFile('{d}/{r}/alignment.{r}.root'.format(d=self.dir, r=self.run), 'r')
-			self.align_obj = self.align_file.Get('alignment')
-			self.align_info['xoff'] = self.align_obj.GetXOffset(4)
-			self.align_info['phi'] = self.align_obj.GetPhiXOffset(4)
-
 	def FindPickleValues(self, do_offset_plots=True, do_binning=False):
+		"""
+		Automatically find some pickle parameters that could be close to the real values. Should only be used at the beginning of the analysis to save some time
+		:param do_offset_plots: If true, it will show the offset plots used to calculate the xoffset and yoffset.
+		:param do_binning: if true, it will automatically calculate the binning parameters for ph 1d plots and the cell resolution for cell overlay plots
+		:return:
+		"""
 		self.FindUpperAndLowerLimitsInY()
 		self.SavePickle()
 		if do_binning:
@@ -435,6 +440,12 @@ class TransparentGrid:
 				self.row_cell_info_diamond['up_' + col_type] = y_up
 
 	def ShiftVerticalLimits(self, yoff=0, updatePickle=False):
+		"""
+		Used to quickly shift the vertical variables in the pickle by a fixed quantity 'yoff'
+		:param yoff: value in mum to shift the vertical variables
+		:param updatePickle: If true, the pickle will be saved after the modification
+		:return:
+		"""
 		self.row_cell_info_diamond['0_even'] += yoff
 		self.row_cell_info_diamond['0_odd'] += yoff
 		self.row_cell_info_diamond['up_odd'] += yoff
@@ -442,10 +453,23 @@ class TransparentGrid:
 		if updatePickle:
 			self.SavePickle()
 
+	def SaveLocalOffestInPickle(self):
+		"""
+		Used to quickly transfer the offset results from FindXOffset and FindYOffset into the pickle offset variables to be saved
+		:return:
+		"""
+		self.row_cell_info_diamond['x_off'] += self.xoffset
+		self.row_cell_info_diamond['y_off'] += self.yoffset
+		self.SavePickle()
+
 	def FindBinningAndResolution(self):
+		"""
+		Method used to automatically find a binning suitable for analysis. It sets the delta_adc (phbins) and the cell_resolution
+		It should be avoided if a desired binning is desired. e.g. to compare multiple runs
+		:return:
+		"""
 		if self.gridAreas:
 			if len(self.gridAreas.goodAreas_index) == 0:
-				self.ResetLines()
 				self.ResetAreas()
 				self.CreateGridAreas()
 				self.CreateTCutGs()
@@ -490,6 +514,11 @@ class TransparentGrid:
 		self.FindYOffset(factor, do_plot, cells)
 
 	def ShiftHalfXandYOffsets(self, n=1):
+		"""
+		Method used to shift the cell in X and in Y by half a cell. It is usefull to check fine-alignment
+		:param n: integer which states how many odd-integer halves of the cell must be shifted
+		:return:
+		"""
 		tempn = RoundInt(n)
 		tempn = tempn - 0.5 if tempn > 0 else tempn + 0.5 if tempn < 0 else 0
 		if tempn == 0:
@@ -502,6 +531,11 @@ class TransparentGrid:
 		self.SetOverlayVariables()
 
 	def ShiftHalfXOffset(self, n=1):
+		"""
+		Method used to shift the cell in X by half a cell. It is usefull to check fine-alignment
+		:param n: integer which states how many odd-integer halves of the cell must be shifted
+		:return:
+		"""
 		tempn = RoundInt(n)
 		tempn = tempn - 0.5 if tempn > 0 else tempn + 0.5 if tempn < 0 else 0
 		if tempn == 0:
@@ -512,6 +546,11 @@ class TransparentGrid:
 		self.SetOverlayVariables()
 
 	def ShiftHalfYOffset(self, n=1):
+		"""
+		Method used to shift the cell in Y by half a cell. It is usefull to check fine-alignment
+		:param n: integer which states how many odd-integer halves of the cell must be shifted
+		:return:
+		"""
 		tempn = RoundInt(n)
 		tempn = tempn - 0.5 if tempn > 0 else tempn + 0.5 if tempn < 0 else 0
 		if tempn == 0:
@@ -607,103 +646,39 @@ class TransparentGrid:
 		self.yoffset = y_off_shifted - 0.5 * self.row_cell_info_diamond['height']
 		self.SetOverlayVariables()
 
-	def AskUserLowerYLines(self):
-		do_diamond = raw_input('Enter 1 if you want to enter the lower y line parameters of the plots in diamond space')
-		if bool(int(do_diamond)):
-			self.AskUserDiamondLineParameters()
-
-	def AskUserDiamondLineParameters(self):
-		self.row_cell_info_diamond['0'] = self.GetFromUser('Enter the y axis intercept in silicon space for the lower detector limit (scalar between 0 and 12800 in um): ', typ='float', limits=[0, 12800])
-		self.row_cell_info_diamond['height'] = self.GetFromUser('Enter the effective vertical pitch in um: ', typ='float', limits=[0, 20000])
-		self.row_cell_info_diamond['x_off'] = self.GetFromUser('Enter the offset for dia X ch for overlay plots (scalar between -1 and 1): ', typ='float', limits=[-1, 1])
-		self.row_cell_info_diamond['y_off'] = self.GetFromUser('Enter the offset for dia Y in um for overlay plots (scalar between -{p} and {p}): '.format(p=self.row_cell_info_diamond['height']), typ='float', limits=[-self.row_cell_info_diamond['height'], self.row_cell_info_diamond['height']])
-		self.row_cell_info_diamond['num'] = self.GetFromUser('Enter the number of rows: ', typ='int', limits=[1, 1000])
-
-	def GetFromUser(self, message, typ, limits=[]):
-		cont = False
-		tempv = 0
-		while not cont:
-			tempv = raw_input(message)
-			if typ == 'int':
-				if IsInt(tempv):
-					tempv = int(tempv)
-					if len(limits) == 2:
-						if limits[0] <= tempv <= limits[1]:
-							cont = True
-					else:
-						cont = True
-			if typ == 'float':
-				if IsFloat(tempv):
-					tempv = float(tempv)
-					if len(limits) == 2:
-						if limits[0] <= tempv <= limits[1]:
-							cont = True
-					else:
-						cont = True
-		return tempv
-
-	def CreateLines(self):
-		linev = self.GetVerticalLineDiamond(x=self.ch_ini - 0.5)
-		lineh = self.GetHorizontalLineDiamond(y=self.row_cell_info_diamond['0'])
-		self.vertical_lines_diamond.append(linev)
-		self.horizontal_lines_diamond.append(lineh)
-		for col in xrange(self.num_cols):
-			linev = self.GetVerticalLineDiamond(x=self.ch_ini + col + 0.5)
-			self.vertical_lines_diamond.append(linev)
-		for row in xrange(self.row_cell_info_diamond['num']):
-			lineh = self.GetHorizontalLineDiamond(y=self.row_cell_info_diamond['0'] + (row + 1) * self.row_cell_info_diamond['height'])
-			self.horizontal_lines_diamond.append(lineh)
-
-	def GetVerticalLineDiamond(self, x):
-		return {0: {'x': x, 'y': self.row_cell_info_diamond['0']}, 1: {'x': x, 'y': self.row_cell_info_diamond['0'] + self.row_cell_info_diamond['num'] * self.row_cell_info_diamond['height']}}
-
-	def GetHorizontalLineDiamond(self, y):
-		return {0: {'x': self.ch_ini - 0.5, 'y': y}, 1: {'x': self.ch_end + 0.5, 'y': y}}
-
-	def CreateLinesTLine(self):
-		for lineh in self.horizontal_lines_diamond:
-			self.horizontal_lines_diamond_tline.append(ro.TLine(lineh[0]['x'], lineh[0]['y'], lineh[1]['x'], lineh[1]['y']))
-			self.horizontal_lines_diamond_tline[-1].SetLineColor(ro.kRed)
-		for linev in self.vertical_lines_diamond:
-			self.vertical_lines_diamond_tline.append(ro.TLine(linev[0]['x'], linev[0]['y'], linev[1]['x'], linev[1]['y']))
-			self.vertical_lines_diamond_tline[-1].SetLineColor(ro.kRed)
-
-	def ResetLines(self):
-		self.horizontal_lines_diamond = []
-		self.horizontal_lines_diamond_tline = []
-		self.vertical_lines_diamond = []
-		self.vertical_lines_diamond_tline = []
-
-	def DrawLinesDiamond(self, name):
-		self.DrawLines(name, type='diamond')
-
-	def DrawLines(self, name, type):
-		# ro.gStyle.SetOptStat('en')
-		self.canvas[name].cd()
-		if type == 'diamond':
-			for lineh in self.horizontal_lines_diamond_tline:
-				lineh.Draw('same')
-			for linev in self.vertical_lines_diamond_tline:
-				linev.Draw('same')
-
 	def SetupCutManager(self):
+		"""
+		Deletes a previous CutManager object if it existed, and creates a new one with the current parameters
+		:return:
+		"""
 		if self.cuts_man:
 			self.cuts_man = None
 		self.cuts_man = CutManager(self.trans_tree, self.num_strips, self.cluster_size, self.saturated_ADC, self.neg_cut_adc, self.neg_cut_snr)
 
 	def CreateTCutGs(self):
+		"""
+		Creates the TCutGs for analysis. This is done by creating dia_cols variable which is an object of the class DiamondColumns.
+		This will contain all the information of individual columns and cells in the transparent grid. It is used to be able to use different cell-geometries such as hexagons or rectangles
+		:return:
+		"""
 		self.CreateTCutGsDiamond()
-		# self.CreateTCutGsDiamondCenter()
 		self.CreateGridText()
-		if not self.cuts_man:
-			self.SetupCutManager()
-	# self.cuts_man.SetCuts(neg_cut_snr=self.neg_cut_snr, neg_cut_adc=self.neg_cut_adc)
-	# self.cuts_man.SetUpDownBorderCuts(lower=self.row_cell_info_diamond['0'], upper=self.row_cell_info_diamond['up'])
+		self.SetupCutManager()
 
 	def CreateTCutGsDiamond(self):
+		"""
+		Creates the DiamondColumns object with the offsets in x and y specified by the pickle
+		:return:
+		"""
 		self.CreateTCutGsDiaCols(self.row_cell_info_diamond['x_off'], self.row_cell_info_diamond['y_off'])
 
 	def CreateTCutGsDiaCols(self, xoff=0, yoff=0):
+		"""
+		Creates the DiamondColumns object with the specified offsets entered as parameters.
+		:param xoff: is a value which indicates how much of the column should be shifted horizontally and in what direction. i.e. a value of 0.5 will indicate a shifting of the center of the columns by half the width of the column
+		:param yoff: is a value which indicates how many um should be shifted vertically and in what direction. i.e. a value of 50 will indicate a shifting of the center of the rows by 50um upwards
+		:return:
+		"""
 		if self.dia_cols:
 			self.dia_cols = None
 		self.dia_cols = DiamondColumns(self.num_cols, self.row_cell_info_diamond['height'], self.num_sides, self.run, self.row_cell_info_diamond['width'] / float(self.col_pitch))
@@ -721,6 +696,10 @@ class TransparentGrid:
 		self.cuts_man.out_central_rect_region[percentage] = '(!' + self.gridAreas.center_rectangles[percentage]['name'] + ')'
 
 	def CreateGridText(self):
+		"""
+		Creates the text that can be placed in profile diamond plots to easily navigate rows and columns
+		:return:
+		"""
 		miny = min(self.row_cell_info_diamond['0_even'], self.row_cell_info_diamond['0_odd'])
 		self.gridTextDiamond = ro.TH2F('gridText_diamond', 'gridText_diamond', int(RoundInt(128.0 * self.bins_per_ch_x, 'f8') + 2), -0.5 - 1.0 / self.bins_per_ch_x, 127.5 + 1.0 / self.bins_per_ch_x, int(self.bins_per_ch_y * RoundInt(256 * 50. / self.row_cell_info_diamond['height'], 'f8') + 2), miny - RoundInt(float(miny) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'] - (float(self.row_cell_info_diamond['height']) / self.bins_per_ch_y), miny - RoundInt(float(miny) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'] + 256 * 50 + (float(self.row_cell_info_diamond['height']) / self.bins_per_ch_y))
 		for col in xrange(0, self.num_cols):
@@ -740,7 +719,21 @@ class TransparentGrid:
 		self.gridTextDiamond.SetMarkerSize(0.8)
 
 	def DrawProfile2DDiamond(self, name, varz='clusterChargeN', varname='PH [ADC]', cells='', cuts='', transp_ev=True, plot_option='prof colz'):
+		"""
+		Method used to make a profile map fo the diamond using the self.bins_per_ch_{x/y} variables to indicate how many bins are used for each column or row
+		:param name: name of the profile. This grants easy access of the profile from the dictionary self.profile
+		:param varz: z-variable used for the profile 2D which normally is a PH variable
+		:param varname: Name to be displayed in the Color bar of the plot
+		:param cells: indicates which cut should be applied for the fiducial region. 'good' is the selected cells, 'bad' is the non selected cells, 'all' are all the cells in the transparent grid,
+				and '' is show all the region including the borders of the diamond
+		:param cuts: is a string which contains the cuts used besides the fiducial cut
+		:param transp_ev: Most of the times it is true. Sets the trnasparentEvent cut. Events which don't have the transparentEvent cut, normally are useless
+		:param plot_option: plotting option used for root. prof colz creates a color bar for a profile 2D plot
+		:return:
+		"""
 		xmin, xmax, deltax, xname = -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch'
+		ymin = min(self.row_cell_info_diamond['0_even'], self.row_cell_info_diamond['0_odd'])
+		ymax = max(self.row)
 		ymin = self.row_cell_info_diamond['0_even'] - RoundInt(float(self.row_cell_info_diamond['0_even']) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'] if self.row_cell_info_diamond['0_even'] <= self.row_cell_info_diamond['0_odd'] else self.row_cell_info_diamond['0_odd'] - RoundInt(float(self.row_cell_info_diamond['0_odd']) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height']
 		ymax, deltay, yname = ymin + (256 * 50.), float(self.row_cell_info_diamond['height'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
 		tempc = self.cuts_man.ConcatenateCutWithCells(cut=cuts, cells=cells)
@@ -756,7 +749,9 @@ class TransparentGrid:
 
 	def DrawProfile2DDiamondChannel(self, name, varx='clusterChannel0', xname='C0', varz='clusterChargeN', varname='PH [ADC]', cells='', cuts='', transp_ev=True, plot_option='prof colz'):
 		xmin, xmax, deltax = self.ch_ini - 1.5, self.ch_end + 1.5, 1.0
-		ymin, ymax, deltay, yname = self.row_cell_info_diamond['0'] - 2.5 * self.row_cell_info_diamond['height'], self.row_cell_info_diamond['up'] + 2.5 * self.row_cell_info_diamond['height'], float(self.row_cell_info_diamond['height'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
+		ymin = min(self.row_cell_info_diamond['0_even'], self.row_cell_info_diamond['0_odd']) -2.5 * self.row_cell_info_diamond['height']
+		ymax = max(self.row_cell_info_diamond['up_even'], self.row_cell_info_diamond['up_odd']) + 2.5 * self.row_cell_info_diamond['height']
+		deltay, yname = float(self.row_cell_info_diamond['height'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
 		tempc = self.cuts_man.ConcatenateCutWithCells(cut=cuts, cells=cells)
 		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, varname, tempc, transp_ev, plot_option)
 
@@ -952,7 +947,7 @@ class TransparentGrid:
 			self.GetMeanPHPerCell(var, typ)
 			self.SelectGoodAndBadByThreshold(val, var)
 
-	def FindThresholdCutFromCells(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4800, deltax=50, it=0):
+	def FindThresholdCutFromCells(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4800, deltax=10, it=0):
 		"""
 		This method finds the threshold cut using the distribution of PH for each cell. The threshold is set as a number of sigmas (self.threshold_criteria_in_sigmas) below the mean of the gaussian fit of the distribution of PH
 		:param var: variable of type 'typ' used for classification
@@ -966,15 +961,15 @@ class TransparentGrid:
 		if len(self.mean_ph_cell_dic[typ].keys()) > 0:
 			self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax)
 			self.FitGaus('mean_ph_per_cell_' + typ, 2, 5)
-			if GetHistoAverageBinContent(self.histo['mean_ph_per_cell_' + typ]) < 10 and it < 15:
+			if GetHistoAverageBinContent(self.histo['mean_ph_per_cell_' + typ]) < 10 and it < 20:
 				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 1.25, it + 1)
-			elif self.fits['mean_ph_per_cell_' + typ].Ndf() < 2 and it < 15:
+			elif self.fits['mean_ph_per_cell_' + typ].Ndf() < 2 and it < 20:
 				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8, it + 1)
-			elif 0.5 <= self.fits['mean_ph_per_cell_' + typ].Chi2() / self.fits['mean_ph_per_cell_' + typ].Ndf() < 0.9 and it < 15:
+			elif 0.5 <= self.fits['mean_ph_per_cell_' + typ].Chi2() / self.fits['mean_ph_per_cell_' + typ].Ndf() < 0.9 and it < 20:
 				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8, it + 1)
 		else:
 			self.GetMeanPHPerCell(var, typ)
-			self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax)
+			self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax, it + 1)
 		if typ == 'adc':
 			self.threshold = self.fits['mean_ph_per_cell_' + typ].Parameter(1) - self.threshold_criteria_in_sigmas * self.fits['mean_ph_per_cell_' + typ].Parameter(2)
 			if self.threshold <= deltax:
@@ -1794,10 +1789,18 @@ class TransparentGrid:
 			if os.path.isfile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run)):
 				if overWrite and xoff==0 and yoff==0:
 					os.remove('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run))
+					self.ResetAreas()
+					self.CreateGridAreas()
+					self.CreateTCutGs()
 					self.CreateFriendWithCells(xoff, yoff)
 					self.AddFriendWithCells(xoff, yoff)
 				else:
-					if not self.trans_tree.AddFriend(treename, '{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run)):
+					tempf = ro.TFile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run), 'READ')
+					if tempf.Get(treename):
+						tempf.Close()
+						self.trans_tree.AddFriend(treename, '{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run))
+					else:
+						tempf.Close()
 						self.CreateFriendWithCells(xoff, yoff)
 						self.AddFriendWithCells(xoff, yoff)
 			else:
@@ -1808,6 +1811,9 @@ class TransparentGrid:
 				self.UnfriendTree(self.trans_tree.GetFriend(treename))
 				if os.path.isfile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run)):
 					os.remove('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run))
+				self.ResetAreas()
+				self.CreateGridAreas()
+				self.CreateTCutGs()
 				self.CreateFriendWithCells(xoff, yoff)
 				self.AddFriendWithCells(xoff, yoff)
 
