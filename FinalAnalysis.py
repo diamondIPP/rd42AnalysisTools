@@ -32,7 +32,7 @@ class FinalAnalysis:
 		self.center_reg_ana = center_reg_ana
 		self.cell_dists = np.arange(0.1, 1, 0.025)
 
-		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
+		self.suffix = GetSuffixDictionary(self.trans_grid)
 
 		self.minz = self.trans_grid.minz
 		self.maxz = self.trans_grid.maxz

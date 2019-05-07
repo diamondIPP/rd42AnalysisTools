@@ -25,7 +25,7 @@ class CenterCellAnalysis:
 		self.num_strips = numstrips
 		self.cluster_size = clustersize
 
-		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
+		self.suffix = GetSuffixDictionary(self.trans_grid)
 
 		self.phN_chs_var = self.trans_grid.GetPHNChsVar
 		self.ph_ch_var = self.trans_grid.GetPHChVar

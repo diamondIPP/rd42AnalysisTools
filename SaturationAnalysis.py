@@ -27,7 +27,7 @@ class SaturationAnalysis:
 		self.cluster_size = clustersize
 		self.noise_ana = noise_ana
 
-		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
+		self.suffix = GetSuffixDictionary(self.trans_grid)
 
 		self.minz = self.trans_grid.minz
 		self.maxz = self.trans_grid.maxz
@@ -48,15 +48,26 @@ class SaturationAnalysis:
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
 
 	def DoProfileMaps(self, before=0, after=1, typ='adc', isFriend=False):
+		"""
+		Makes the 2D profile maps of events whose cluster have a saturated channel. The x and y axis are the predicted hit position, and the z axis is the PH of the N highest signals, where N is defined by the num_strips variable.
+		:param before: number of events to take into account before the saturation event without including the saturated event
+		:param after: number of events to take into account after the saturation event including the saturated event
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		self.DefineRegion(before=before, after=after)
 
-		xmin, xmax, deltax, xname = self.trans_grid.ch_ini - 1.5, self.trans_grid.ch_end + 1.5, 1.0/self.trans_grid.bins_per_ch_x, 'pred dia hit ch',
-		ymin, ymax, deltay, yname = self.trans_grid.row_cell_info_diamond['0'] - RoundInt(float(self.trans_grid.row_cell_info_diamond['0']) / self.trans_grid.row_cell_info_diamond['height'], 'f8') * self.trans_grid.row_cell_info_diamond['height'], self.trans_grid.row_cell_info_diamond['0'] + (256 - RoundInt(float(self.trans_grid.row_cell_info_diamond['0']) / self.trans_grid.row_cell_info_diamond['height'], 'f8')) * self.trans_grid.row_cell_info_diamond['height'], float(self.trans_grid.row_cell_info_diamond['height'])/self.trans_grid.bins_per_ch_y, 'sil pred dia hit in Y [#mum]'
+		lims_dic = self.trans_grid.GetDiamondMapPlotLimits()
+		xmin, xmax, ymin, ymax, xname, yname = lims_dic['xmin'], lims_dic['xmax'], lims_dic['ymin'], lims_dic['ymax'], 'pred dia hit ch', 'sil pred dia hit in Y [#mum]'
+		deltax, deltay = float(xmax - xmin) / lims_dic['binsx'], float(ymax - ymin) / lims_dic['binsy']
+		yup_max = max(self.trans_grid.row_cell_info_diamond['up_odd'], self.trans_grid.row_cell_info_diamond['up_even'])
+		ylow_min = min(self.trans_grid.row_cell_info_diamond['0_even'], self.trans_grid.row_cell_info_diamond['0_odd'])
 
 		def DrawProfile2D(name, varz, zmin, zmax, varzname, cut, xdelt=deltax, namex=xname, varx='diaChXPred', getOccupancy=False):
 			self.trans_grid.DrawProfile2D(name, xmin, xmax, xdelt, namex, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, varzname, cut)
 			self.trans_grid.profile[name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-			self.trans_grid.profile[name].GetYaxis().SetRangeUser(self.trans_grid.row_cell_info_diamond['0'] - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_cell_info_diamond['up'] + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
+			self.trans_grid.profile[name].GetYaxis().SetRangeUser(ylow_min - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), yup_max + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 			self.trans_grid.profile[name].SetMinimum(zmin)
 			self.trans_grid.profile[name].SetMaximum(zmax)
 			self.trans_grid.DrawTCutGs(name, 'diamond')
@@ -65,7 +76,7 @@ class SaturationAnalysis:
 			if getOccupancy:
 				self.trans_grid.GetOccupancyFromProfile(name)
 				self.trans_grid.histo['hit_map_' + name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-				self.trans_grid.histo['hit_map_' + name].GetYaxis().SetRangeUser(self.trans_grid.row_cell_info_diamond['0'] - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_cell_info_diamond['up'] + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
+				self.trans_grid.histo['hit_map_' + name].GetYaxis().SetRangeUser(ylow_min - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), yup_max + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 				self.trans_grid.DrawTCutGs('hit_map_' + name, 'diamond')
 				self.trans_grid.DrawGoodAreasDiamondCenters('hit_map_' + name)
 				self.PosCanvas('hit_map_' + name)
@@ -81,6 +92,15 @@ class SaturationAnalysis:
 		DrawProfile2D(hname, self.phN_chs_var(1, 'H', typ == 'snr', isFriend), minz, maxz, 'PH sat ch [{t}]'.format(t=typ.upper()), tempc, 1, 'highest ch', 'clusterChannelHighest1')
 
 	def Do1DPHHistos(self, cells='all', before=0, after=1, typ='adc', isFriend=False):
+		"""
+		Makes the PH distribution of several channels ordered either by proximity from the hit position or by highest signal, for saturated clusters
+		:param cells: Which cells to take into account for the profile
+		:param before: number of events to take into account before the saturation event without including the saturated event
+		:param after: number of events to take into account after the saturation event including the saturated event
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		self.DefineRegion(before=before, after=after)
 		suffix = self.suffix[cells]
 		def DrawPHHisto(name, varz, varzname, cuts):
@@ -100,6 +120,15 @@ class SaturationAnalysis:
 				DrawPHHisto(hname, self.phN_chs_var(ch, 'H', typ == 'snr', isFriend), 'PH{c} highest chs [{t}]'.format(c=ch, t=typ.upper()), tempcnosat)
 
 	def DoCellMaps(self, cells='all', before=0, after=1, typ='adc', isFriend=False):
+		"""
+		Creates cell profile maps of overlaid cells for saturated clusters. The Z axis is the cumulative PH of different channels
+		:param cells: Which cells to take into account for the profile
+		:param before: number of events to take into account before the saturation event without including the saturated event
+		:param after: number of events to take into account after the saturation event including the saturated event
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		self.DefineRegion(before=before, after=after)
 		def PlotCellsProfiles(name, varz, zmin, zmax, varname, cut, doOccupancy=False):
 			self.trans_grid.DrawProfile2DDiamondCellOverlay(name, varz, cells, cut, varname=varname)
@@ -129,8 +158,17 @@ class SaturationAnalysis:
 				PlotCellsProfiles(hname, self.phN_chs_var(ch, 'H', typ == 'snr', isFriend), minz, maxz, 'PH{c} highest chs [{t}]'.format(c=ch, t=typ.upper()), tempcnosat)
 
 	def PlotStripHistograms(self, cells='all', before=0, after=1, typ='adc', isFriend=False):
+		"""
+		Creates cell histograms indicating the position where the saturated cluster hit the hit strip (ch0) and the PH for different channel configurations
+		:param cells: Which cells to take into account for the profile
+		:param before: number of events to take into account before the saturation event without including the saturated event
+		:param after: number of events to take into account after the saturation event including the saturated event
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		self.DefineRegion(before=before, after=after)
-		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_cell_info_diamond['height']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
+		minx, maxx, deltax, xname, xvar = -self.trans_grid.row_cell_info_diamond['width'] / (2.0 *self.trans_grid.col_pitch), self.trans_grid.row_cell_info_diamond['width'] / (2.0 *self.trans_grid.col_pitch), self.trans_grid.cell_resolution / float(self.trans_grid.row_cell_info_diamond['width']), 'dia pred. strip hit pos', 'x0'
 
 		def Draw2DHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
 			tempc = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=cuts, cells=cells)

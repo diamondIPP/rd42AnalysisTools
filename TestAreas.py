@@ -28,6 +28,7 @@ class TestAreas:
 		self.cell_resolution = 0
 		self.phmin = 10000
 		self.phmax = -10000
+		self.dut = 'dia'
 		self.binsperx = 0
 		self.binspery = 0
 		self.threshold = 0
@@ -79,7 +80,7 @@ class TestAreas:
 		self.sat_ana = None
 		self.final_ana = None
 		self.bias = 0
-		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
+		self.suffix = GetSuffixDictionary(self.trans_grid)
 
 	def ReadConfigFile(self):
 		def unpack_row_col(string):
@@ -151,6 +152,8 @@ class TestAreas:
 					self.sigma_conv = pars.getfloat('SETTINGS', 'sigma_conv')
 				if pars.has_option('SETTINGS', 'mpshift'):
 					self.mpshift = pars.getfloat('SETTINGS', 'mpshift')
+				if pars.has_option('SETTINGS', 'dut'):
+					self.dut = pars.get('SETTINGS', 'dut')
 
 			if pars.has_section('ROWS'):
 				if pars.has_option('ROWS', 'rows'):
@@ -551,6 +554,7 @@ class TestAreas:
 			self.trans_grid.hit_factor = self.trans_grid.hit_factor if self.hit_factor == 0 else self.hit_factor
 			self.trans_grid.seed_factor = self.trans_grid.seed_factor if self.seed_factor == 0 else self.seed_factor
 			self.trans_grid.num_sides = self.trans_grid.num_sides if self.num_sides == 0 else self.num_sides
+			self.trans_grid.dut = self.trans_grid.dut if self.dut == 'dia' else self.dut
 			self.trans_grid.SavePickle()
 
 			del self.trans_grid.cuts_man
@@ -583,6 +587,7 @@ class TestAreas:
 		self.hit_factor = self.trans_grid.hit_factor if self.hit_factor == 0 else self.hit_factor
 		self.seed_factor = self.trans_grid.seed_factor if self.seed_factor == 0 else self.seed_factor
 		self.num_sides = self.trans_grid.num_sides if self.num_sides == 0 else self.num_sides
+		self.dut = self.trans_grid.dut if self.dut == 'dia' else self.dut
 		print 'Done'
 
 		self.trans_grid.cluster_size = self.cluster_size
@@ -610,6 +615,7 @@ class TestAreas:
 		self.trans_grid.hit_factor = self.hit_factor
 		self.trans_grid.seed_factor = self.seed_factor
 		self.trans_grid.num_sides = self.num_sides
+		self.trans_grid.dut = self.dut
 		self.trans_grid.SavePickle()
 
 		if self.trans_grid.gridAreas:

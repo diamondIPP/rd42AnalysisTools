@@ -21,7 +21,7 @@ class NoiseAnalysis:
 		self.num_strips = numstrips
 		self.cluster_size = clustersize
 
-		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
+		self.suffix = GetSuffixDictionary(self.trans_grid)
 
 		self.noise_cuts = self.trans_grid.cuts_man.noise_cuts
 		self.noise_friend_cuts = self.trans_grid.cuts_man.noise_friend_cuts

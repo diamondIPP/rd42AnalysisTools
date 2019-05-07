@@ -523,6 +523,15 @@ def GetMinimumFromTree(tree, var, cut):
 def GetNumberEntriesFromTree(tree, cut):
 	return tree.GetEntries(cut)
 
+def GetSuffixDictionary(trans_grid):
+	bias_str = '{v}'.format(v=trans_grid.bias) if trans_grid.bias >= 0 else 'Neg{v}'.format(v=abs(trans_grid.bias))
+	dic = {}
+	dic['all'] = 'all_{d}_{b}'.format(d=trans_grid.dut, b=bias_str)
+	dic['good'] = 'selection_{d}_{b}'.format(d=trans_grid.dut, b=bias_str)
+	dic['bad'] = 'not_selection_{d}_{b}'.format(d=trans_grid.dut, b=bias_str)
+	dic[''] = '{d}_{b}'.format(d=trans_grid.dut, b=bias_str)
+	return dic
+
 def GetSymmetric1DLimits(xmin, xmax, deltax, scale=1, oddbins=True):
 	minx, maxx = min(0, np.floor(deltax * RoundInt(xmin / float(deltax)))), max(0, np.ceil(deltax * RoundInt(xmax / float(deltax))))
 	mz = max(abs(minx), abs(maxx))

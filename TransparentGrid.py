@@ -42,6 +42,7 @@ class TransparentGrid:
 		self.align_obj = None
 		self.pkl = None
 		self.pkl_sbdir = 'default'
+		self.dut = 'dia'
 		self.loaded_pickle = False
 		self.align_info = {'xoff': float(0), 'phi': float(0)}
 		self.col_overlay_var = ''
@@ -209,6 +210,7 @@ class TransparentGrid:
 		object_dic['seed_factor'] = self.seed_factor
 		object_dic['num_strips'] = self.num_strips
 		object_dic['num_sides'] = self.num_sides
+		object_dic['dut'] = self.dut
 
 		if not saveDefault:
 			if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
@@ -312,6 +314,8 @@ class TransparentGrid:
 			self.num_strips = self.pkl['num_strips']
 		if 'num_sides' in self.pkl.keys():
 			self.num_sides = self.pkl['num_sides']
+		if 'dut' in self.pkl.keys():
+			self.dut = self.pkl['dut']
 
 	def CreateGridAreas(self):
 		"""

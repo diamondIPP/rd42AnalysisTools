@@ -27,7 +27,7 @@ class NegativeChargesAnalysis:
 		self.cluster_size = clustersize
 		self.noise_ana = noise_ana
 
-		self.suffix = {'all': 'all', 'good': 'selection', 'bad': 'not_selection'}
+		self.suffix = GetSuffixDictionary(self.trans_grid)
 
 		self.neg_ch_cut = self.trans_grid.cuts_man.GetNegPHChCut
 		self.negN_chs_cut = self.trans_grid.cuts_man.GetNegPHNChsCut
