@@ -96,23 +96,28 @@ class NegativeChargesAnalysis:
 	# 				DrawHisto('PH_H{c}_adc_neg_evts_{s}'.format(c=ch+1, s=suffix), hist_limits, plot_limits, self.delta_adc, self.ph_adc_h_varz['PH_H{c}'.format(c=ch+1)], 'PH highest {c}{sf} ch neg events [ADC]'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
 
 	def DoProfileMaps(self, typ='adc', isFriend=False):
-		xmin, xmax, deltax, xname = self.trans_grid.ch_ini - 1.5, self.trans_grid.ch_end + 1.5, 1.0/self.trans_grid.bins_per_ch_x, 'pred dia hit ch',
-		ymin = min(self.trans_grid.row_cell_info_diamond['0_even'], self.trans_grid.row_cell_info_diamond['0_odd'])
-		yup_max = max(self.trans_grid.row_cell_info_diamond['up_even'], self.trans_grid.row_cell_info_diamond['up_odd'])
-		ymin = ymin - RoundInt(float(ymin) / self.trans_grid.row_cell_info_diamond['height'], 'f8') * self.trans_grid.row_cell_info_diamond['height']
-		ymax, deltay, yname = ymin + 256 * 50., float(self.trans_grid.row_cell_info_diamond['height'])/self.trans_grid.bins_per_ch_y, 'sil pred dia hit in Y [#mum]'
-
+		"""
+		Makes profile maps of the PH of different channels sorted out by proximity from the hit position that fail the negative cut threshold
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
+		lims_dic = self.trans_grid.GetDiamondMapPlotLimits()
+		xmin, xmax, ymin, ymax, xname, yname = lims_dic['xmin'], lims_dic['xmax'], lims_dic['ymin'], lims_dic['ymax'], 'pred dia hit ch', 'sil pred dia hit in Y [#mum]'
+		deltax, deltay = float(xmax - xmin) / lims_dic['binsx'], float(ymax - ymin) / lims_dic['binsy']
+		yup_max = max(self.trans_grid.row_cell_info_diamond['up_odd'], self.trans_grid.row_cell_info_diamond['up_even'])
+		ylow_min = min(self.trans_grid.row_cell_info_diamond['0_even'], self.trans_grid.row_cell_info_diamond['0_odd'])
 		def DrawProfile2D(name, varz, varzname, cut, xdelt=deltax, namex=xname, varx='diaChXPred', getOccupancy=False):
 			self.trans_grid.DrawProfile2D(name, xmin, xmax, xdelt, namex, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, varzname, cut)
 			self.trans_grid.profile[name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-			self.trans_grid.profile[name].GetYaxis().SetRangeUser(ymin - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), yup_max + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
+			self.trans_grid.profile[name].GetYaxis().SetRangeUser(ylow_min - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), yup_max + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 			self.trans_grid.DrawTCutGs(name, 'diamond')
 			self.trans_grid.DrawGoodAreasDiamondCenters(name)
 			self.PosCanvas(name)
 			if getOccupancy:
 				self.trans_grid.GetOccupancyFromProfile(name)
 				self.trans_grid.histo['hit_map_' + name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-				self.trans_grid.histo['hit_map_' + name].GetYaxis().SetRangeUser(ymin - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), yup_max + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
+				self.trans_grid.histo['hit_map_' + name].GetYaxis().SetRangeUser(ylow_min - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), yup_max + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 				self.trans_grid.DrawTCutGs('hit_map_' + name, 'diamond')
 				self.trans_grid.DrawGoodAreasDiamondCenters('hit_map_' + name)
 				self.PosCanvas('hit_map_' + name)
@@ -120,14 +125,21 @@ class NegativeChargesAnalysis:
 		for ch in self.strips_for_analysis:
 			tempc = self.neg_ch_cut(ch, 'Ch', typ == 'snr', isFriend)
 			hname = 'PH_Ch{c}_neg_map_pred'.format(c=ch) if not isFriend else 'PH_Ch{c}_buffer_{v}_neg_map_pred'.format(c=ch, v=self.trans_grid.noise_friend_buffer)
-			DrawProfile2D('{n}_hit_snr'.format(n=hname), self.ph_ch_var(ch, 'Ch', typ == 'snr', isFriend), 'PH cluster ch{c} [{t}]'.format(c=ch, t=typ.upper()), tempc, getOccupancy=True)
-			DrawProfile2D('{n}_ch_snr'.format(n=hname), self.ph_ch_var(ch, 'Ch', typ == 'snr', isFriend), 'PH cluster ch{c} [{t}]'.format(c=ch, t=typ.upper()), tempc, 1, 'cluster ch{c}'.format(c=ch), 'clusterChannel{c}'.format(c=ch))
+			DrawProfile2D('{n}_hit_{t}'.format(n=hname, t=typ), self.ph_ch_var(ch, 'Ch', typ == 'snr', isFriend), 'PH cluster ch{c} [{t}]'.format(c=ch, t=typ.upper()), tempc, getOccupancy=True)
+			DrawProfile2D('{n}_ch_{t}'.format(n=hname, t=typ), self.ph_ch_var(ch, 'Ch', typ == 'snr', isFriend), 'PH cluster ch{c} [{t}]'.format(c=ch, t=typ.upper()), tempc, 1, 'cluster ch{c}'.format(c=ch), 'clusterChannel{c}'.format(c=ch))
 			# tempc = self.neg_ch_cut(ch + 1, 'H', typ == 'snr', isFriend)
 			# hname = 'PH_H{c}_neg_map_pred'.format(c=ch + 1) if not isFriend else 'PH_H{c}_buffer_{v}_neg_map_pred'.format(c=ch + 1, v=self.trans_grid.noise_friend_buffer)
 			# DrawProfile2D('{n}_hit_snr'.format(n=hname), self.ph_ch_var(ch + 1, 'H', typ == 'snr', isFriend), 'PH highest {c}{sf} ch [{t}]'.format(c=ch+1, t=typ.upper(), sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc, getOccupancy=True)
 			# DrawProfile2D('{n}_hit_snr'.format(n=hname), self.ph_ch_var(ch + 1, 'H', typ == 'snr', isFriend), 'PH highest {c}{sf} ch [{t}]'.format(c=ch+1, t=typ.upper(), sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempc, 1, 'highest {c}{sf} ch'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), 'clusterChannelHighest{c}'.format(c=ch+1))
 
 	def Do1DPHHistos(self, cells='all', typ='adc', isFriend=False):
+		"""
+		Makes the PH distribution of several channels ordered either by proximity from the hit position or by highest signal, for clusters where at least one channel fails the negative cut
+		:param cells: Which cells to take into account for the profile
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		suffix = self.suffix[cells]
 		def DrawPHHisto(name, varz, varzname, cuts):
 			self.trans_grid.DrawPHInArea(name, varz, cells, cuts, varname=varzname, typ=typ)
@@ -142,6 +154,13 @@ class NegativeChargesAnalysis:
 				DrawPHHisto(hname, self.phN_chs_var(ch, 'H', typ == 'snr', isFriend), 'PH{c} highest chs [{t}]'.format(c=ch, t=typ.upper()), tempc)
 
 	def DoCellMaps(self, cells='all', typ='adc', isFriend=False):
+		"""
+		Makes profile cell overlay maps for different PH of N highest channels in which any channel in the cluster fail the negative cut
+		:param cells: Which cells to take into account for the profile
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		def PlotCellsProfiles(name, varz, varname, cut):
 			self.trans_grid.DrawProfile2DDiamondCellOverlay(name, varz, cells, cut, varname=varname, typ=typ)
 			self.PosCanvas(name)
@@ -155,7 +174,15 @@ class NegativeChargesAnalysis:
 			# PlotCellsProfiles(hname, self.phN_chs_var(ch, 'Ch', typ == 'snr', isFriend), 'PH{c} cluster chs [{t}]'.format(c=ch, t=typ.upper()), tempc)
 
 	def PlotStripHistograms(self, cells='all', typ='adc', isFriend=False):
-		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_cell_info_diamond['height']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
+		"""
+		Makes 2D histograms with the relative position from the hit predicted position in the hit strip for clusters with at least a channel that failed the negative cut and the PH of different channels orderings and N highest channels.
+		It also creates a 1D histogram with the distribution where the negative events happen
+		:param cells: Which cells to take into account for the profile
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
+		minx, maxx, deltax, xname, xvar = -self.trans_grid.row_cell_info_diamond['width'] / (2.0 * self.trans_grid.col_pitch), self.trans_grid.row_cell_info_diamond['width'] / (2.0 * self.trans_grid.col_pitch), self.trans_grid.cell_resolution / float(self.trans_grid.row_cell_info_diamond['width']), 'dia pred. strip hit pos', 'x0'
 		def Draw2DHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
 			histo_limits = Get1DLimits(zmin, zmax, 4 * self.delta_adc) if typ == 'adc' else Get1DLimits(zmin, zmax, 4 * self.delta_snr)
 			deltay = 4 * self.delta_adc if typ == 'adc' else 4 * self.delta_snr

@@ -61,6 +61,14 @@ class ClusterChannelsAnalysis:
 		def DrawHisto(name, histo_limits, plot_lims, deltax, varz, varname, cuts):
 			tempc = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=cuts, cells=cells)
 			self.trans_grid.DrawHisto1D(name, histo_limits['min'], histo_limits['max'], deltax, varz, varname, tempc)
+
+			neg_cut = self.trans_grid.neg_cut_adc if typ == 'adc' else self.trans_grid.neg_cut_snr
+			self.trans_grid.line[name + '_neg_cut'] = ro.TLine(-neg_cut, 0, -neg_cut, self.trans_grid.histo[name].GetMaximum())
+			self.trans_grid.line[name + '_neg_cut'].SetLineColor(ro.kBlue)
+			self.trans_grid.line[name + '_neg_cut'].SetLineWidth(2)
+			self.trans_grid.line[name + '_neg_cut'].SetLineStyle(2)
+			self.trans_grid.line[name + '_neg_cut'].Draw('same')
+
 			self.trans_grid.histo[name].GetXaxis().SetRangeUser(plot_lims['min'], plot_lims['max'])
 			SetX1X2NDC(self.trans_grid.histo[name], 0.15, 0.45, 'stats')
 			self.OverlayNoiseDistribution(self.trans_grid.histo[name], cells, isFriend)
