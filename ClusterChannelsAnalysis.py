@@ -50,6 +50,14 @@ class ClusterChannelsAnalysis:
 			self.noise_ana.OverlayNoiseDistribution(histo, cells, isFriend)
 
 	def Do1DHistograms(self, cells='all', doLog=False, typ='adc', isFriend=False):
+		"""
+		Creates 1D histograms with the distribution of the PH of different channels ordered by proximity or PH magnitude. This is usefull to identify excess in negative charges, mostly in PH_CH1 and make a cut if necessary
+		:param cells: Which cells to take into account for the profile
+		:param doLog: Show plots in Logarithmic plot
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		def DrawHisto(name, histo_limits, plot_lims, deltax, varz, varname, cuts):
 			tempc = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=cuts, cells=cells)
 			self.trans_grid.DrawHisto1D(name, histo_limits['min'], histo_limits['max'], deltax, varz, varname, tempc)
@@ -82,6 +90,12 @@ class ClusterChannelsAnalysis:
 			DrawHisto(hname, hist_limits, plot_limits, delta, self.ph_ch_var(ch+1, 'H', typ=='snr', isFriend), 'PH highest {i}{sf} ch [{t}]'.format(i=ch + 1, t=typ.upper(), sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
 
 	def Do2DProfileMaps(self, cells='all', isFriend=False):
+		"""
+		Makes profile map of the PH of different channels ordered by proximity or PH magnitude. The Y axis is the predicted hit position, while the X axis is either the clusterChannel{i} or the clusterChannelHighest{i}
+		:param cells: Which cells to take into account for the profile
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		def DrawProfile(name, varx, xname, varz, varname, cuts, zmax, zmin):
 			self.trans_grid.DrawProfile2DDiamondChannel(name, varx, xname, varz, varname, cells, cuts)
 			self.trans_grid.profile[name].SetMaximum(zmax)
@@ -102,7 +116,14 @@ class ClusterChannelsAnalysis:
 			DrawProfile(hname, 'clusterChannelHighest{c}'.format(c=ch+1), 'highest {c}{sf} ch'.format(c=ch+1, sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_ch_var(ch + 1, 'H', False, isFriend), 'PH [ADC]', tempcuts, maxz, minz)
 
 	def DoStrips2DHistograms(self, cells='all', typ='adc', isFriend=False):
-		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_cell_info_diamond['height']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
+		"""
+		Make a 2D histogram with the ph of a certain channel or group of channels vs the predicted hit position in the strip
+		:param cells: Which cells to take into account for the profile
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
+		minx, maxx, deltax, xname, xvar = -self.trans_grid.row_cell_info_diamond['width'] / (self.trans_grid.col_pitch * 2.0), self.trans_grid.row_cell_info_diamond['width'] / (self.trans_grid.col_pitch * 2.0), self.trans_grid.cell_resolution / float(self.trans_grid.row_cell_info_diamond['width']), 'dia pred. strip hit pos in strip', 'x0'
 
 		def DrawHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
 			deltay = 4 * self.delta_adc if typ == 'adc' else 4 * self.delta_snr
@@ -136,6 +157,13 @@ class ClusterChannelsAnalysis:
 				DrawHistogram(hname, minz, maxz, 'PH{c} highest chs [{t}]'.format(c=ch + 1, t=typ.upper()), self.phN_chs_var(ch + 1, 'H', typ=='snr', isFriend), tempcuts)
 
 	def DoPHStripCorrelations(self, cells='all', typ='adc', isFriend=False):
+		"""
+		Makes correlation plots between the different PH of different channels or group of channels ordered by proximity to hit position or by PH height
+		:param cells: Which cells to take into account for the profile
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		xmin_adc, xmax_adc = -550, 2650
 		xmin_snr, xmax_snr = -55, 265
 

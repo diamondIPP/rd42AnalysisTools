@@ -731,12 +731,12 @@ class TransparentGrid:
 		:param border: number of cells to leave as a border for the plot
 		:return: dictionary with the calculated parameters
 		"""
-		xmin = self.dia_cols.cols[0].xcenter - self.row_cell_info_diamond['width'] * (border + 0.5)
-		xmax = self.dia_cols.cols[-1].xcenter + self.row_cell_info_diamond['width'] * (border + 0.5)
+		xmin = self.dia_cols.cols[0].xcenter - self.row_cell_info_diamond['width'] * (border + 0.5) / self.col_pitch
+		xmax = self.dia_cols.cols[-1].xcenter + self.row_cell_info_diamond['width'] * (border + 0.5) / self.col_pitch
 		binsx = RoundInt((xmax - xmin) * self.bins_per_ch_x)
 		ymin = min(self.row_cell_info_diamond['0_even'], self.row_cell_info_diamond['0_odd']) + self.row_cell_info_diamond['y_off'] - self.row_cell_info_diamond['height'] * border
 		ymax = max(self.row_cell_info_diamond['up_even'], self.row_cell_info_diamond['up_odd']) + self.row_cell_info_diamond['y_off'] + self.row_cell_info_diamond['height'] * border
-		binsy = RoundInt((ymax - ymin) * self.bins_per_ch_y)
+		binsy = RoundInt((ymax - ymin) * self.bins_per_ch_y / self.row_cell_info_diamond['height'])
 		return {'xmin': xmin, 'xmax': xmax, 'binsx': binsx, 'ymin': ymin, 'ymax': ymax, 'binsy': binsy}
 
 	def DrawProfile2DDiamond(self, name, varz='clusterChargeN', varname='PH [ADC]', cells='', cuts='', transp_ev=True, plot_option='prof colz'):
