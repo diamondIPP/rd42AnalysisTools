@@ -96,7 +96,6 @@ class TransparentGrid:
 		self.names = []
 		self.dia_cols = None
 		self.tcutgs_diamond = {}
-		self.tcutg_diamond_center = None
 		self.tcutgs_diamond_center = {}
 		self.gridAreas = None
 		self.cuts_man = None
@@ -691,6 +690,11 @@ class TransparentGrid:
 				self.dia_cols.cols[col].SetCellsInColumn()
 
 	def CreateTCutGSymmetricRectangle(self, percentage=80):
+		"""
+		TODO
+		:param percentage:
+		:return:
+		"""
 		self.gridAreas.CreateRectangleSymmetricCentralRegion(percentage, self.col_pitch, self.row_cell_info_diamond['height'], self.col_overlay_var, self.row_overlay_var)
 		self.cuts_man.in_central_rect_region[percentage] = '(' + self.gridAreas.center_rectangles[percentage]['name'] + ')'
 		self.cuts_man.out_central_rect_region[percentage] = '(!' + self.gridAreas.center_rectangles[percentage]['name'] + ')'
@@ -700,12 +704,15 @@ class TransparentGrid:
 		Creates the text that can be placed in profile diamond plots to easily navigate rows and columns
 		:return:
 		"""
+		lims_dic = self.GetDiamondMapPlotLimits()
+		xmin, xmax, ymin, ymax = lims_dic['xmin'], lims_dic['xmax'], lims_dic['ymin'], lims_dic['ymax']
+		binsx, binsy = int(lims_dic['binsx']), int(lims_dic['binsy'])
 		miny = min(self.row_cell_info_diamond['0_even'], self.row_cell_info_diamond['0_odd'])
-		self.gridTextDiamond = ro.TH2F('gridText_diamond', 'gridText_diamond', int(RoundInt(128.0 * self.bins_per_ch_x, 'f8') + 2), -0.5 - 1.0 / self.bins_per_ch_x, 127.5 + 1.0 / self.bins_per_ch_x, int(self.bins_per_ch_y * RoundInt(256 * 50. / self.row_cell_info_diamond['height'], 'f8') + 2), miny - RoundInt(float(miny) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'] - (float(self.row_cell_info_diamond['height']) / self.bins_per_ch_y), miny - RoundInt(float(miny) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'] + 256 * 50 + (float(self.row_cell_info_diamond['height']) / self.bins_per_ch_y))
+		self.gridTextDiamond = ro.TH2F('gridText_diamond', 'gridText_diamond', binsx, xmin, xmax, binsy, ymin, ymax)
 		for col in xrange(0, self.num_cols):
 			x0 = self.dia_cols.cols[col].cells[0].xcenter
-			y0 = self.dia_cols.cols[col].cells[0].ycenter - self.row_cell_info_diamond['height'] / 2.0
-			self.gridTextDiamond.Fill(x0, y0 - 0.1, (col + 0.01))
+			y0 = miny
+			self.gridTextDiamond.Fill(x0, y0 - 0.1 * self.row_cell_info_diamond['height'], (col + 0.01))
 		max_num_rows = max(self.row_cell_info_diamond['num_even'], self.row_cell_info_diamond['num_odd'])
 		for row in xrange(0, max_num_rows):
 			if row < len(self.dia_cols.cols[0].cells):
@@ -715,8 +722,22 @@ class TransparentGrid:
 			if self.num_cols > 1:
 				if row < len(self.dia_cols.cols[1].cells):
 					y0 = self.dia_cols.cols[1].cells[row].ycenter
-					self.gridTextDiamond.Fill(x0 - 1.1, y0, (row + 0.01))
+					self.gridTextDiamond.Fill(x0 - 0.6, y0, (row + 0.01))
 		self.gridTextDiamond.SetMarkerSize(0.8)
+
+	def GetDiamondMapPlotLimits(self, border=3):
+		"""
+		Calculates the limits for profile 2D Diamond plots
+		:param border: number of cells to leave as a border for the plot
+		:return: dictionary with the calculated parameters
+		"""
+		xmin = self.dia_cols.cols[0].xcenter - self.row_cell_info_diamond['width'] * (border + 0.5)
+		xmax = self.dia_cols.cols[-1].xcenter + self.row_cell_info_diamond['width'] * (border + 0.5)
+		binsx = RoundInt((xmax - xmin) * self.bins_per_ch_x)
+		ymin = min(self.row_cell_info_diamond['0_even'], self.row_cell_info_diamond['0_odd']) + self.row_cell_info_diamond['y_off'] - self.row_cell_info_diamond['height'] * border
+		ymax = max(self.row_cell_info_diamond['up_even'], self.row_cell_info_diamond['up_odd']) + self.row_cell_info_diamond['y_off'] + self.row_cell_info_diamond['height'] * border
+		binsy = RoundInt((ymax - ymin) * self.bins_per_ch_y)
+		return {'xmin': xmin, 'xmax': xmax, 'binsx': binsx, 'ymin': ymin, 'ymax': ymax, 'binsy': binsy}
 
 	def DrawProfile2DDiamond(self, name, varz='clusterChargeN', varname='PH [ADC]', cells='', cuts='', transp_ev=True, plot_option='prof colz'):
 		"""
@@ -731,38 +752,59 @@ class TransparentGrid:
 		:param plot_option: plotting option used for root. prof colz creates a color bar for a profile 2D plot
 		:return:
 		"""
-		xmin, xmax, deltax, xname = -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch'
-		ymin = min(self.row_cell_info_diamond['0_even'], self.row_cell_info_diamond['0_odd'])
-		ymax = max(self.row)
-		ymin = self.row_cell_info_diamond['0_even'] - RoundInt(float(self.row_cell_info_diamond['0_even']) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'] if self.row_cell_info_diamond['0_even'] <= self.row_cell_info_diamond['0_odd'] else self.row_cell_info_diamond['0_odd'] - RoundInt(float(self.row_cell_info_diamond['0_odd']) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height']
-		ymax, deltay, yname = ymin + (256 * 50.), float(self.row_cell_info_diamond['height'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
+		lims_dic = self.GetDiamondMapPlotLimits()
+		xmin, xmax, ymin, ymax = lims_dic['xmin'], lims_dic['xmax'], lims_dic['ymin'], lims_dic['ymax']
+		deltax, deltay = float(xmax - xmin) / lims_dic['binsx'], float(ymax - ymin) / lims_dic['binsy']
+		xname = 'dia X ch'
+		yname = 'sil pred Y [#mum]'
 		tempc = self.cuts_man.ConcatenateCutWithCells(cut=cuts, cells=cells)
 		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', varz, varname, tempc, transp_ev, plot_option)
 
-	def DrawProfile2DNoTopBottomBorders(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True, plot_option='colz prof'):
-		list_cuts = [self.cuts_man.no_up_down_borders]
-		# list_cuts = ['(({l}<=diaChYPred)&&(diaChYPred<={h}))'.format(l=self.row_cell_info_diamond['0'], h=self.row_cell_info_diamond['up'])]
-		if cuts != '':
-			list_cuts.append(cuts)
-		temp_cuts = '&&'.join(list_cuts)
-		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz, zname, temp_cuts, transp_ev, plot_option)
-
 	def DrawProfile2DDiamondChannel(self, name, varx='clusterChannel0', xname='C0', varz='clusterChargeN', varname='PH [ADC]', cells='', cuts='', transp_ev=True, plot_option='prof colz'):
-		xmin, xmax, deltax = self.ch_ini - 1.5, self.ch_end + 1.5, 1.0
-		ymin = min(self.row_cell_info_diamond['0_even'], self.row_cell_info_diamond['0_odd']) -2.5 * self.row_cell_info_diamond['height']
-		ymax = max(self.row_cell_info_diamond['up_even'], self.row_cell_info_diamond['up_odd']) + 2.5 * self.row_cell_info_diamond['height']
-		deltay, yname = float(self.row_cell_info_diamond['height'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
+		"""
+		Method used to plot the profile of a whole channel, to help identify defective cells, or clustered negative contributions
+		:param name: name of the profile plot
+		:param varx: variable to use in the X axis
+		:param xname: name of the variable in the x axis
+		:param varz: variable in the color palette. Most of the times it is a PH variable
+		:param varname: name of the variable in z
+		:param cells: indicates which cut should be applied for the fiducial region. 'good' is the selected cells, 'bad' is the non selected cells, 'all' are all the cells in the transparent grid,
+				and '' is show all the region including the borders of the diamond
+		:param cuts: is a string which contains the cuts used besides the fiducial cut
+		:param transp_ev:  Most of the times it is true. Sets the trnasparentEvent cut. Events which don't have the transparentEvent cut, normally are useless
+		:param plot_option: plotting option used for root. prof colz creates a color bar for a profile 2D plot
+		:return:
+		"""
+		lims_dic = self.GetDiamondMapPlotLimits()
+		xmin, xmax, ymin, ymax = lims_dic['xmin'], lims_dic['xmax'], lims_dic['ymin'], lims_dic['ymax']
+		deltax, deltay = 1, float(ymax - ymin) / lims_dic['binsy']
+		yname = 'sil pred Y [#mum]'
 		tempc = self.cuts_man.ConcatenateCutWithCells(cut=cuts, cells=cells)
 		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, 'diaChYPred', varz, varname, tempc, transp_ev, plot_option)
 
-	def DrawProfile1D(self, name, xmin, xmax, deltax, xname, varx, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True, plot_option='prof e hist'):
+	def DrawProfile1D(self, name, xmin, xmax, deltax, xname, varx, vary='clusterChargeN', yname='PH[ADC]', cuts='', transp_ev=True, plot_option='prof e hist'):
+		"""
+		Method to draw 1D Profiles
+		:param name: name of the profile
+		:param xmin: min x
+		:param xmax: max x
+		:param deltax: delta x
+		:param xname: name of the x axis
+		:param varx: variable used in the x axis
+		:param vary: variable used in the y axis
+		:param yname: name of the y axis
+		:param cuts: string with the cuts to be applied by root
+		:param transp_ev: Most of the times it is true. Sets the trnasparentEvent cut. Events which don't have the transparentEvent cut, normally are useless
+		:param plot_option: plotting option used for root. prof e hist creates a profile plot with error bars
+		:return:
+		"""
 		ro.TFormula.SetMaxima(100000)
 		if name in self.profile.keys():
 			self.profile[name].Delete()
 
 		self.profile[name] = ro.TProfile('h_' + name, 'h_' + name, int(RoundInt((xmax - xmin)/float(deltax), 'f8') + 2), xmin - deltax, xmax + deltax)
 		self.profile[name].GetXaxis().SetTitle(xname)
-		self.profile[name].GetYaxis().SetTitle(zname)
+		self.profile[name].GetYaxis().SetTitle(yname)
 		if 'goff' not in plot_option:
 			if name in self.canvas.keys():
 				self.canvas[name].Close()
@@ -772,13 +814,32 @@ class TransparentGrid:
 		if cuts != '':
 			list_cuts.append(cuts)
 		temp_cut = '&&'.join(list_cuts)
-		self.trans_tree.Draw('{y}:{x}>>h_{n}'.format(y=varz, x=varx, n=name), temp_cut, plot_option)
+		self.trans_tree.Draw('{y}:{x}>>h_{n}'.format(y=vary, x=varx, n=name), temp_cut, plot_option)
 		ro.gPad.Update()
 		SetDefault1DStats(self.profile[name])
 		ro.TFormula.SetMaxima(1000)
 
 	def DrawProfile2D(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, varz='clusterChargeN', zname='PH[ADC]', cuts='', transp_ev=True, plot_option='colz prof'):
-		# ro.gStyle.SetOptStat('en')
+		"""
+		Method used by many other plotting methods to create 2D profiles
+		:param name: name of the profile plot
+		:param xmin: min x
+		:param xmax: max x
+		:param deltax: delta x
+		:param xname: name of x axis
+		:param ymin: min y
+		:param ymax: max y
+		:param deltay: delta y
+		:param yname: name of y axis
+		:param varx: variable used in the x axis
+		:param vary: variable used in the y axis
+		:param varz: variable used in the z axis
+		:param zname: name of the z axis
+		:param cuts: srting with the cuts to be applied by root
+		:param transp_ev: Most of the times it is true. Sets the trnasparentEvent cut. Events which don't have the transparentEvent cut, normally are useless
+		:param plot_option: plotting option used for root. prof colz creates a color bar for a profile 2D plot
+		:return:
+		"""
 		ro.TFormula.SetMaxima(100000)
 		if name in self.profile.keys():
 			self.profile[name].Delete()
@@ -788,6 +849,8 @@ class TransparentGrid:
 		self.profile[name].GetYaxis().SetTitle(yname)
 		self.profile[name].GetZaxis().SetTitle(zname)
 		if 'goff' not in plot_option:
+			if name in self.canvas.keys():
+				self.canvas[name].Close()
 			self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
 			self.canvas[name].cd()
 		list_cuts = [self.cuts_man.transp_ev] if transp_ev else []
@@ -800,11 +863,16 @@ class TransparentGrid:
 		SetDefault2DStats(self.profile[name])
 		ro.TFormula.SetMaxima(1000)
 
-	def DrawTCutGs(self, name, type):
+	def DrawTCutGs(self, name, typ):
+		"""
+		Method to plot the TCutGs that delimit the cells in the transparent grid.
+		:param name: name of the histogram or profile where to plot the grid
+		:param typ: if typ is 'diamond' it will plot all the cutg objects on each cell and the grid text. If typ is 'centers' it will only plot the cutg_center of all the cells
+		:return:
+		"""
 		self.canvas[name].cd()
-		# ro.gStyle.SetOptStat('en')
 		ro.gStyle.SetPaintTextFormat(".0f")
-		if type == 'diamond':
+		if typ == 'diamond':
 			self.gridTextDiamond.Draw('same TEXT0')
 		if name in self.profile.keys():
 			self.profile[name].Draw('same colz')
@@ -812,38 +880,63 @@ class TransparentGrid:
 			self.histo[name].Draw('same colz')
 		for col in xrange(self.num_cols):
 			for row in xrange(self.dia_cols.cols[col].num_rows):
-				if type == 'diamond':
+				if typ == 'diamond':
 					self.dia_cols.cols[col].cells[row].cutg.Draw('same')
-				elif type == 'centers':
+				elif typ == 'centers':
 					self.dia_cols.cols[col].cells[row].cutg_center.Draw('same')
 		ro.gPad.Update()
 
 	def GetOccupancyFromProfile(self, name, plot_option='colz'):
-		# ro.gStyle.SetOptStat('ne')
+		"""
+		Creates a 2D histogram from a given profile of the occupancy of the 2D profile
+		:param name: name of the targe profile 2D plot
+		:param plot_option: plotting option used for root. colz creates a color bar for a Histo 2D plot
+		:return:
+		"""
 		name_occupancy = 'hit_map_' + name
+		if name_occupancy in self.histo.keys():
+			self.histo[name_occupancy].Delete()
 		self.histo[name_occupancy] = self.profile[name].ProjectionXY('h_' + name_occupancy, 'B')
 		self.histo[name_occupancy].SetTitle('h_' + name_occupancy)
 		self.histo[name_occupancy].GetXaxis().SetTitle(self.profile[name].GetXaxis().GetTitle())
 		self.histo[name_occupancy].GetYaxis().SetTitle(self.profile[name].GetYaxis().GetTitle())
 		self.histo[name_occupancy].GetZaxis().SetTitle('entries')
 		if 'goff' not in plot_option:
+			if name_occupancy in self.canvas.keys():
+				self.canvas[name_occupancy].Close()
 			self.canvas[name_occupancy] = ro.TCanvas('c_' + name_occupancy, 'c_' + name_occupancy, 1)
 			self.canvas[name_occupancy].cd()
 			self.histo[name_occupancy].Draw(plot_option)
 			ro.gPad.Update()
 			SetDefault2DStats(self.histo[name_occupancy])
 
-	def Draw2DHistoDiamond(self, name, cuts='', transp_ev=True):
-		self.DrawHisto2D(name, -0.5, 127.5, 1.0 / (self.bins_per_ch_x), 'dia X ch', self.row_cell_info_diamond['0'] - RoundInt(float(self.row_cell_info_diamond['0']) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'], self.row_cell_info_diamond['0'] + (256 - RoundInt(float(self.row_cell_info_diamond['0']) / self.row_cell_info_diamond['height'], 'f8')) * self.row_cell_info_diamond['height'],
-		                 float(self.row_cell_info_diamond['height']) / (self.bins_per_ch_y), 'dia Y [#mum]', 'diaChXPred', 'diaChYPred', cuts, transp_ev)
-
 	def DrawHisto2D(self, name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, varx, vary, cuts='', transp_ev=True):
-		# ro.gStyle.SetOptStat('en')
+		"""
+		Method used by other plotting methods to generate 2D histograms
+		:param name: name of the histogram
+		:param xmin: min x
+		:param xmax: max x
+		:param deltax: delta x
+		:param xname: name of x axis
+		:param ymin: min y
+		:param ymax: max y
+		:param deltay: delta y
+		:param yname: name of y axis
+		:param varx: variable used for the x axis
+		:param vary: variable used for the y axis
+		:param cuts: srting with the cuts to be applied by root
+		:param transp_ev: Most of the times it is true. Sets the trnasparentEvent cut. Events which don't have the transparentEvent cut, normally are useless
+		:return:
+		"""
 		ro.TFormula.SetMaxima(100000)
+		if name in self.histo.keys():
+			self.histo[name].Delete()
 		self.histo[name] = ro.TH2F('h_' + name, 'h_' + name, int(RoundInt((xmax - xmin) / deltax, 'f8') + 2), xmin - deltax, xmax + deltax, int(RoundInt((ymax - ymin) / deltay, 'f8') + 2), ymin - deltay, ymax + deltay)
 		self.histo[name].GetXaxis().SetTitle(xname)
 		self.histo[name].GetYaxis().SetTitle(yname)
 		self.histo[name].GetZaxis().SetTitle('entries')
+		if name in self.canvas.keys():
+			self.canvas[name].Close()
 		self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
 		self.canvas[name].cd()
 		list_cuts = [self.cuts_man.transp_ev] if transp_ev else []
@@ -856,8 +949,22 @@ class TransparentGrid:
 		ro.TFormula.SetMaxima(1000)
 
 	def DrawHisto1D(self, name, xmin, xmax, deltax, var='clusterChargeN', varname='PH[ADC]', cuts='', transp_ev=True, option='e hist'):
+		"""
+		Method used by other plotting methods to generate 1D histograms
+		:param name: name of the histogram
+		:param xmin: min x
+		:param xmax: max x
+		:param deltax: delta x
+		:param var: variable used for the histogram
+		:param varname: name of the x axis
+		:param cuts: srting with the cuts to be applied by root
+		:param transp_ev: Most of the times it is true. Sets the trnasparentEvent cut. Events which don't have the transparentEvent cut, normally are useless
+		:param option: plotting option used for root. e hist creates a histogram bar plot with error bars
+		:return:
+		"""
 		ro.TFormula.SetMaxima(100000)
-		# ro.gStyle.SetOptStat('neMmRruo')
+		if name in self.histo.keys():
+			self.histo[name].Delete()
 		self.histo[name] = ro.TH1F('h_' + name, 'h_' + name, int(RoundInt((xmax - xmin) / float(deltax))), xmin, xmax)
 		self.histo[name].GetXaxis().SetTitle(varname)
 		self.histo[name].GetYaxis().SetTitle('entries')
@@ -866,6 +973,8 @@ class TransparentGrid:
 			list_cuts.append(cuts)
 		temp_cuts = '&&'.join(list_cuts)
 		if 'goff' not in option:
+			if name in self.canvas.keys():
+				self.canvas[name].Close()
 			self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
 			self.canvas[name].cd()
 		self.trans_tree.Draw('{v}>>h_{n}'.format(v=var, n=name), temp_cuts, option)
@@ -1021,34 +1130,62 @@ class TransparentGrid:
 			self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax, draw_opt, supress0)
 
 	def DrawCentralArea(self, name, percent):
+		"""
+		Method to draw the central rectangle in the percent studies
+		:param name: name of the canvas where the central region will be drawn
+		:param percent: percentage of the inner area inside the rectangle to be plotted
+		:return:
+		"""
 		self.canvas[name].cd()
 		if percent in self.gridAreas.center_rectangles.keys():
 			self.gridAreas.center_rectangles[percent]['tcutg'].Draw('same')
 
-	def DrawGoodAreasDiamond(self, name):
-		self.DrawGoodAreas(name, type='diamond')
-
 	def DrawGoodAreasDiamondCenters(self, name):
-		self.DrawGoodAreas(name, type='centers')
+		"""
+		Method used to plot the central cutg of each cell in the selected regions ('good'). It is used in general to highlight the selected cells
+		:param name: name of the plot where the central regions will be drawn
+		:return:
+		"""
+		self.DrawGoodAreas(name, typ='centers')
 
-	def DrawGoodAreas(self, name, type):
-		# ro.gStyle.SetOptStat('en')
+	def DrawGoodAreas(self, name, typ):
+		"""
+		Method used to plot cutgs of goodAreas or goodAreas centers on a specified plot
+		:param name: name of the plot where the cutgs will be drawn
+		:param typ: if typ is 'centers' then it will only plot the cutg_center of the good cells (selected). if typ is 'diamond', it will plat the cutg that delimits each good cell (selected region)
+		:return:
+		"""
 		self.canvas[name].cd()
-		if type == 'diamond':
+		if typ == 'diamond':
 			for area in self.gridAreas.goodAreas_diamond:
 				area.Draw('same')
-		elif type == 'centers':
+		elif typ == 'centers':
 			for area in self.gridAreas.goodAreas_diamond_centers:
 				area.Draw('same')
 
 	def DrawBadAreasDiamond(self, name):
+		"""
+		Method used to plot the cutg of each cell in the non-selected regions ('bad')
+		:param name: name of the plot where the regions will be drawn
+		:return:
+		"""
 		self.DrawBadAreas(name, type='diamond')
 
 	def DrawBadAreasDiamondCenters(self, name):
+		"""
+		Method used to plot the central cutg of each cell in the non-selected regions ('bad'). It is used in general to highlight the non-selected cells
+		:param name: name of the plot where the central regions will be drawn
+		:return:
+		"""
 		self.DrawBadAreas(name, type='centers')
 
 	def DrawBadAreas(self, name, type):
-		# ro.gStyle.SetOptStat('en')
+		"""
+		Method used to plot cutgs of badAreas or badAreas centers on a specified plot
+		:param name: name of the plot where the cutgs will be drawn
+		:param type: if typ is 'centers' then it will only plot the cutg_center of the bad cells (non-selected). if typ is 'diamond', it will plat the cutg that delimits each bad cell (non selected region)
+		:return:
+		"""
 		self.canvas[name].cd()
 		if type == 'diamond':
 			for area in self.gridAreas.badAreas_diamond:
@@ -1058,22 +1195,38 @@ class TransparentGrid:
 				area.Draw('same')
 
 	def ResetHistos(self):
+		"""
+		Clearse all the histograms stored in self.histo
+		:return:
+		"""
 		for histo in self.histo.itervalues():
 			histo.Delete()
 		self.histo = {}
 
 	def ResetProfiles(self):
+		"""
+		Clears all the profiles stored in self.profile
+		:return:
+		"""
 		for profile in self.profile.itervalues():
 			profile.Delete()
 		self.profile = {}
 
 	def ResetCanvas(self):
+		"""
+		Clears all the canvas stored in self.canvas
+		:return:
+		"""
 		for canvas in self.canvas.itervalues():
 			canvas.Clear()
 			canvas.Close()
 		self.canvas = {}
 
 	def ResetPlots(self):
+		"""
+		Clears all the plots done!
+		:return:
+		"""
 		self.ResetHistos()
 		self.ResetProfiles()
 		self.ResetCanvas()
@@ -1139,7 +1292,21 @@ class TransparentGrid:
 		"""
 		self.gridAreas.ResetAreas()
 
-	def DrawPHInArea(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
+	def DrawPHInArea(self, name, var='clusterChargeN', cells='all', cuts='', varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
+		"""
+		Method used Draw the PH histogram in a certain region aka area (good, bad, all)
+		:param name: name of the histogram
+		:param var: variable used to create the histogram. In general it is a PH variable
+		:param cells: the options are 'all', 'good', 'bad' to select the region where to plot the histogram
+		:param cuts: srting with the cuts to be applied by root
+		:param varname: name of the X axis
+		:param xmin: min x. if xmin is 10000, it will use the default phmin
+		:param xmax: max x. if xmax is -10000, it will use the default phmax
+		:param deltax: delta x. If deltax is -1, it will used the default phbins to calculate the deltax
+		:param typ: if indicates if 'adc' is requested, or if 'snr' is requested
+		:param drawHisto: if true, the histogram will be drawn in a canvas
+		:return:
+		"""
 		if cells == 'good':
 			self.DrawPHGoodAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax, typ=typ, drawHisto=drawHisto)
 		elif cells == 'bad':
@@ -1147,130 +1314,149 @@ class TransparentGrid:
 		else:
 			self.DrawPHAllAreas(name, var, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax, typ=typ, drawHisto=drawHisto)
 
-	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
-		list_cuts = [self.cuts_man.selected_cells]
-		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
-		if cuts != '':
-			list_cuts.append(cuts)
-		temp_cut = '&&'.join(list_cuts)
+	def DrawPHGoodAreas(self, name, var='clusterChargeN', cuts='', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
+		"""
+		Method to draw the PH histogram in the cells marked as good
+		:param name: name of the histogram
+		:param var: variable used to create the histogram. In general it is a PH variable
+		:param cuts: srting with the cuts to be applied by root
+		:param transp_ev: Most of the times it is true. Sets the trnasparentEvent cut. Events which don't have the transparentEvent cut, normally are useless
+		:param varname: name of the X axis
+		:param xmin: min x. if xmin is 10000, it will use the default phmin
+		:param xmax: max x. if xmax is -10000, it will use the default phmax
+		:param deltax: delta x. If deltax is -1, it will used the default phbins to calculate the deltax
+		:param typ: if indicates if 'adc' is requested, or if 'snr' is requested
+		:param drawHisto: if true, the histogram will be drawn in a canvas
+		:return:
+		"""
+		temp_cut = self.cuts_man.ConcatenateCutWithCells(cuts, 'good')
 		phmin = xmin if xmin != 10000 else self.phmin if typ == 'adc' else self.phmin / 10.
 		phmax = xmax if xmax != -10000 else self.phmax if typ == 'adc' else self.phmax / 10.
 		deltx = deltax if deltax != -1 else float(phmax - phmin) / float(self.phbins)
 		graphopt = 'e hist' if drawHisto else 'e hist goff'
 		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev, option=graphopt)
 
-	def DrawPHAllAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
-		list_cuts = [self.cuts_man.all_cells]
-		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond if type == 'diamond' else '')]
-		if cuts != '':
-			list_cuts.append(cuts)
-		temp_cut = '&&'.join(list_cuts)
+	def DrawPHAllAreas(self, name, var='clusterChargeN', cuts='', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
+		"""
+		Method to draw the PH histogram in all the cells in the transparent grid
+		:param name: name of the histogram
+		:param var: variable used to create the histogram. In general it is a PH variable
+		:param cuts: srting with the cuts to be applied by root
+		:param transp_ev: Most of the times it is true. Sets the trnasparentEvent cut. Events which don't have the transparentEvent cut, normally are useless
+		:param varname: name of the X axis
+		:param xmin: min x. if xmin is 10000, it will use the default phmin
+		:param xmax: max x. if xmax is -10000, it will use the default phmax
+		:param deltax: delta x. If deltax is -1, it will used the default phbins to calculate the deltax
+		:param typ: if indicates if 'adc' is requested, or if 'snr' is requested
+		:param drawHisto: if true, the histogram will be drawn in a canvas
+		:return:
+		"""
+		temp_cut = self.cuts_man.ConcatenateCutWithCells(cuts, 'all')
 		phmin = xmin if xmin != 10000 else self.phmin if typ == 'adc' else self.phmin / 10.
 		phmax = xmax if xmax != -10000 else self.phmax if typ == 'adc' else self.phmax / 10.
 		deltx = deltax if deltax != -1 else float(phmax - phmin) / float(self.phbins)
 		graphopt = 'e hist' if drawHisto else 'e hist goff'
 		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev, option=graphopt)
 
-	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', type='diamond', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
-		list_cuts = [self.cuts_man.not_selected_cells]
-		# list_cuts = ['{n}'.format(n=self.gridAreas.badAreasCutNames_diamond if type == 'diamond' else '')]
-		if cuts != '':
-			list_cuts.append(cuts)
-		temp_cut = '&&'.join(list_cuts)
+	def DrawPHBadAreas(self, name, var='clusterChargeN', cuts='', transp_ev=True, varname='PH[ADC]', xmin=10000, xmax=-10000, deltax=-1, typ='adc', drawHisto=True):
+		"""
+		Method to draw the PH histogram in all the cells marked as bad
+		:param name: name of the histogram
+		:param var: variable used to create the histogram. In general it is a PH variable
+		:param cuts: srting with the cuts to be applied by root
+		:param transp_ev: Most of the times it is true. Sets the trnasparentEvent cut. Events which don't have the transparentEvent cut, normally are useless
+		:param varname: name of the X axis
+		:param xmin: min x. if xmin is 10000, it will use the default phmin
+		:param xmax: max x. if xmax is -10000, it will use the default phmax
+		:param deltax: delta x. If deltax is -1, it will used the default phbins to calculate the deltax
+		:param typ: if indicates if 'adc' is requested, or if 'snr' is requested
+		:param drawHisto: if true, the histogram will be drawn in a canvas
+		:return:
+		"""
+		temp_cut = self.cuts_man.ConcatenateCutWithCells(cuts, 'bad')
 		phmin = xmin if xmin != 10000 else self.phmin if typ == 'adc' else self.phmin / 10.
 		phmax = xmax if xmax != -10000 else self.phmax if typ == 'adc' else self.phmax / 10.
 		deltx = deltax if deltax != -1 else float(phmax - phmin) / float(self.phbins)
 		graphopt = 'e hist' if drawHisto else 'e hist goff'
 		self.DrawHisto1D(name, phmin, phmax, deltx, var, varname, temp_cut, transp_ev, option=graphopt)
-
-	def DrawPHCentralRegion(self, name, var='clusterChargeN', cells='good', cuts='', transp_ev=True, varname='PH[ADC]'):
-		list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_diamond_centers) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_diamond_centers) if cells == 'bad' else '({n}||{m})'.format(n=self.gridAreas.goodAreasCutNames_diamond_centers, m=self.gridAreas.badAreasCutNames_diamond_centers)]
-		if cuts != '':
-			list_cuts.append(cuts)
-		temp_cuts = '&&'.join(list_cuts)
-		self.DrawHisto1D(name, self.phmin, self.phmax, float(self.phmax - self.phmin) / float(self.phbins), var, varname, temp_cuts, transp_ev)
-
-	def DrawProfile2DDiamondMap(self, name, var='clusterChargeN', varname='PH[ADC]', cells='all', cuts='', plot_option='prof colz'):
-		list_cuts = [self.cuts_man.selected_cells if cells == 'good' else self.cuts_man.not_selected_cells if cells == 'bad' else self.cuts_man.all_cells if cells == 'all' else '(1)']
-		if cuts != '':
-			list_cuts.append(cuts)
-		temp_cuts = '&&'.join(list_cuts)
-		xmin, xmax, deltax, xname = -0.5, 127.5, 1.0/self.bins_per_ch_x, 'dia X ch'
-		ymin, ymax, deltay, yname = self.row_cell_info_diamond['0'] - RoundInt(float(self.row_cell_info_diamond['0']) / self.row_cell_info_diamond['height'], 'f8') * self.row_cell_info_diamond['height'], self.row_cell_info_diamond['0'] + (256 - RoundInt(float(self.row_cell_info_diamond['0']) / self.row_cell_info_diamond['height'], 'f8')) * self.row_cell_info_diamond['height'], float(self.row_cell_info_diamond['height'])/self.bins_per_ch_y, 'sil pred Y [#mum]'
-		self.DrawProfile2D(name, xmin, xmax, deltax, xname, ymin, ymax, deltay, yname, 'diaChXPred', 'diaChYPred', var, varname, temp_cuts, plot_option=plot_option)
 
 	def DrawProfile2DDiamondChannelOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
-		list_cuts = [self.cuts_man.selected_cells if cells == 'good' else self.cuts_man.not_selected_cells if cells == 'bad' else self.cuts_man.all_cells]
-		# list_cuts = ['{n}'.format(n=self.gridAreas.goodAreasCutNames_simplified_diamond) if cells == 'good' else '{n}'.format(n=self.gridAreas.badAreasCutNames_simplified_diamond) if cells == 'bad' else '(1)']
-		if cuts != '':
-			list_cuts.append(cuts)
-		temp_cuts = '&&'.join(list_cuts)
-		rowpitch, y0, xoff = self.row_cell_info_diamond['height'], self.row_cell_info_diamond['0'], self.row_cell_info_diamond['x_off']
-		self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch,
-		                   float(rowpitch)/self.bins_per_ch_y, 'dia Y [#mum]', self.col_overlay_var, 'diaChYPred', var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
+		"""
+		Method used to plot 2D profile of overlaid columns (channels).
+		:param name: name of the overlaid 2D profile
+		:param var: z-variable used for the profile 2D which normally is a PH variable
+		:param cells: indicates which cut should be applied for the fiducial region. 'good' is the selected cells, 'bad' is the non selected cells, 'all' are all the cells in the transparent grid,
+				and '' is show all the region including the borders of the diamond
+		:param cuts: is a string which contains the cuts used besides the fiducial cut
+		:param transp_ev: Most of the times it is true. Sets the trnasparentEvent cut. Events which don't have the transparentEvent cut, normally are useless
+		:param plot_option: plotting option used for root. prof colz creates a color bar for a profile 2D plot
+		:return:
+		"""
+		temp_cuts = self.cuts_man.ConcatenateCutWithCells(cuts, cells)
+		lims_dic = self.GetDiamondMapPlotLimits()
+		ymin, ymax = lims_dic['ymin'], lims_dic['ymax']
+		deltay = float(ymax - ymin) / lims_dic['binsy']
+		xmin, xmax, deltax = -self.row_cell_info_diamond['width'] / 2.0, self.row_cell_info_diamond['width'] / 2.0, self.cell_resolution
+		self.DrawProfile2D(name, xmin, xmax, deltax, 'dia X [#mum]', ymin, ymax, deltay, 'dia Y [#mum]', self.col_overlay_var2, 'diaChYPred', var, 'PH [ADC]', temp_cuts, transp_ev, plot_option)
 
 	def DrawProfile2DDiamondRowOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz'):
-		y0, rowpitch, numrows, yoff = self.row_cell_info_diamond['0'], self.row_cell_info_diamond['height'], self.row_cell_info_diamond['num'], self.row_cell_info_diamond['y_off']
-		list_cuts = [self.cuts_man.selected_cells if cells == 'good' else self.cuts_man.not_selected_cells if cells == 'bad' else self.cuts_man.all_cells]
-		if cuts != '':
-			list_cuts.append(cuts)
-		temp_cuts = '&&'.join(list_cuts)
-		self.DrawProfile2D(name, -0.5, 127.5, self.cell_resolution, 'dia X ch', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', self.row_overlay_var, var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
+		"""
+		Method used to plot 2D profile of overlaid rows.
+		:param name: name of the overlaid 2D profile
+		:param var: z-variable used for the profile 2D which normally is a PH variable
+		:param cells: indicates which cut should be applied for the fiducial region. 'good' is the selected cells, 'bad' is the non selected cells, 'all' are all the cells in the transparent grid,
+				and '' is show all the region including the borders of the diamond
+		:param cuts: is a string which contains the cuts used besides the fiducial cut
+		:param transp_ev: Most of the times it is true. Sets the trnasparentEvent cut. Events which don't have the transparentEvent cut, normally are useless
+		:param plot_option: plotting option used for root. prof colz creates a color bar for a profile 2D plot
+		:return:
+		"""
+		lims_dic = self.GetDiamondMapPlotLimits()
+		xmin, xmax = lims_dic['xmin'], lims_dic['xmax']
+		deltax = float(xmax - xmin) / lims_dic['binsx']
+		ymin, ymax, deltay = -self.row_cell_info_diamond['height'] / 2.0, self.row_cell_info_diamond['height'] / 2.0, self.cell_resolution
+		temp_cuts = self.cuts_man.ConcatenateCutWithCells(cuts, cells)
+		self.DrawProfile2D(name, xmin, xmax, deltax, 'dia X ch', ymin, ymax, deltay, 'dia Y [#mum]', 'diaChXPred', self.row_overlay_var2, var, 'PH [ADC]', temp_cuts, transp_ev, plot_option)
 
-	def DrawProfile2DDiamondCellOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz', varname='PH[ADC]', typ='adc'):
-		rowpitch= self.row_cell_info_diamond['height']
-		list_cuts = [self.cuts_man.selected_cells if cells == 'good' else self.cuts_man.not_selected_cells if cells == 'bad' else self.cuts_man.all_cells]
-		if cuts != '':
-			list_cuts.append(cuts)
-		temp_cuts = '&&'.join(list_cuts)
-		self.DrawProfile2D(name, -self.row_cell_info_diamond['width'] / 2.0, self.row_cell_info_diamond['width'] / 2.0, self.cell_resolution, 'dia X [#mum]', -rowpitch/2, rowpitch/2, self.cell_resolution, 'dia Y [#mum]', self.col_overlay_var2, self.row_overlay_var2, var, varname, temp_cuts, transp_ev, plot_option)
+	def DrawProfile2DDiamondCellOverlay(self, name, var='clusterChargeN', cells='all', cuts='', transp_ev=True, plot_option='prof colz', varname='PH [ADC]', typ='adc'):
+		"""
+		Method used to plot 2D profile of overlaid cells.
+		:param name: name of the overlaid 2D profile
+		:param var: z-variable used for the profile 2D which normally is a PH variable
+		:param cells: indicates which cut should be applied for the fiducial region. 'good' is the selected cells, 'bad' is the non selected cells, 'all' are all the cells in the transparent grid,
+				and '' is show all the region including the borders of the diamond
+		:param cuts: is a string which contains the cuts used besides the fiducial cut
+		:param transp_ev: Most of the times it is true. Sets the trnasparentEvent cut. Events which don't have the transparentEvent cut, normally are useless
+		:param plot_option: plotting option used for root. prof colz creates a color bar for a profile 2D plot
+		:return:
+		"""
+		xmin, xmax, deltax = -self.row_cell_info_diamond['width'] / 2.0, self.row_cell_info_diamond['width'] / 2.0, self.cell_resolution
+		ymin, ymax, deltay = -self.row_cell_info_diamond['height'] / 2.0, self.row_cell_info_diamond['height'] / 2.0, self.cell_resolution
+		temp_cuts = self.cuts_man.ConcatenateCutWithCells(cuts, cells)
+		self.DrawProfile2D(name, xmin, xmax, deltax, 'dia X [#mum]', ymin, ymax, deltay, 'dia Y [#mum]', self.col_overlay_var2, self.row_overlay_var2, var, varname, temp_cuts, transp_ev, plot_option)
 		if typ == 'adc':
 			self.profile[name].GetZaxis().SetRangeUser(self.phmin, self.phmax)
 		else:
 			self.profile[name].GetZaxis().SetRangeUser(self.phmin / 10., self.phmax / 10.)
 		if 'goff' not in plot_option:
 			ro.gPad.Update()
-		# self.DrawProfile2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '((diaChXPred-{ox})*{p})%{p}'.format(ox=xoff, p=self.col_pitch), '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), var, 'PH[ADC]', temp_cuts, transp_ev, plot_option)
-
-	def DrawHisto2DDiamondChannelOverlay(self, name, cells='all', cuts='', transp_ev=True):
-		rowpitch, y0, xoff = self.row_cell_info_diamond['height'], self.row_cell_info_diamond['0'], self.row_cell_info_diamond['x_off']
-		list_cuts = [self.cuts_man.selected_cells if cells == 'good' else self.cuts_man.not_selected_cells if cells == 'bad' else self.cuts_man.all_cells]
-		if cuts != '':
-			list_cuts.append(cuts)
-		temp_cuts = '&&'.join(list_cuts)
-		self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch, float(rowpitch) / self.bins_per_ch_y, 'dia Y [#mum]', '(((diaChXPred-{o})*{p})%{p})/10000'.format(o=xoff, p=self.col_pitch * 10000), 'diaChYPred', temp_cuts, transp_ev)
-	# self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', y0 - np.floor(y0 / rowpitch + 0.5) * rowpitch, y0 + (256 - np.floor(y0 / rowpitch + 0.5)) * rowpitch, float(rowpitch) / self.bins_per_ch_y, 'dia Y [#mum]', '((diaChXPred-{o})*{p})%{p}'.format(o=xoff, p=self.col_pitch), 'diaChYPred', temp_cuts, transp_ev)
-
-	def DrawHisto2DDiamondRowOverlay(self, name, cells='all', cuts='', transp_ev=True):
-		y0, rowpitch, numrows, yoff = self.row_cell_info_diamond['0'], self.row_cell_info_diamond['height'], self.row_cell_info_diamond['num'], self.row_cell_info_diamond['y_off']
-		list_cuts = [self.cuts_man.selected_cells if cells == 'good' else self.cuts_man.not_selected_cells if cells == 'bad' else self.cuts_man.all_cells]
-		if cuts != '':
-			list_cuts.append(cuts)
-		temp_cuts = '&&'.join(list_cuts)
-		self.DrawHisto2D(name, -0.5, 127.5, 1.0 / self.bins_per_ch_x, 'dia X ch', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', 'diaChXPred', '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), temp_cuts, transp_ev)
-
-	def DrawHisto2DDiamondCellOverlay(self, name, cells='all', cuts='', transp_ev=True):
-		y0, rowpitch, numrows, xoff, yoff = self.row_cell_info_diamond['0'], self.row_cell_info_diamond['height'], self.row_cell_info_diamond['num'], self.row_cell_info_diamond['x_off'], self.row_cell_info_diamond['y_off']
-		temp_cuts = self.ConcatenateDiamondCuts('({l}<diaChYPred)&&(diaChYPred<{h})'.format(l=y0, h=y0 + rowpitch * numrows), cells, cuts)
-		self.DrawHisto2D(name, 0, self.col_pitch, self.cell_resolution, 'dia X [#mum]', 0, rowpitch, self.cell_resolution, 'dia Y [#mum]', '(((diaChXPred-{ox})*{p})%{p})/10000'.format(ox=xoff, p=self.col_pitch * 10000), '(((diaChYPred-{oy})*100000)%{srp})/100000'.format(oy=yoff, srp=int(100000*rowpitch)), temp_cuts, transp_ev)
-
-	def DrawTCutCentersInCellOverlay(self, name):
-		self.canvas[name].cd()
-		self.tcutg_diamond_center.Draw('same')
-
-	def ConcatenateDiamondCuts(self, cut0='', cells='all', cuts_extra=''):
-		list_cuts = [cut0] if cut0 != '' else []
-		if cells == 'good':
-			# list_cuts.append(self.gridAreas.goodAreasCutNames_diamond)
-			list_cuts.append(self.gridAreas.goodAreasCutNames_simplified_diamond)
-		elif cells == 'bad':
-			# list_cuts.append(self.gridAreas.badAreasCutNames_diamond)
-			list_cuts.append(self.gridAreas.badAreasCutNames_simplified_diamond)
-		if cuts_extra != '':
-			list_cuts.append(cuts_extra)
-		return '&&'.join(list_cuts)
 
 	def DrawEfficiencyGraph(self, name, var, cells, cuts, xmin, xmax, deltax, typ='adc', ymin_plot=0, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2)), subf=4000.0):
+		"""
+		This method plots an efficiency graph for a certain PH variable of either 'adc' type or 'snr' type. The error bars are calculated numericaly using Bayes theorem to generate assymetric error bars
+		:param name: name of efficiency graph
+		:param var: variable used for efficiency discrimination
+		:param cells: cells used: 'good', 'bad', 'all' or ''
+		:param cuts: is a string which contains the cuts used besides the fiducial cut
+		:param xmin: min x
+		:param xmax: max x
+		:param deltax: delta x
+		:param typ: type of variable used for discriminating the efficiency: either 'adc' or 'snr'
+		:param ymin_plot: minimum value of efficiency to show. This will reduce the number of calculated efficiencies
+		:param sigma_errbar: error bar used for limit values
+		:param subf: subfactor used to calculate the subdivisions between efficiency steps if efficiency_subdiv == 1
+		:return:
+		"""
 		cut = self.cuts_man.transp_ev if cuts == '' else self.cuts_man.AndCuts([self.cuts_man.transp_ev, cuts])
 		minimum = min(0, max(GetMinimumFromTree(self.trans_tree, var, cut), -9999))
 		denominator = float(self.GetEventsForThCut(var, minimum, cells, cut))
@@ -1322,85 +1508,36 @@ class TransparentGrid:
 		self.canvas[name].SetTicky()
 		ro.gPad.Update()
 
-	# def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='transparentEvent', xmin=0, xmax=4100, deltax=50, ymin_plot=0, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2)), maxit=100000, tol=0.1, minimizer='SIMPLEX', subdiv=50):
-	def DrawEfficiencyADCCut(self, name='EfficiencyPhNVsADC', var='clusterChargeN', cells='all', cut='transparentEvent', xmin=0, xmax=4100, deltax=50, ymin_plot=0, sigma_errbar=ro.TMath.Erf(1/np.sqrt(2))):
-		minimum = min(0, max(self.GetMinimumBranch(var, cells, cut), -9999))
-		denominator = float(self.GetEventsADCCut(var, minimum, cells, cut))
-		xvalues = np.arange(xmin, xmax, deltax, 'float64')
-		numerator = {adc_th: float(self.GetEventsADCCut(var, adc_th, cells, cut)) for adc_th in xvalues}
-		efficiencyDic = {adc_th: numerator[adc_th] / denominator for adc_th in xvalues}
-		lim_one_side = np.subtract(1, np.power(np.subtract(1, sigma_errbar, dtype='float64'), np.divide(1, denominator + 1, dtype='float64'), dtype='float64'), dtype='float64')
-		(xinf, xsup, yinf, ysup) = (xmin - 10, xmax + 10, 0 - lim_one_side, 1 + lim_one_side) if ymin_plot == 0 else (xmin - 10, xmax + 10, ymin_plot - lim_one_side, 1 + lim_one_side)
-		if ymin_plot != 0:
-			for it, value in enumerate(xvalues):
-				if efficiencyDic[value] <= ymin_plot:
-					xsup = value - deltax / 2.0
-					yinf = ymin_plot - lim_one_side
-					break
-		yvalues = np.array([efficiencyDic[xval] for xval in xvalues], 'float64')
-		self.efficiency_subdiv = int(max(RoundInt(40000.0 / denominator), 1))
-		# ySigmas = {xval: self.FindUpperLowerUncertaintiesWithMinuit(numerator[xval], denominator, sigma_errbar, maxit, tol, minimizer=minimizer) for xval in xvalues}
-		print 'Calculating sigmas for efficiency plot... the step is {d} ...'.format(d=1.0 / (self.efficiency_subdiv * denominator))
-		ySigmas = {}
-		temp_bar = CreateProgressBarUtils(len(xvalues))
-		temp_bar.start()
-		for it, xval in enumerate(xvalues):
-			ySigmas[xval] = self.FindAsymmetricUncertaintiesWithDiscrete(numerator[xval], denominator, sigma_errbar)
-			temp_bar.update(it + 1)
-		temp_bar.finish()
-		# ySigmas = {xval: self.FindUpperLowerUncertaintiesWithDiscrete(numerator[xval], denominator, sigma_errbar) for xval in xvalues}
-		yLowerSigmas = np.array([ySigmas[xval]['lower'] for xval in xvalues], 'float64')
-		yUpperSigmas = np.array([ySigmas[xval]['upper'] for xval in xvalues], 'float64')
-		# for it, xval in enumerate(xvalues): print 'xval:', xval, 'k:', numerator[xval], 'n:', denominator, 'eff:', yvalues[it], 'low:', yLowerSigmas[it], 'up:', yUpperSigmas[it], 'area:', self.BetaDistIntegral(numerator[xval], denominator, yvalues[it] - yLowerSigmas[it], yvalues[it] + yUpperSigmas[it])
-		# for it, xval in enumerate(xvalues): print 'xval:', xval, 'k:', numerator[xval], 'n:', denominator, 'eff:', yvalues[it], 'low:', yLowerSigmas[it], 'up:', yUpperSigmas[it], 'lambda:', ySigmas[xval]['lambda'], 'area:', self.BetaDistIntegral(numerator[xval], denominator, yvalues[it] - yLowerSigmas[it], yvalues[it] + yUpperSigmas[it])
-		# self.graph[name] = ro.TGraph(len(xvalues), xvalues, yvalues)
-		self.graph[name] = ro.TGraphAsymmErrors(len(xvalues), xvalues, yvalues, np.ones(len(xvalues), 'float64') * deltax / 2.0, np.ones(len(xvalues), 'float64') * deltax / 2.0, yLowerSigmas, yUpperSigmas)
-		self.graph[name].SetNameTitle('g_' + name, 'g_' + name)
-		self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
-		self.graph[name].SetMarkerStyle(ro.TAttMarker.kFullDotMedium)
-		self.graph[name].SetMarkerColor(ro.kRed)
-		self.graph[name].Draw('AP')
-		self.graph[name].GetXaxis().SetTitle('ADC_cut')
-		self.graph[name].GetYaxis().SetTitle('Efficiency')
-		self.graph[name].GetXaxis().SetRangeUser(xinf, xsup)
-		self.graph[name].GetYaxis().SetRangeUser(yinf, ysup)
-		ro.gPad.Update()
-		self.canvas[name].SetGridx()
-		self.canvas[name].SetGridy()
-		self.canvas[name].SetTicky()
-		ro.gPad.Update()
-	# SetDefault1DStats(self.graph[name])
-
-	def GetMinimumBranch(self, var, cells='all', cut=''):
-		self.trans_tree.Draw('>>list{v}'.format(v=var), self.ConcatenateDiamondCuts('', cells, cut))
-		event_list = ro.gDirectory.Get('list{v}'.format(v=var))
-		self.trans_tree.SetEventList(event_list)
-		val = self.trans_tree.GetMinimum(var)
-		self.trans_tree.SetEventList(0)
-		event_list.Delete()
-		return val
-
-	def GetMaximumBranch(self, var, cells='all', cut=''):
-		self.trans_tree.Draw('>>list{v}'.format(v=var), self.ConcatenateDiamondCuts('', cells, cut))
-		event_list = ro.gDirectory.Get('list{v}'.format(v=var))
-		self.trans_tree.SetEventList(event_list)
-		val = self.trans_tree.GetMaximum(var)
-		self.trans_tree.SetEventList(0)
-		event_list.Delete()
-		return val
-
 	def GetEventsForThCut(self, var, threshold, cells, cut):
+		"""
+		Method used to get the number of entries that surpass a certain threshold for a certain variable after applying a cut on certain region of cells
+		:param var: variable used for discrimination
+		:param threshold: threshold used on variable var
+		:param cells: cells used for calculation: 'good', 'all', 'bad', ''
+		:param cut: is a string which contains the cuts used besides the fiducial cut
+		:return: the number of entries that surpass the threshold
+		"""
 		temp_cut = self.cuts_man.GetThCut(var=var, th=threshold, cells=cells, cuts=cut, op='>=')
 		return GetNumberEntriesFromTree(self.trans_tree, temp_cut)
 
-	def GetEventsADCCut(self, var='clusterChargeN', adc_th=50, cells='all', cut=''):
-		temp_cuts = self.ConcatenateDiamondCuts('({v}>={th})'.format(v=var, th=adc_th), cells, cut)
-		return self.trans_tree.GetEntries(temp_cuts)
-
 	def BetaDistIntegral(self, k, n, xinf, xsup):
+		"""
+		Analytic approximation to calculate asymmetric uncertainties using Bayes theorem
+		:param k:
+		:param n:
+		:param xinf:
+		:param xsup:
+		:return:
+		"""
 		return ro.TMath.BetaIncomplete(xsup, k + 1, n - k + 1) - ro.TMath.BetaIncomplete(xinf, k + 1, n - k + 1)
 
 	def LagrangeFcn(self, npar, par):
+		"""
+		Lagrange function to minimize for analytic calculation of asymmetric uncertainties using Bayes theorem
+		:param npar:
+		:param par:
+		:return:
+		"""
 		a = par[0]
 		b = par[1]
 		lambd = par[2]
@@ -1425,6 +1562,19 @@ class TransparentGrid:
 		f[0] = self.LagrangeFcn(npar, apar)
 
 	def FindAsymmetricUncertaintiesWithMinuit(self, k, n, sigm, max_iter=100000, tolerance=0.1, minimizer='SIMPLEX', a0=0, b0=0, is_last=True):
+		"""
+		Attempt to use lagrange multipliers and minuit to estimate the asymmetric uncertainties. It was too slow and many times the solution did not converge. Discrete numerical approach is better
+		:param k:
+		:param n:
+		:param sigm:
+		:param max_iter:
+		:param tolerance:
+		:param minimizer:
+		:param a0:
+		:param b0:
+		:param is_last:
+		:return:
+		"""
 		myMinuit = ro.TMinuit(6)  # 6 parameters: a, b, lambd, k, n, sigma
 		myMinuit.SetFCN(self.MinuitFcn)
 		ro.gMinuit.Command('SET PRINT -1')
@@ -1510,6 +1660,13 @@ class TransparentGrid:
 			return self.FindAsymmetricUncertaintiesWithMinuit(k, n, sigm, max_iter, tolerance, low, up, is_last=True)
 
 	def FindAsymmetricUncertaintiesWithDiscrete(self, k, n, sigm):
+		"""
+		Numerical method to calculate the asymmetric uncertainties. Is the method used
+		:param k: number of successes
+		:param n: total number of events
+		:param sigm: error bar used for single sided cases
+		:return: a dictionary containing the lower error bar, and the upper error bar calculaed using the beta distribution function from scipy stats packate (more precise than root and faster)
+		"""
 		if k == 0 or k == n:
 			edge_value = np.subtract(1, np.power(np.subtract(1, sigm, dtype='float64'), np.divide(1, n + 1, dtype='float64'), dtype='float64'), dtype='float64')
 			low = 0 if k == 0 else edge_value
@@ -1530,6 +1687,15 @@ class TransparentGrid:
 		return {'lower': low, 'upper': up}
 
 	def FitLanGaus(self, name, conv_steps=100, color=ro.kRed, xmin=-10000000, xmax=-10000000):
+		"""
+		Method used to fit a langaus in a given histogram
+		:param name: name of the histogram to be fitted
+		:param conv_steps: number of convolution steps for convolving the landau with the gaussian
+		:param color: color of the fitted graph
+		:param xmin: minimum value for the fit. if -10000000, it will use the limits of the histogram
+		:param xmax: maximum value for the fit. if -10000000, it will use the limits of the histogram
+		:return:
+		"""
 		self.canvas[name].cd()
 		self.langaus[name] = LanGaus(self.histo[name])
 		self.langaus[name].LanGausFit(conv_steps, xmin=xmin, xmax=xmax)
@@ -1556,6 +1722,14 @@ class TransparentGrid:
 	# print '{n}: <PH> ex= {f}'.format(n=name, f=fitmean)
 
 	def DrawDoubleLangaus(self, name, name1, name2, color=ro.kBlack):
+		"""
+		Method used to fit the sum of two langaus
+		:param name:
+		:param name1:
+		:param name2:
+		:param color:
+		:return:
+		"""
 		if self.langaus.has_key(name1) and self.langaus.has_key(name2):
 			langaus1 = self.langaus[name1].fit
 			langaus2 = self.langaus[name2].fit
@@ -1585,6 +1759,12 @@ class TransparentGrid:
 			print '{n}: <PH> = {f}'.format(n=name, f=fitmean)
 
 	def TwoLanGaus(self, x, params):
+		"""
+		Function for ROOT of the addition of two langaus
+		:param x:
+		:param params:
+		:return:
+		"""
 		mpc1 = params[1] - self.mpshift * params[0]
 		mpc2 = params[5] - self.mpshift * params[4]
 		xlow1, xhigh1 = [x[0] + self.sigma_conv * i * params[3] for i in [-1, 1]]
@@ -1609,6 +1789,13 @@ class TransparentGrid:
 		return params[2] * step1 * sums1 / (np.sqrt(2 * np.pi, dtype='f8') * params[3]) + params[6] * step2 * sums2 / (np.sqrt(2 * np.pi, dtype='f8') * params[7])
 
 	def FitGaus(self, name, num_sigma=2, iterations=2):
+		"""
+		Method used to fit a gaussian on a desired histogram. The fit, will be iterated taking only the limits specified by num_sigma within the mean value of the fit
+		:param name: name of the histogram to be fitted
+		:param num_sigma: number of sigmas away from the mean value used for the fit.
+		:param iterations: number of iterations to do the fit. Each iteration, the limits of the fit change
+		:return:
+		"""
 		if name in self.histo.keys():
 			if name in self.canvas.keys():
 				self.canvas[name].cd()
@@ -1631,6 +1818,12 @@ class TransparentGrid:
 			ro.gPad.Update()
 
 	def FitPol(self, name, num_pol=0):
+		"""
+		Method used to fit a polynomial function of degree num_pol
+		:param name: name of the histogram to be fitted
+		:param num_pol: degree of the polynomial to be fitted
+		:return:
+		"""
 		if name in self.histo.keys():
 			if name in self.canvas.keys():
 				self.canvas[name].cd()
@@ -1645,15 +1838,26 @@ class TransparentGrid:
 			ro.gPad.Update()
 
 	def SaveCanvasInlist(self, list):
+		"""
+		Method used to save the plots with names in the given list
+		:param list: list of names of the plots to be saved
+		:return:
+		"""
 		if not os.path.isdir('{d}/{r}/{sd}'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir)):
 			os.makedirs('{d}/{r}/{sd}'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir))
 		for canvas in list:
 			if self.canvas.has_key(canvas):
 				if self.canvas[canvas]:
 					self.canvas[canvas].SaveAs('{d}/{r}/{sd}/{c}.png'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir, c=canvas))
+					# self.canvas[canvas].Print('{d}/{r}/{sd}/{c}.png'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir, c=canvas))
 					self.canvas[canvas].SaveAs('{d}/{r}/{sd}/{c}.root'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir, c=canvas))
+					# self.canvas[canvas].Print('{d}/{r}/{sd}/{c}.root'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir, c=canvas))
 
 	def LoadPlotsInSubdir(self):
+		"""
+		Try to load all the root files of the plots previously saved
+		:return:
+		"""
 		if not os.path.isdir('{d}/{r}/{sd}'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir)):
 			print 'The working subdirectory: {d}/{r}/{sd} does not exist'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir)
 			return
@@ -1673,18 +1877,36 @@ class TransparentGrid:
 			file_i.Close()
 
 	def IsObjectTH(self, obj):
+		"""
+		Check if the object is of type TH1 or TH2
+		:param obj: object to be checked
+		:return: returns True if the object is of type TH1 or TH2
+		"""
 		if obj:
 			if obj.InheritsFrom(ro.TH1.Class().GetName()) or obj.InheritsFrom(ro.TH2.Class().GetName()):
 				return True
 		return False
 
 	def IsObjectTProfile2D(self, obj):
+		"""
+		Check if the object is of type TProifile2D
+		:param obj: object to be checked
+		:return: returns True if the object is of type TProfile2D
+		"""
 		if obj:
 			if obj.InheritsFrom(ro.TProfile2D.Class().GetName()):
 				return True
 		return False
 
 	def CreateFriendWithSaturationRegions(self, suffix='', skipAfter=0, skipBefore=0):
+		"""
+		Creates a tree friend with saturation regions flag specified by skipAfter and skipBefore.
+		The normal case, is to flag only the saturated event, which corresponds to skipAfter = 1, skipBefore = 0
+		:param suffix: suffix used for saving the tree. This enables the possibility to have multiple files in the sub directory
+		:param skipAfter: number of events to skip after the saturation event including the saturated event
+		:param skipBefore: number of events to skip before the saturation event without including the saturated event
+		:return:
+		"""
 		if not self.cuts_man.sat_evts:
 			self.cuts_man.FindSaturationEvents()
 		satFile = ro.TFile('{d}/{r}/satRegions{s}.{r}.root'.format(d=self.dir, s=suffix, r=self.run), 'RECREATE')
@@ -1705,10 +1927,15 @@ class TransparentGrid:
 		satFile.Write()
 		satFile.Close()
 		bar.finish()
-	# self.CloseInputROOTFiles()
-	# self.OpenFileAndGetTree('UPDATE')
 
 	def AddFriendWithSaturationRegions(self, skipAfter=100, skipBefore=0):
+		"""
+		Adds a friend tree with the saturation flag corresponding to the specified number of events before and after saturation.
+		It will call CreateFriendWithSaturationRegions if the tree does not exist
+		:param skipAfter: number of events to skip after the saturation event including the saturated event
+		:param skipBefore: number of events to skip before the saturation event without including the saturated event
+		:return:
+		"""
 		suffix = '{sb}b{sa}a'.format(sb=skipBefore, sa=skipAfter)
 		if not self.trans_tree.GetFriend('satRegions'):
 			if os.path.isfile('{d}/{r}/satRegions{s}.{r}.root'.format(d=self.dir, s=suffix, r=self.run)):
@@ -1718,6 +1945,13 @@ class TransparentGrid:
 				self.AddFriendWithSaturationRegions(skipAfter=skipAfter, skipBefore=skipBefore)
 
 	def CreateFriendWithNewPedestalBuffer(self, slide_length=50, hit_factor=0, seed_factor=0):
+		"""
+		Creates a new tree friend with a different pedestal calculation due to a different buffer length or hit, seed factors
+		:param slide_length: buffer length used for the calculation. The original buffer in the analysis is 500. It is recommended to use values >=~ 200
+		:param hit_factor: hit factor to calculate the pedestal.
+		:param seed_factor: seed factor used to calculate the pedestal
+		:return:
+		"""
 		hit_fact = hit_factor if hit_factor != 0 else self.hit_factor
 		seed_fact = seed_factor if seed_factor != 0 else self.seed_factor
 		if hit_fact + seed_fact == 0:
@@ -1729,6 +1963,13 @@ class TransparentGrid:
 		pedCalc.CalculateDevicesPedestals()
 
 	def AddFriendWithNewPedestalBuffer(self, slide_length=50, hit_factor=0, seed_factor=0):
+		"""
+		Tries to add a tree friend with a different calculation of the pedestal. If the tree does not exist, the method will create it by calling CreateFriendWithNewPedestalBuffer
+		:param slide_length: buffer length used for the calculation. The original buffer in the analysis is 500. It is recommended to use values >=~ 200
+		:param hit_factor: hit factor to calculate the pedestal.
+		:param seed_factor: seed factor used to calculate the pedestal
+		:return:
+		"""
 		hit_fact = hit_factor if hit_factor != 0 else self.hit_factor
 		seed_fact = seed_factor if seed_factor != 0 else self.seed_factor
 		if not self.trans_tree.GetFriend('pedTree'):
@@ -1744,15 +1985,30 @@ class TransparentGrid:
 					print 'Something went wrong... Created file does not exist!'
 
 	def UnfriendTree(self, extreefriend):
+		"""
+		Method used to unfriend a friend from the transparent tree
+		:param extreefriend: is the tree object to be unfriend. It can be given by trans_tree.GetFriend(<friend_name>)
+		:return:
+		"""
 		treename = extreefriend.GetName()
 		hasfriend = True if self.trans_tree.GetFriend(treename) else False
 		if hasfriend:
 			self.trans_tree.RemoveFriend(extreefriend)
 
 	def CheckIfPedTreeFriendExists(self, buff=50):
+		"""
+		Checks if the pedestal tree friend exists for a certain buffer size
+		:param buff: buffer size of the pedestal tree friend
+		:return: returns True if it exist. Otherwise False
+		"""
 		return True if os.path.isfile('{d}/{r}/pedestal.{s}.{r}.root'.format(d=self.dir, s=buff, r=self.run)) else False
 
 	def CreatePedTreeFriendsForStudy(self, buffers_array):
+		"""
+		Creates several pedestal tree friends in parallel. The number of parallel calculations is given by num_parallel which can be changed before calling this method
+		:param buffers_array: numpy array containing the sizes of the buffers of the tree friends to be created
+		:return:
+		"""
 		ev_ini, ev_end = self.trans_tree.GetMinimum('event'), self.trans_tree.GetMaximum('event')
 		job_chunks = [buffers_array[i:i+self.num_parallel] for i in xrange(0, buffers_array.size, self.num_parallel)]
 		for buffsrow in job_chunks:
@@ -1819,6 +2075,12 @@ class TransparentGrid:
 
 
 	def CreateFriendWithCells(self, xoff=0, yoff=0):
+		"""
+		Creates a tree friend with a specified offset xoff, yoff. The tree will be save in the same Root File with a different tree name
+		:param xoff: offset from the center position given by the alignment. Normally is a small number smaller than 0.01. The number is in units of the pitch of the column
+		:param yoff: offset from the pickle values '0_even' and '0_odd' to create the TCutGs of the cells. It is given in mum
+		:return:
+		"""
 		if self.dia_cols:
 			print 'Getting vectors to calculate cells...', ; sys.stdout.flush()
 			tempc = self.cuts_man.transp_ev
@@ -1916,16 +2178,36 @@ class TransparentGrid:
 
 
 	def GetPHChVar(self, ch, typ='H', isSNR=False, isFriend=False):
+		"""
+		Method that returns the PH variable used for a certain number of channel
+		:param ch: The number of the channel considered for the calculation
+		:param typ: Type of the PH variable. If 'H' will take into account the highest channels. If 'Ch', it will take into account the channels ordered using the proximity from the predicted hit position as criteria.
+		:param isSNR: flag that enables the option to obtain the variable in terms of Sigma (SNR)
+		:param isFriend: Flag used to indicate that the signal, or noise values will be used from a previously befriended pedestal tree (pedTree) instead to the original transparent Tree values.
+		:return: returns the string that is used in the analysis as a PH variable
+		"""
 		varch = 'clusterChannel' + str(ch) if typ == 'Ch' else 'clusterChannelHighest' + str(ch) if typ == 'H' else str(ch)
 		return '(pedTree.diaChSignal[{c}])'.format(c=varch) if isFriend and not isSNR else '(diaChSignal[{c}]/diaChPedSigmaCmc[{c}])'.format(c=varch) if not isFriend and isSNR else '(pedTree.diaChSignal[{c}]/pedTree.diaChPedSigmaCmc[{c}])'.format(c=varch) if isFriend and isSNR else '(diaChSignal[{c}])'.format(c=varch)
 
 	def GetPHNChsVar(self, n, typ='H', isSNR=False, isFriend=False):
+		"""
+		Method that returns the cumulative PH variable used for a certain number of channels
+		:param ch: The number of the cumulative channels considered for the calculation
+		:param typ: Type of the PH variable. If 'H' will take into account the highest channels. If 'Ch', it will take into account the channels ordered using the proximity from the predicted hit position as criteria.
+		:param isSNR: flag that enables the option to obtain the variable in terms of Sigma (SNR)
+		:param isFriend: Flag used to indicate that the signal, or noise values will be used from a previously befriended pedestal tree (pedTree) instead to the original transparent Tree values.
+		:return: returns the string that is used in the analysis as a PH variable
+		"""
 		temp = []
 		for chi in xrange(1, n + 1):
 			temp.append(self.GetPHChVar(chi - 1 if typ == 'Ch' else chi, typ, isSNR, isFriend))
 		return '+'.join(temp)
 
 	def FindMaxMinVarz(self):
+		"""
+		min max variables used for each plotting case... should be removed as phmin and phmax is more universal and this lags the analysis. The calculation is saved in a pickle to prevent future recalculations
+		:return:
+		"""
 		if os.path.isfile('{d}/{r}/{s}/min_max_values.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
 			with open('{d}/{r}/{s}/min_max_values.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir), 'rb') as pkl:
 				minmax_temp = pickle.load(pkl)

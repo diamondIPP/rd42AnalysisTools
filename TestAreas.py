@@ -273,8 +273,6 @@ class TestAreas:
 		self.trans_grid.DrawProfile2DDiamond('PH2_H_map_with_borders', self.trans_grid.GetPHNChsVar(2, 'H', False))
 		self.trans_grid.DrawTCutGs('PH2_H_map_with_borders', 'diamond')
 		self.trans_grid.DrawGoodAreasDiamondCenters('PH2_H_map_with_borders')
-		# self.trans_grid.DrawGoodAreasDiamond('PH2_H_map_with_borders')
-		# self.trans_grid.DrawBadAreasDiamond('PH2_H_map_with_borders')
 		xbinmin, xbinmax = int(self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5)), int(self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().FindBin(self.trans_grid.ch_ini - 0.5) + self.trans_grid.num_cols * self.trans_grid.bins_per_ch_x - 1)
 		self.trans_grid.profile['PH2_H_map_with_borders'].GetXaxis().SetRange(xbinmin - 1, xbinmax + 1)
 		self.trans_grid.canvas['PH2_H_map_with_borders_py'] = ro.TCanvas('c_PH2_H_map_with_borders_py', 'c_PH2_H_map_with_borders_py', 1)
@@ -627,6 +625,7 @@ if __name__ == '__main__':
 	parser.add_option('-c', '--config', dest='config', default='', type='string', help='gives the path to a config file for the test area')
 	parser.add_option('-t', '--type', dest='typ', default='[adc]', type='string', help='selects a type of analysis to run automatically. Options are [adc], [adc,snr], or [snr] order does not matter.')
 	parser.add_option('-f', '--first', dest='first', default=False, action='store_true', help='Use when negative cuts are unknown. Will do analysis until cluster channel part.')
+	parser.add_option('-b', '--batch', dest='batch', default=False, action='store_true', help='Enables batch mode')
 
 	(options, args) = parser.parse_args()
 	run = int(options.run)
@@ -634,10 +633,13 @@ if __name__ == '__main__':
 	config = str(options.config)
 	typ = str(options.typ).strip('[').strip(']').split(',')
 	first = bool(options.first)
+	bat = bool(options.batch)
 
+	if bat:
+		ro.gROOT.SetBatch(ro.kTRUE)
 	t = TestAreas(config, run)
 	t.SetTransparentGrid(first)
 	t.SetTest()
 	if autom:
-		t.DoAutomatic('good', types=typ if not first else ['adc', 'snr'], SaveAllPlots=False, isFirst=first)
+		t.DoAutomatic('good', types=typ if not first else ['adc', 'snr'], SaveAllPlots=(False or bat), isFirst=first)
 

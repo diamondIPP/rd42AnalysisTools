@@ -61,7 +61,7 @@ class FinalAnalysis:
 
 	def DoDeviceMaps(self, cells, cuts='', suffix='no_cuts', typ='adc', isFriend=False):
 		def DrawProfile2D(name, varz, varzname, cut, getOccupancy=False):
-			self.trans_grid.DrawProfile2DDiamondMap(name, varz, varzname, cells, cut, 'prof colz')
+			self.trans_grid.DrawProfile2DDiamond(name, varz, varzname, cells, cut, plot_option='prof colz')
 			self.trans_grid.profile[name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
 			self.trans_grid.profile[name].GetYaxis().SetRangeUser(self.trans_grid.row_cell_info_diamond['0'] - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_cell_info_diamond['up'] + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 			self.trans_grid.DrawTCutGs(name, 'diamond')
