@@ -524,7 +524,7 @@ def GetNumberEntriesFromTree(tree, cut):
 	return tree.GetEntries(cut)
 
 def GetSuffixDictionary(trans_grid):
-	bias_str = '{v}'.format(v=trans_grid.bias) if trans_grid.bias >= 0 else 'Neg{v}'.format(v=abs(trans_grid.bias))
+	bias_str = '{v}V'.format(v=trans_grid.bias) if trans_grid.bias >= 0 else 'Neg{v}V'.format(v=abs(trans_grid.bias))
 	dic = {}
 	dic['all'] = 'all_{d}_{b}'.format(d=trans_grid.dut, b=bias_str)
 	dic['good'] = 'selection_{d}_{b}'.format(d=trans_grid.dut, b=bias_str)

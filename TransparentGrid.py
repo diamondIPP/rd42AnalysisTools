@@ -56,7 +56,7 @@ class TransparentGrid:
 		self.ch_ini = 0
 		self.ch_end = 127
 		self.num_sides = 4
-		self.threshold_criteria_in_sigmas = 2
+		self.threshold_criteria_in_sigmas = 0.5
 		self.threshold = 0
 		self.threshold_snr = 0
 		self.phbins = 240

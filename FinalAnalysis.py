@@ -11,6 +11,7 @@ from Utils import *
 
 
 color_index = 10000
+eff_step_opts = np.array([1,2,3,4,5,6,8,10,12,15,16,20,24,25,30,32,40,48,50,60,64,75,80,96,100,120,150,160,192,200,240,300,320,400,480,600,800,960,1200,1600,2400], 'uint16')
 
 class FinalAnalysis:
 	def __init__(self, trans_grid, numstrips, clustersize, noise_ana=None, center_reg_ana=None):
@@ -51,26 +52,47 @@ class FinalAnalysis:
 		self.not_negN_chs_cut = self.trans_grid.cuts_man.GetNotNegPHNChsCut
 
 		self.analysis_cummulative_ch = np.arange(1, self.num_strips + 1)
+		self.eff_step = 0
 
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
 
 	def GetCut(self, cuts, typ, isFriend, ch=0, chtype='Ch'):
+		"""
+		Method to select the cumulative cut strings used by this method
+		:param cuts: string identifier to select the cut string. It can be '', 'no_neg', 'no_neg_no_sat'
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:param ch: number of cumulative channels to use in the cuts. If 0, it will use all the channels in the cluster
+		:param chtype: if 'Ch' it will get the cuts using the proximity to the hit position as criteria for accumulating channels. If 'H', it will use the criteria of highest signal for accumulating channels
+		:return: returns the string cut to be used by root
+		"""
 		chs = self.cluster_size if ch == 0 else ch
 		return self.not_negN_chs_cut(chs, chtype, typ == 'snr', isFriend) if cuts == 'no_neg' else self.trans_grid.cuts_man.AndCuts([self.not_negN_chs_cut(chs, chtype, typ == 'snr', isFriend), self.not_sat_evts_region_cut]) if cuts == 'no_neg_no_sat' else '(1)'
 
 	def DoDeviceMaps(self, cells, cuts='', suffix='no_cuts', typ='adc', isFriend=False):
+		"""
+		Creates the 2D profile maps of the device for different sets of cuts
+		:param cells: Which cells to take into account for the profile
+		:param cuts: string with the cumulative cuts to use for the analysis
+		:param suffix: suffix to denote the cumulative cuts used
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
+		yup_max = max(self.trans_grid.row_cell_info_diamond['up_odd'], self.trans_grid.row_cell_info_diamond['up_even'])
+		ylow_min = min(self.trans_grid.row_cell_info_diamond['0_even'], self.trans_grid.row_cell_info_diamond['0_odd'])
 		def DrawProfile2D(name, varz, varzname, cut, getOccupancy=False):
 			self.trans_grid.DrawProfile2DDiamond(name, varz, varzname, cells, cut, plot_option='prof colz')
 			self.trans_grid.profile[name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-			self.trans_grid.profile[name].GetYaxis().SetRangeUser(self.trans_grid.row_cell_info_diamond['0'] - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_cell_info_diamond['up'] + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
+			self.trans_grid.profile[name].GetYaxis().SetRangeUser(ylow_min - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), yup_max + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 			self.trans_grid.DrawTCutGs(name, 'diamond')
 			self.trans_grid.DrawGoodAreasDiamondCenters(name)
 			self.PosCanvas(name)
 			if getOccupancy:
 				self.trans_grid.GetOccupancyFromProfile(name)
 				self.trans_grid.histo['hit_map_' + name].GetXaxis().SetRangeUser(self.trans_grid.ch_ini - 1, self.trans_grid.ch_end + 1)
-				self.trans_grid.histo['hit_map_' + name].GetYaxis().SetRangeUser(self.trans_grid.row_cell_info_diamond['0'] - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), self.trans_grid.row_cell_info_diamond['up'] + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
+				self.trans_grid.histo['hit_map_' + name].GetYaxis().SetRangeUser(ylow_min - int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y), yup_max + int(self.trans_grid.row_cell_info_diamond['height'] / self.trans_grid.bins_per_ch_y))
 				self.trans_grid.DrawTCutGs('hit_map_' + name, 'diamond')
 				self.trans_grid.DrawGoodAreasDiamondCenters('hit_map_' + name)
 				self.PosCanvas('hit_map_' + name)
@@ -84,7 +106,16 @@ class FinalAnalysis:
 				DrawProfile2D(hname, self.phN_chs_var(ch, 'H', typ == 'snr', isFriend), 'PH{c} highest chs [{t}]'.format(c=ch, t=typ.upper()), tempc, False)
 
 	def DoStripHistograms(self, cells, cuts='', suffix='no_cuts', typ='adc', isFriend=False):
-		minx, maxx, deltax, xname, xvar = -0.5, 0.5, self.trans_grid.cell_resolution / float(self.trans_grid.row_cell_info_diamond['height']), 'dia pred. strip hit pos', 'diaChXPred-TMath::Floor(diaChXPred+0.5)'
+		"""
+		Creates cell histograms indicating the position of the cluster hit in the hit strip ch0 and the PH for different channel configurations for different sets of cuts
+		:param cells: Which cells to take into account for the histogram
+		:param cuts: string with the cumulative cuts to use for the analysis
+		:param suffix: suffix to denote the cumulative cuts used
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
+		minx, maxx, deltax, xname, xvar = -self.trans_grid.row_cell_info_diamond['width'] / (2.0 *self.trans_grid.col_pitch), self.trans_grid.row_cell_info_diamond['width'] / (2.0 *self.trans_grid.col_pitch), self.trans_grid.cell_resolution / float(self.trans_grid.row_cell_info_diamond['width']), 'dia pred. strip hit pos', 'x0'
 		def Draw2DHistogram(name, zmin, zmax, yname, yvar, cuts, typ='adc'):
 			deltay = 4 * self.delta_adc if typ == 'adc' else 4 * self.delta_snr
 			histo_limits = Get1DLimits(zmin, zmax, deltay)
@@ -110,14 +141,29 @@ class FinalAnalysis:
 		Draw1DHistogram('strip_location_{t}_{s}'.format(s=suffix, t=typ.lower()), tempc)
 
 	def DoPH2DHistograms(self, cells, cuts='', suffix='no_cuts', typ='adc', isFriend=False):
+		"""
+		Creates 2D histograms of different cumulative PH of highest channels for: predicted hit channel (Ch0) in the X axis; predicted hit row in the transparent grid; event
+		:param cells: Which cells to take into account for the histogram
+		:param cuts: string with the cumulative cuts to use for the analysis
+		:param suffix: suffix to denote the cumulative cuts used
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		tempc = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.GetCut(cuts, typ, isFriend), cells=cells)
 		for ch in self.analysis_cummulative_ch:
 			nameh = 'PH{c}_H_Vs_hit_channel_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower()) if not isFriend else 'PH{c}_H_buffer_{v}_Vs_hit_channel_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
-			xmin, xmax, deltax = self.trans_grid.ch_ini, self.trans_grid.ch_end, 1
-			ymin, ymax, deltay = (self.trans_grid.phmin, self.trans_grid.phmax, float(self.trans_grid.phmax) / self.trans_grid.phbins) if typ == 'adc' else (self.trans_grid.phmin, self.trans_grid.phmax / 10., float(self.trans_grid.phmax) / self.trans_grid.phbins / 10.)
+			xmin, xmax, deltax = self.trans_grid.ch_ini - 0.5, self.trans_grid.ch_end + 0.5, 1
+			ymin, ymax, deltay = (self.trans_grid.phmin, self.trans_grid.phmax, float(self.trans_grid.phmax - self.trans_grid.phmin) / self.trans_grid.phbins) if typ == 'adc' else (self.trans_grid.phmin / 10., self.trans_grid.phmax / 10., float(self.trans_grid.phmax - self.trans_grid.phmin) / self.trans_grid.phbins / 10.)
 			vary = self.phN_chs_var(ch, 'H', typ == 'snr', isFriend)
-			self.trans_grid.DrawHisto2D(nameh, xmin, xmax, deltax, 'dia pred hit ch', ymin, ymax, deltay, 'PH{c} highest chs'.format(c=ch), 'diaChannels[int(TMath::Floor(diaChXPred+0.5))]', vary, tempc)
+			self.trans_grid.DrawHisto2D(nameh, xmin, xmax, deltax, 'dia pred hit ch', ymin, ymax, deltay, 'PH{c} highest chs'.format(c=ch), 'col+{chi}'.format(chi=self.trans_grid.ch_ini), vary, tempc)
 			self.PosCanvas(nameh)
+
+			nameh = 'PH{c}_H_Vs_row_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower()) if not isFriend else 'PH{c}_H_buffer_{v}_Vs_row_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
+			xmin, xmax, deltax = -0.5, max(self.trans_grid.row_cell_info_diamond['num_even'], self.trans_grid.row_cell_info_diamond['num_odd']) + 0.5, 1
+			self.trans_grid.DrawHisto2D(nameh, xmin, xmax, deltax, 'dia pred hit grid row', ymin, ymax, deltay, 'PH{c} highest chs'.format(c=ch), 'row', vary, tempc)
+			self.PosCanvas(nameh)
+
 			nameh = 'PH{c}_H_Vs_event_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower()) if not isFriend else 'PH{c}_H_buffer_{v}_Vs_event_{t}_{s}'.format(c=ch, s=suffix, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 			xmin, xmax, deltax = self.trans_grid.trans_tree.GetMinimum('event'), self.trans_grid.trans_tree.GetMaximum('event'), 100 * self.delta_ev
 			self.trans_grid.DrawHisto2D(nameh, xmin, xmax, deltax, 'event', ymin, ymax, deltay, 'PH{c} highest chs'.format(c=ch), 'event', vary, tempc)
@@ -135,8 +181,17 @@ class FinalAnalysis:
 			self.PosCanvas(namehp)
 
 	def DoEfficiencyPlots(self, cells, cuts='', suffix='no_cuts', typ='adc', isFriend=False):
+		"""
+		Creates efficiency plots for different PH cuts for different sets of cuts
+		:param cells: Which cells to take into account for the efficiency calculation
+		:param cuts: string with the cumulative cuts to use for the analysis
+		:param suffix: suffix to denote the cumulative cuts used
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		def DrawEfficiencyGraphs(name, var, cells, cuts, typ='adc', show_only_95=True):
-			xmin, xmax, deltax = (self.trans_grid.phmin, self.trans_grid.phmax, 50) if typ == 'adc' else (self.trans_grid.phmin / 10., self.trans_grid.phmax / 10., 5)
+			xmin, xmax, deltax = (self.trans_grid.phmin, self.trans_grid.phmax, self.eff_step) if typ == 'adc' else (self.trans_grid.phmin / 10., self.trans_grid.phmax / 10., self.eff_step / 10.)
 			ymin = 0.95 if show_only_95 else 0
 			self.trans_grid.DrawEfficiencyGraph(name, var, cells, cuts, xmin, xmax, deltax, typ, ymin)
 			self.PosCanvas(name)
@@ -171,6 +226,15 @@ class FinalAnalysis:
 			DrawEfficiencyGraphs(hname, self.phN_chs_var(ch, 'H', typ == 'snr', isFriend), cells, tempc, typ)
 
 	def DoPHHistograms(self, cells, cuts='', suffix='no_cuts', typ='adc', isFriend=False):
+		"""
+		Draw PH of histograms for different set of cuts
+		:param cells: Which cells to take into account for the histogram
+		:param cuts: string with the cumulative cuts to use for the analysis
+		:param suffix: suffix to denote the cumulative cuts used
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		def DrawHisto(name, xmin, xmax, deltax, varz, varname, cuts):
 			self.trans_grid.DrawPHInArea(name, varz, cells, cuts, varname=varname, xmin=xmin, xmax=xmax, deltax=deltax)
 			self.PosCanvas(name)
@@ -186,12 +250,32 @@ class FinalAnalysis:
 					self.trans_grid.FitLanGaus(hname)
 
 	def DoCenterPHStudies(self, cells, cuts='', suffix='no_cuts', typ='adc', do_sat=True, do_all_plots=False, isFriend=False):
+		"""
+		Does center region analysis for a set of cuts
+		:param cells: Which cells to take into account for the efficiency calculation
+		:param cuts: string with the cumulative cuts to use for the analysis
+		:param suffix: suffix to denote the cumulative cuts used
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param do_sat: if True, it will do saturation plots
+		:param do_all_plots: if True, it will do all the plots in the study
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		self.center_reg_ana.w, self.center_reg_ana.window_shift = self.w, self.window_shift
 		tempc = self.GetCut(cuts, typ, isFriend)
 		self.center_reg_ana.DoCenterRegionStudies(self.cell_dists, cells, do_all_plots, suffix, tempc, typ, do_sat, isFriend)
 		self.w, self.window_shift = self.center_reg_ana.w, self.center_reg_ana.window_shift
 
 	def DoCellMaps(self, cells, cuts='', suffix='no_cuts', typ='adc', isFriend=False):
+		"""
+		Creates cell overlay 2D profile maps for different set of cuts for different ordering of cumulative PH channels
+		:param cells: Which cells to take into account for the profile
+		:param cuts: string with the cumulative cuts to use for the analysis
+		:param suffix: suffix to denote the cumulative cuts used
+		:param typ: indicates either to show PH in adc ('adc') or in sigmas ('snr')
+		:param isFriend: if true, it will use the data from a pedTree friend
+		:return:
+		"""
 		def PlotCellsProfiles(name, varz, zmin, zmax, varname, cut, doOccupancy=False):
 			self.trans_grid.DrawProfile2DDiamondCellOverlay(name, varz, cells, cut, varname=varname)
 			self.trans_grid.profile[name].SetMinimum(min(0, zmin))
@@ -210,6 +294,7 @@ class FinalAnalysis:
 					PlotCellsProfiles(hname, self.phN_chs_var(ch, chtype, typ == 'snr', isFriend), minz, maxz, 'PH{c} {ct} chs [{t}]'.format(c=ch, t=typ.upper(), ct='cluster' if chtype == 'Ch' else 'highest'), tempc)
 
 	def DoFinalAnalysis(self, typ='adc', cummulative_chs=None, isFriend=False):
+		self.eff_step = eff_step_opts[np.abs(eff_step_opts - (self.trans_grid.threshold / 12.)).argmin()] if self.trans_grid.threshold != 0 else 50.
 		if cummulative_chs:
 			self.analysis_cummulative_ch = cummulative_chs
 		self.DefineSatRegion(before=0, after=1)
@@ -232,6 +317,12 @@ class FinalAnalysis:
 			self.DoCenterPHStudies(cells, cut, '{s}_{c}'.format(s=self.suffix[cells], c=cut), typ=typ, do_sat=(cut != 'no_neg_no_sat'), isFriend=isFriend)
 
 	def DefineSatRegion(self, before=0, after=1):
+		"""
+		Defines which saturation tree to make as friend for applying saturation events cuts
+		:param before: number of events before the saturation event without including the saturation event
+		:param after: number of events after including the saturation event
+		:return:
+		"""
 		if self.trans_grid.trans_tree.GetFriend('satRegions'):
 			self.trans_grid.UnfriendTree(self.trans_grid.trans_tree.GetFriend('satRegions'))
 		self.trans_grid.AddFriendWithSaturationRegions(skipAfter=after, skipBefore=before)
