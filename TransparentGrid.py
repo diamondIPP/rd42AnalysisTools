@@ -724,9 +724,10 @@ class TransparentGrid:
 				y0 = self.dia_cols.cols[0].cells[row].ycenter
 				self.gridTextDiamond.Fill(x0 - 0.1, y0, (row + 0.01))
 			if self.num_cols > 1:
-				if row < len(self.dia_cols.cols[1].cells):
-					y0 = self.dia_cols.cols[1].cells[row].ycenter
-					self.gridTextDiamond.Fill(x0 - 0.6, y0, (row + 0.01))
+				if self.row_cell_info_diamond['0_even'] != self.row_cell_info_diamond['0_odd']:
+					if row < len(self.dia_cols.cols[1].cells):
+						y0 = self.dia_cols.cols[1].cells[row].ycenter
+						self.gridTextDiamond.Fill(x0 - 0.6, y0, (row + 0.01))
 		self.gridTextDiamond.SetMarkerSize(0.8)
 
 	def GetDiamondMapPlotLimits(self, border=3):
@@ -735,8 +736,12 @@ class TransparentGrid:
 		:param border: number of cells to leave as a border for the plot
 		:return: dictionary with the calculated parameters
 		"""
-		xmin = self.dia_cols.cols[0].xcenter - self.row_cell_info_diamond['width'] * (border + 0.5) / self.col_pitch
-		xmax = self.dia_cols.cols[-1].xcenter + self.row_cell_info_diamond['width'] * (border + 0.5) / self.col_pitch
+		if self.dia_cols:
+			xmin = self.dia_cols.cols[0].xcenter - self.row_cell_info_diamond['width'] * (border + 0.5) / self.col_pitch
+			xmax = self.dia_cols.cols[-1].xcenter + self.row_cell_info_diamond['width'] * (border + 0.5) / self.col_pitch
+		else:
+			xmin = self.ch_ini - border
+			xmax = self.ch_end + border
 		binsx = RoundInt((xmax - xmin) * self.bins_per_ch_x)
 		ymin = min(self.row_cell_info_diamond['0_even'], self.row_cell_info_diamond['0_odd']) + self.row_cell_info_diamond['y_off'] - self.row_cell_info_diamond['height'] * border
 		ymax = max(self.row_cell_info_diamond['up_even'], self.row_cell_info_diamond['up_odd']) + self.row_cell_info_diamond['y_off'] + self.row_cell_info_diamond['height'] * border
@@ -2049,6 +2054,10 @@ class TransparentGrid:
 			if os.path.isfile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run)):
 				if overWrite and xoff==0 and yoff==0:
 					os.remove('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run))
+					for typ in ['adc', 'snr']:
+						if os.path.isfile('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ)):
+							os.remove('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ))
+					self.mean_ph_cell_dic = {'snr': {}, 'adc': {}}
 					self.ResetAreas()
 					self.CreateGridAreas()
 					self.CreateTCutGs()
@@ -2071,6 +2080,10 @@ class TransparentGrid:
 				self.UnfriendTree(self.trans_tree.GetFriend(treename))
 				if os.path.isfile('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run)):
 					os.remove('{d}/{r}/cells.{r}.root'.format(d=self.dir, r=self.run))
+				for typ in ['adc', 'snr']:
+					if os.path.isfile('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ)):
+						os.remove('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ))
+				self.mean_ph_cell_dic = {'snr': {}, 'adc': {}}
 				self.ResetAreas()
 				self.CreateGridAreas()
 				self.CreateTCutGs()
