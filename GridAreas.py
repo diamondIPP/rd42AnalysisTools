@@ -29,26 +29,30 @@ class GridAreas:
 		self.badAreasCutNames_simplified_diamond = ''
 		self.badAreasCutNames_diamond_centers = ''
 
-		self.center_rectangles = {}
+		self.center_polygons = {}
 
 		self.good_channels = []
 		self.bad_channels = []
 
-	def CreateRectangleSymmetricCentralRegion(self, percentage=80, pitchCol=50, pitchRow=50, xvar='(((diaChXPred-0.5)*(50*10000))%(50*10000))/10000', yvar='(((diaChYPred-25)*10000)%(50*10000))/10000'):
-		xinf = np.divide(pitchCol * (1 - np.sqrt(percentage / 100., dtype='float128')), 2.0, dtype='float128')
-		xsup = np.subtract(pitchCol, xinf, dtype='float128')
-		yinf = np.divide(pitchRow * (1 - np.sqrt(percentage / 100., dtype='float128')), 2.0, dtype='float128')
-		ysup = np.subtract(pitchRow, yinf, dtype='float128')
-		xarray = np.array([xinf, xinf, xsup, xsup, xinf], dtype='float64')
-		yarray = np.array([yinf, ysup, ysup, yinf, yinf], dtype='float64')
-		tempname = 'cutg_center_rect_{r}_{p}'.format(r=self.run, p=percentage)
-		tempCutG = ro.TCutG(tempname, 5, xarray, yarray)
+	def CreateProportionalCellCentralRegion(self, percentage, diacols, width, varx, vary):
+		"""
+		Creates a dictionary with a polygon scaled by a percentage with the shape of the cell for inner cell studies. The polygon as a TCutG and its name are added in the center_polygons dictionary as another dictionary
+		:param percentage: percentage (0<=percentage<=100) to scale the polygon of the cell
+		:param diacols: DiamondColumns object that has the information of the columns and the cells in the rows of the transparent grid
+		:return:
+		"""
+		fraction = np.sqrt(np.divide(percentage, 100., dtype='f8'), dtype='f8') if percentage != 0 else np.sqrt(np.divide(0.0001, 100., dtype='f8'), dtype='f8')
+		xarray = np.multiply(diacols.cols[0].cells[0].GetXCoordinatesPolygon(xcenter=0, fraction=fraction), width, dtype='f8')
+		yarray = diacols.cols[0].cells[0].GetYCoordinatesPolygon(ycenter=0, fraction=fraction)
+
+		tempname = 'cutg_center_polygon_{r}_{p}'.format(r=self.run, p=percentage)
+		tempCutG = ro.TCutG(tempname, xarray.size, xarray, yarray)
 		tempCutG.SetNameTitle(tempname, tempname)
-		tempCutG.SetVarX(xvar)
-		tempCutG.SetVarY(yvar)
+		tempCutG.SetVarX(varx)
+		tempCutG.SetVarY(vary)
 		tempCutG.SetLineColor(ro.kBlack)
 		tempCutG.SetLineWidth(2)
-		self.center_rectangles[percentage] = {'name': tempname, 'tcutg': tempCutG}
+		self.center_polygons[percentage] = {'name': tempname, 'tcutg': tempCutG}
 
 	def AddGoodAreas(self, col, row, dia_cols):
 		"""

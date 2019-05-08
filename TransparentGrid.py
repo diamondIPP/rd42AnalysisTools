@@ -693,15 +693,15 @@ class TransparentGrid:
 				self.dia_cols.SetupColumns(col, self.row_cell_info_diamond['num_odd'], self.ch_ini + col + xoff, self.row_cell_info_diamond['0_odd'] + yoff)
 				self.dia_cols.cols[col].SetCellsInColumn()
 
-	def CreateTCutGSymmetricRectangle(self, percentage=80):
+	def CreateTCutGScaledPolygon(self, percentage=80):
 		"""
-		TODO
+		Creates TCutGs for different percentages of the cell polygon
 		:param percentage:
 		:return:
 		"""
-		self.gridAreas.CreateRectangleSymmetricCentralRegion(percentage, self.col_pitch, self.row_cell_info_diamond['height'], self.col_overlay_var, self.row_overlay_var)
-		self.cuts_man.in_central_rect_region[percentage] = '(' + self.gridAreas.center_rectangles[percentage]['name'] + ')'
-		self.cuts_man.out_central_rect_region[percentage] = '(!' + self.gridAreas.center_rectangles[percentage]['name'] + ')'
+		self.gridAreas.CreateProportionalCellCentralRegion(percentage, self.dia_cols, self.row_cell_info_diamond['width'], self.col_overlay_var2, self.row_overlay_var2)
+		self.cuts_man.in_central_polygon_region[percentage] = '(' + self.gridAreas.center_polygons[percentage]['name'] + ')'
+		self.cuts_man.out_central_polygon_region[percentage] = '(!' + self.gridAreas.center_polygons[percentage]['name'] + ')'
 
 	def CreateGridText(self):
 		"""
@@ -1141,8 +1141,8 @@ class TransparentGrid:
 		:return:
 		"""
 		self.canvas[name].cd()
-		if percent in self.gridAreas.center_rectangles.keys():
-			self.gridAreas.center_rectangles[percent]['tcutg'].Draw('same')
+		if percent in self.gridAreas.center_polygons.keys():
+			self.gridAreas.center_polygons[percent]['tcutg'].Draw('same')
 
 	def DrawGoodAreasDiamondCenters(self, name):
 		"""
@@ -1482,15 +1482,15 @@ class TransparentGrid:
 					yinf = ymin_plot - lim_one_side
 					break
 		self.efficiency_subdiv = int(max(RoundInt(subf / denominator), 1)) if self.efficiency_subdiv == 1 else self.efficiency_subdiv
-		cont = 0
-		while ((1.0 / (self.efficiency_subdiv * denominator)) < 1e-5 or (1.0 / (self.efficiency_subdiv * denominator)) > 1e-3 )and cont < 1000000:
+		contador = 0
+		while ((1.0 / (self.efficiency_subdiv * denominator)) < 1e-5 or (1.0 / (self.efficiency_subdiv * denominator)) > 1e-3)and contador < 1000000:
 			if (1.0 / (self.efficiency_subdiv * denominator)) < 1e-5:
-				self.efficiency_subdiv = RoundInt(self.efficiency_subdiv * 0.95) if self.efficiency_subdiv > 1 else self.efficiency_subdiv * 0.5
-				cont += 1
+				self.efficiency_subdiv = RoundInt(self.efficiency_subdiv * 0.8) if self.efficiency_subdiv > 1 else self.efficiency_subdiv * 0.5
+				contador += 1
 			elif (1.0 / (self.efficiency_subdiv * denominator)) > 1e-3:
 				self.efficiency_subdiv = RoundInt(self.efficiency_subdiv * 1.5)
-				cont += 1
-		print '{c}. Calculate uncertainties for efficiency plot... the step used is {d}...'.format(c=cont, d=1.0 / (self.efficiency_subdiv * denominator)), ; sys.stdout.flush()
+				contador += 1
+		print '{c}. Calculate uncertainties for efficiency plot... the step used is {d}...'.format(c=contador, d=1.0 / (self.efficiency_subdiv * denominator)), ; sys.stdout.flush()
 		ySigmas = map(self.FindAsymmetricUncertaintiesWithDiscrete, numerator, [denominator for i in xrange(numerator.size)], [sigma_errbar for i in xrange(numerator.size)])
 		print 'Done'
 		yLowerSigmas = np.array([ysigma['lower'] for ysigma in ySigmas], 'float64')

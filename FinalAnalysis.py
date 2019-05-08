@@ -263,7 +263,7 @@ class FinalAnalysis:
 		"""
 		self.center_reg_ana.w, self.center_reg_ana.window_shift = self.w, self.window_shift
 		tempc = self.GetCut(cuts, typ, isFriend)
-		self.center_reg_ana.DoCenterRegionStudies(self.cell_dists, cells, do_all_plots, suffix, tempc, typ, do_sat, isFriend)
+		self.center_reg_ana.DoCenterRegionStudies('area', cells, do_all_plots, suffix, tempc, typ, do_sat, isFriend)
 		self.w, self.window_shift = self.center_reg_ana.w, self.center_reg_ana.window_shift
 
 	def DoCellMaps(self, cells, cuts='', suffix='no_cuts', typ='adc', isFriend=False):
@@ -294,7 +294,7 @@ class FinalAnalysis:
 					PlotCellsProfiles(hname, self.phN_chs_var(ch, chtype, typ == 'snr', isFriend), minz, maxz, 'PH{c} {ct} chs [{t}]'.format(c=ch, t=typ.upper(), ct='cluster' if chtype == 'Ch' else 'highest'), tempc)
 
 	def DoFinalAnalysis(self, typ='adc', cummulative_chs=None, isFriend=False):
-		self.eff_step = eff_step_opts[np.abs(eff_step_opts - (self.trans_grid.threshold / 12.)).argmin()] if self.trans_grid.threshold != 0 else 50.
+		self.eff_step = eff_step_opts[np.abs(eff_step_opts - (self.trans_grid.threshold / 16.)).argmin()] if self.trans_grid.threshold != 0 else 50.
 		if cummulative_chs:
 			self.analysis_cummulative_ch = cummulative_chs
 		self.DefineSatRegion(before=0, after=1)

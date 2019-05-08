@@ -413,7 +413,7 @@ class TestAreas:
 		suffix = self.suffix[cells]
 		self.center_cells_ana.w, self.center_cells_ana.window_shift = self.w, self.window_shift
 		dists = np.arange(0.1, 1, 0.025)
-		self.center_cells_ana.DoCenterRegionStudies(dists, cells, suffix)
+		self.center_cells_ana.DoCenterRegionStudies('area', cells, suffix)
 		self.w, self.window_shift = self.center_cells_ana.w, self.center_cells_ana.window_shift
 
 	def DoCenterCellSaturationStudies(self, cells='all'):
@@ -422,7 +422,7 @@ class TestAreas:
 		dists = np.arange(0.1, 1, 0.025)
 		percents = np.unique(np.floor(np.power(dists, 2) * 100 + 0.5).astype('int32'))
 		for percent in percents:
-			self.trans_grid.CreateTCutGSymmetricRectangle(percent)
+			self.trans_grid.CreateTCutGScaledPolygon(percent)
 		self.center_cells_ana.GetCutsFromCutManager(cells)
 		self.center_cells_ana.GetVarzFromTranspGrid()
 
@@ -647,5 +647,5 @@ if __name__ == '__main__':
 	t.SetTransparentGrid(first)
 	t.SetTest()
 	if autom:
-		t.DoAutomatic('good', types=typ if not first else ['adc', 'snr'], SaveAllPlots=(False or bat), isFirst=first)
+		t.DoAutomatic('good', types=typ if not first else ['adc', 'snr'], SaveAllPlots=True, isFirst=first)
 

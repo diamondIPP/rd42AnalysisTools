@@ -52,8 +52,15 @@ class CutManager:
 		self.noise_nc_cuts = {t: '' for t in ['all', 'good', 'bad']}
 		self.noise_nc_friend_cuts = {t: '' for t in ['all', 'good', 'bad']}
 
-		self.in_central_rect_region = {}
-		self.out_central_rect_region = {}
+		self.in_central_polygon_region = {}
+		self.out_central_polygon_region = {}
+		self.between_central_polygon_regions = {}
+
+	def CreateBetweenCentralPlygonRegionsCut(self):
+		if len(self.in_central_polygon_region.keys()) > 1 and len(self.out_central_polygon_region.keys()) > 1:
+			percentages = np.sort(self.in_central_polygon_region.keys())
+			for it in xrange(percentages.size - 1):
+				self.between_central_polygon_regions[(percentages[it + 1] + percentages[it]) / 2.0] = self.AndCuts([self.out_central_polygon_region[percentages[it]], self.in_central_polygon_region[percentages[it + 1]]])
 
 	def GetValidPedChCut(self, ch, typ='Ch', isFriend=False):
 		varch = 'clusterChannel{c}'.format(c=ch) if typ == 'Ch' else 'clusterChannelHighest{c}'.format(c=ch) if typ == 'H' else str(ch)
