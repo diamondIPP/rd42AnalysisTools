@@ -336,7 +336,7 @@ class TransparentGrid:
 		row_fact = 10000  # ~0.1nm
 		self.col_overlay_var = '(((diaChXPred-{ox})*({p}*{cf}))%({p}*{cf}))/{cf}'.format(ox=self.row_cell_info_diamond['x_off'], p=self.col_pitch, cf=col_fact)
 		self.row_overlay_var = '(((diaChYPred-{oy})*{rf})%({rp}*{rf}))/{rf}'.format(oy=self.row_cell_info_diamond['y_off'], rp=self.row_cell_info_diamond['height'], rf=row_fact)
-		self.col_overlay_var2 = '{cp}*((x0-{xo})-TMath::Floor(0.5+(x0-{xo})))'.format(cp=self.row_cell_info_diamond['width'], xo=self.xoffset)
+		self.col_overlay_var2 = '({w})*((x0-{xo})/{wpr}-TMath::Floor(0.5+(x0-{xo})/{wpr}))'.format(wpr=self.row_cell_info_diamond['width'] / self.col_pitch, w=self.row_cell_info_diamond['width'], xo=self.xoffset, cp=self.col_pitch)
 		self.row_overlay_var2 = '{rp}*((y0-{yo})/{rp}-TMath::Floor(0.5+(y0-{yo})/{rp}))'.format(rp=self.row_cell_info_diamond['height'], yo=self.yoffset)
 
 	def FindPickleValues(self, do_offset_plots=True, do_binning=False):
@@ -434,13 +434,28 @@ class TransparentGrid:
 			self.row_cell_info_diamond['up_odd'] = self.row_cell_info_diamond['up_even']
 			self.row_cell_info_diamond['num_odd'] = self.row_cell_info_diamond['num_even']
 
-		if self.num_sides == 4 and self.row_cell_info_diamond['num_even'] == self.row_cell_info_diamond['num_odd']:
+		if (self.num_sides == 4) and (self.row_cell_info_diamond['num_even'] == self.row_cell_info_diamond['num_odd']):
 			# if the cells are rectangles and the number of cells for even and odd columns is the same, then it is the old type and the values for even and odd will be averaged
 			y_0 = np.array([self.row_cell_info_diamond['0_even'], self.row_cell_info_diamond['0_odd']]).mean()
 			y_up = np.array([self.row_cell_info_diamond['up_even'], self.row_cell_info_diamond['up_odd']]).mean()
 			for col_type in col_types:
 				self.row_cell_info_diamond['0_' + col_type] = y_0
 				self.row_cell_info_diamond['up_' + col_type] = y_up
+
+		elif (self.num_sides == 6) and (self.row_cell_info_diamond['num_even'] == self.row_cell_info_diamond['num_odd']):
+			if self.row_cell_info_diamond['up_even'] > self.row_cell_info_diamond['up_odd']:
+				delta = self.row_cell_info_diamond['up_even'] - self.row_cell_info_diamond['up_odd'] - self.row_cell_info_diamond['height'] / 2.0
+				self.row_cell_info_diamond['up_even'] -= delta / 2.0
+				self.row_cell_info_diamond['0_even'] -= delta / 2.0
+				self.row_cell_info_diamond['up_odd'] += delta / 2.0
+				self.row_cell_info_diamond['0_odd'] += delta / 2.0
+			else:
+				delta = self.row_cell_info_diamond['up_odd'] - self.row_cell_info_diamond['up_even'] - self.row_cell_info_diamond['height'] / 2.0
+				self.row_cell_info_diamond['up_odd'] -= delta / 2.0
+				self.row_cell_info_diamond['0_odd'] -= delta / 2.0
+				self.row_cell_info_diamond['up_even'] += delta / 2.0
+				self.row_cell_info_diamond['0_even'] += delta / 2.0
+
 
 	def ShiftVerticalLimits(self, yoff=0, updatePickle=False):
 		"""
@@ -529,6 +544,7 @@ class TransparentGrid:
 			return
 		# self.row_cell_info_diamond['x_off'] += tempn
 		# self.row_cell_info_diamond['y_off'] += tempn * self.row_cell_info_diamond['height']
+		# self.xoffset += tempn
 		self.xoffset += tempn * self.row_cell_info_diamond['width'] / float(self.col_pitch)
 		self.yoffset += tempn * self.row_cell_info_diamond['height']
 		self.SetOverlayVariables()
@@ -1065,7 +1081,7 @@ class TransparentGrid:
 			self.GetMeanPHPerCell(var, typ)
 			self.SelectGoodAndBadByThreshold(val, var)
 
-	def FindThresholdCutFromCells(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4800, deltax=10, it=0):
+	def FindThresholdCutFromCells(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4800, deltax=10, it=0, doFit2=False):
 		"""
 		This method finds the threshold cut using the distribution of PH for each cell. The threshold is set as a number of sigmas (self.threshold_criteria_in_sigmas) below the mean of the gaussian fit of the distribution of PH
 		:param var: variable of type 'typ' used for classification
@@ -1076,25 +1092,37 @@ class TransparentGrid:
 		:param it: number of iterations in this method to prevent infinite recursion
 		:return:
 		"""
+		# print it
+		itt = it
+		doFit = doFit2 or (self.threshold <= 0)
 		if len(self.mean_ph_cell_dic[typ].keys()) > 0:
 			self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax)
-			self.FitGaus('mean_ph_per_cell_' + typ, 2, 5)
-			if GetHistoAverageBinContent(self.histo['mean_ph_per_cell_' + typ]) < 10 and it < 20:
-				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 1.25, it + 1)
-			elif self.fits['mean_ph_per_cell_' + typ].Ndf() < 2 and it < 20:
-				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8, it + 1)
-			elif 0.5 <= self.fits['mean_ph_per_cell_' + typ].Chi2() / self.fits['mean_ph_per_cell_' + typ].Ndf() < 0.9 and it < 20:
-				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8, it + 1)
+			if self.histo['mean_ph_per_cell_' + typ].FindLastBinAbove() < 5 and itt < 20:
+				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8, itt + 1)
+			if doFit:
+				self.FitGaus('mean_ph_per_cell_' + typ, 2, 5)
+				if self.fits['mean_ph_per_cell_' + typ].Ndf() < 2 and itt < 20:
+					self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8, itt + 1)
+				elif 0.5 <= self.fits['mean_ph_per_cell_' + typ].Chi2() / self.fits['mean_ph_per_cell_' + typ].Ndf() < 0.9 and itt < 20:
+					self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax * 0.8, itt + 1)
 		else:
 			self.GetMeanPHPerCell(var, typ)
-			self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax, it + 1)
-		if typ == 'adc':
-			self.threshold = self.fits['mean_ph_per_cell_' + typ].Parameter(1) - self.threshold_criteria_in_sigmas * self.fits['mean_ph_per_cell_' + typ].Parameter(2)
-			if self.threshold <= deltax:
-				self.threshold_criteria_in_sigmas /= 2.0
-				self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax, it)
-		else:
-			self.threshold_snr = self.fits['mean_ph_per_cell_' + typ].Parameter(1) - self.threshold_criteria_in_sigmas * self.fits['mean_ph_per_cell_' + typ].Parameter(2)
+			self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax, itt + 1)
+		if doFit:
+			if typ == 'adc':
+				if self.threshold == 0:
+					self.threshold = self.fits['mean_ph_per_cell_' + typ].Parameter(1) - self.threshold_criteria_in_sigmas * self.fits['mean_ph_per_cell_' + typ].Parameter(2)
+				if self.threshold <= deltax and itt < 30:
+					self.threshold_criteria_in_sigmas /= 2.0
+					self.threshold = 0
+					self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax, itt + 1)
+			else:
+				if self.threshold_snr == 0:
+					self.threshold_snr = self.fits['mean_ph_per_cell_' + typ].Parameter(1) - self.threshold_criteria_in_sigmas * self.fits['mean_ph_per_cell_' + typ].Parameter(2)
+				if self.threshold_snr <= deltax and itt < 30:
+					self.threshold_criteria_in_sigmas /= 2.0
+					self.threshold_snr = 0
+					self.FindThresholdCutFromCells(var, typ, xmin, xmax, deltax, itt + 1)
 		thresh = self.threshold if typ == 'adc' else self.threshold_snr
 		self.line['threshold_' + typ] = ro.TLine(thresh, 0, thresh, self.histo['mean_ph_per_cell_' + typ].GetMaximum())
 		self.line['threshold_' + typ].SetLineColor(ro.kBlue)
@@ -1132,8 +1160,10 @@ class TransparentGrid:
 				SetDefault1DCanvasSettings(self.canvas[nameh])
 				ro.gPad.Update()
 			SetDefault1DStats(self.histo[nameh])
-			if(self.histo[nameh].FindLastBinAbove() - self.histo[nameh].FindFirstBinAbove() + 1) < 10:
+			if(self.histo[nameh].FindLastBinAbove() - self.histo[nameh].FindFirstBinAbove() + 1) < 5:
 				self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax * 0.8, draw_opt, supress0)
+			elif GetHistoAverageBinContent(self.histo[nameh])<8:
+				self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax * 1.2, draw_opt, supress0)
 		else:
 			self.GetMeanPHPerCell(var, typ)
 			self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax, draw_opt, supress0)
@@ -1209,7 +1239,8 @@ class TransparentGrid:
 		:return:
 		"""
 		for histo in self.histo.itervalues():
-			histo.Delete()
+			if histo:
+				histo.Delete()
 		self.histo = {}
 
 	def ResetProfiles(self):
@@ -1218,7 +1249,8 @@ class TransparentGrid:
 		:return:
 		"""
 		for profile in self.profile.itervalues():
-			profile.Delete()
+			if profile:
+				profile.Delete()
 		self.profile = {}
 
 	def ResetCanvas(self):
@@ -1227,8 +1259,9 @@ class TransparentGrid:
 		:return:
 		"""
 		for canvas in self.canvas.itervalues():
-			canvas.Clear()
-			canvas.Close()
+			if canvas:
+				canvas.Clear()
+				canvas.Close()
 		self.canvas = {}
 
 	def ResetPlots(self):
@@ -2072,6 +2105,10 @@ class TransparentGrid:
 						tempf.Close()
 						self.CreateFriendWithCells(xoff, yoff)
 						self.AddFriendWithCells(xoff, yoff)
+						for typ in ['adc', 'snr']:
+							if os.path.isfile('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ)):
+								os.remove('{d}/{r}/{s}/mean_ph_cell_{t}.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir, t=typ))
+						self.mean_ph_cell_dic = {'snr': {}, 'adc': {}}
 			else:
 				self.CreateFriendWithCells(xoff, yoff)
 				self.AddFriendWithCells(xoff, yoff)
@@ -2121,19 +2158,42 @@ class TransparentGrid:
 			print 'Calculating cells for each transparent event:'
 			bar = CreateProgressBarUtils(leng)
 			bar.start()
+			# blax = np.divide(np.array([-64,-61,-55,-50,-45,-40], 'f8'), 133.)
+			# blay = np.array([-7,-12,-22,-32,-42,-49], 'f8')
 			for ev in xrange(leng):
-				dist = np.array([[cell.GetDistanceToCenter(x_vect[ev], y_vect[ev]) for cell in col.cells] for col in self.dia_cols.cols]).flatten()
-				cols = np.array([[cell.col_num for cell in col.cells] for col in self.dia_cols.cols]).flatten()
-				rows = np.array([[cell.row_num for cell in col.cells] for col in self.dia_cols.cols]).flatten()
+				found = False
+				for col in self.dia_cols.cols:
+					for cell in col.cells:
+						if cell.cutg.IsInside(x_vect[ev], y_vect[ev]):
+							found = True
+							col_dic[ev_vect[ev]] = cell.col_num
+							row_dic[ev_vect[ev]] = cell.row_num
+							x0_dic[ev_vect[ev]] = x_vect[ev] - cell.xcenter
+							y0_dic[ev_vect[ev]] = y_vect[ev] - cell.ycenter
+							# for poss in xrange(len(blax)):
+							# 	if (x_vect[ev] - cell.xcenter < blax[poss]) and (y_vect[ev] - cell.ycenter < blay[poss]):
+							# 		ipdb.set_trace()
+							break
+					if found:
+						break
+				if not found:
+					col_dic[ev_vect[ev]] = 255
+					row_dic[ev_vect[ev]] = 255
+					x0_dic[ev_vect[ev]] = 255
+					y0_dic[ev_vect[ev]] = 12750
 
-				argmin = dist.argmin()
-				colmin = cols[argmin]
-				rowmin = rows[argmin]
-
-				col_dic[ev_vect[ev]] = colmin
-				row_dic[ev_vect[ev]] = rowmin
-				x0_dic[ev_vect[ev]] = x_vect[ev] - self.dia_cols.cols[colmin].cells[rowmin].xcenter
-				y0_dic[ev_vect[ev]] = y_vect[ev] - self.dia_cols.cols[colmin].cells[rowmin].ycenter
+				# dist = np.array([[cell.GetDistanceToCenter(x_vect[ev], y_vect[ev]) for cell in col.cells] for col in self.dia_cols.cols]).flatten()
+				# cols = np.array([[cell.col_num for cell in col.cells] for col in self.dia_cols.cols]).flatten()
+				# rows = np.array([[cell.row_num for cell in col.cells] for col in self.dia_cols.cols]).flatten()
+				#
+				# argmin = dist.argmin()
+				# colmin = cols[argmin]
+				# rowmin = rows[argmin]
+				#
+				# col_dic[ev_vect[ev]] = colmin
+				# row_dic[ev_vect[ev]] = rowmin
+				# x0_dic[ev_vect[ev]] = x_vect[ev] - self.dia_cols.cols[colmin].cells[rowmin].xcenter
+				# y0_dic[ev_vect[ev]] = y_vect[ev] - self.dia_cols.cols[colmin].cells[rowmin].ycenter
 				bar.update(ev + 1)
 			bar.finish()
 

@@ -531,10 +531,11 @@ class TestAreas:
 			self.trans_grid.row_cell_info_diamond['num_odd'] = self.trans_grid.row_cell_info_diamond['num_odd'] if self.num_rows_odd == 0 else self.num_rows_odd
 			self.trans_grid.row_cell_info_diamond['height'] = self.trans_grid.row_cell_info_diamond['height'] if self.rows_pitch == 0 else self.rows_pitch
 			self.trans_grid.row_cell_info_diamond['width'] = self.trans_grid.row_cell_info_diamond['width'] if self.cells_width == 0 else self.cells_width
+			self.trans_grid.num_sides = self.trans_grid.num_sides if self.num_sides == 0 else self.num_sides
 
 			self.trans_grid.SetupCutManager()
 			if self.trans_grid.row_cell_info_diamond['0_even'] == 0 and self.trans_grid.row_cell_info_diamond['0_odd'] == 0:
-				self.trans_grid.FindPickleValues(True, True)
+				self.trans_grid.FindPickleValues(False, False)
 
 			self.trans_grid.cluster_size = Get_From_User_Value('cluster size for run ' + str(self.run), 'int', self.trans_grid.cluster_size, True) if self.cluster_size == 0 else self.cluster_size
 			self.trans_grid.num_strips = Get_From_User_Value('number of strips for run ' + str(self.run), 'int', self.trans_grid.num_strips, True) if self.num_strips == 0 else self.num_strips
@@ -553,7 +554,6 @@ class TestAreas:
 			self.trans_grid.num_parallel = self.trans_grid.num_parallel if self.num_parallel == 0 else self.num_parallel
 			self.trans_grid.hit_factor = self.trans_grid.hit_factor if self.hit_factor == 0 else self.hit_factor
 			self.trans_grid.seed_factor = self.trans_grid.seed_factor if self.seed_factor == 0 else self.seed_factor
-			self.trans_grid.num_sides = self.trans_grid.num_sides if self.num_sides == 0 else self.num_sides
 			self.trans_grid.dut = self.trans_grid.dut if self.dut == 'dia' else self.dut
 			self.trans_grid.SavePickle()
 

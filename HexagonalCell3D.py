@@ -28,7 +28,7 @@ class HexagonalCell3D(Cell3D):
 		self.cutg_center.SetLineColor(ro.kViolet)
 
 	def GetXCoordinatesPolygon(self, xcenter=0, fraction=1.0):
-		return np.add(xcenter, np.multiply(np.divide(np.array([-(2 * self.p - self.w), -self.w, -(2 * self.p - self.w), 2 * self.p - self.w, self.w, 2 * self.p - self.w, -(2 * self.p - self.w)], 'f8'), 2.0, dtype='f8'), fraction, dtype='f8'), dtype='f8')
+		return np.add(xcenter, np.multiply(np.divide(np.array([-(2.0 * self.p - self.w), -self.w, -(2.0 * self.p - self.w), 2.0 * self.p - self.w, self.w, 2.0 * self.p - self.w, -(2.0 * self.p - self.w)], 'f8'), 2.0, dtype='f8'), fraction, dtype='f8'), dtype='f8')
 
 	def GetYCoordinatesPolygon(self, ycenter=0, fraction=1.0):
 		return np.add(ycenter, np.multiply(np.divide(np.array([-self.h, 0, self.h, self.h, 0, -self.h, -self.h], 'f8'), 2.0, dtype='f8'), fraction, dtype='f8'), dtype='f8')
