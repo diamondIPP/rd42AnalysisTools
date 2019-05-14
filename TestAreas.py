@@ -43,6 +43,7 @@ class TestAreas:
 		self.min_snr, self.max_snr = -650, 650
 		self.min_adc, self.max_adc = -6500, 6500
 		self.delta_adc = 0
+		self.delta_adc_cluster_ch = 0
 		self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -322.5, 322.5, 0.5
 		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = -32.25, 32.25, 0.05
 		self.minz = {t: {} for t in ['all', 'good', 'bad']}
@@ -130,6 +131,8 @@ class TestAreas:
 					self.cell_resolution = pars.getfloat('SETTINGS', 'cell_resolution')
 				if pars.has_option('SETTINGS', 'delta_adc'):
 					self.delta_adc = pars.getfloat('SETTINGS', 'delta_adc')
+				if pars.has_option('SETTINGS', 'delta_adc_cluster_ch'):
+					self.delta_adc_cluster_ch = pars.getfloat('SETTINGS', 'delta_adc_cluster_ch')
 				if pars.has_option('SETTINGS', 'phmin'):
 					self.phmin = pars.getfloat('SETTINGS', 'phmin')
 				if pars.has_option('SETTINGS', 'phmax'):
@@ -527,6 +530,7 @@ class TestAreas:
 			self.trans_grid.phmin = self.trans_grid.phmin if self.phmin == 10000 else self.phmin
 			if self.delta_adc != 0:
 				self.trans_grid.phbins = RoundInt(float(self.phmax - self.phmin) / self.delta_adc)
+			self.trans_grid.delta_adc_cluster_ch = self.trans_grid.delta_adc_cluster_ch if self.delta_adc_cluster_ch == 0 else self.delta_adc_cluster_ch
 			self.trans_grid.row_cell_info_diamond['num_even'] = self.trans_grid.row_cell_info_diamond['num_even'] if self.num_rows_even == 0 else self.num_rows_even
 			self.trans_grid.row_cell_info_diamond['num_odd'] = self.trans_grid.row_cell_info_diamond['num_odd'] if self.num_rows_odd == 0 else self.num_rows_odd
 			self.trans_grid.row_cell_info_diamond['height'] = self.trans_grid.row_cell_info_diamond['height'] if self.rows_pitch == 0 else self.rows_pitch
@@ -569,6 +573,7 @@ class TestAreas:
 		self.phmax = self.trans_grid.phmax if self.phmax == -10000 else self.phmax
 		self.phmin = self.trans_grid.phmin if self.phmin == 10000 else self.phmin
 		self.delta_adc = float(self.phmax - self.phmin) / float(self.trans_grid.phbins) if self.delta_adc == 0 else self.delta_adc
+		self.delta_adc_cluster_ch = self.trans_grid.delta_adc_cluster_ch if self.delta_adc_cluster_ch == 0 else self.delta_adc_cluster_ch
 		self.binsperx = self.trans_grid.bins_per_ch_x if self.binsperx == 0 else self.binsperx
 		self.binxpery = self.trans_grid.bins_per_ch_y if self.binspery == 0 else self.binspery
 		self.efficiency_subdiv = self.trans_grid.efficiency_subdiv if self.efficiency_subdiv == 1 else self.efficiency_subdiv
@@ -597,6 +602,7 @@ class TestAreas:
 		self.trans_grid.phmax = self.phmax
 		self.trans_grid.phmin = self.phmin
 		self.trans_grid.phbins = RoundInt(float(self.phmax - self.phmin) / self.delta_adc)
+		self.trans_grid.delta_adc_cluster_ch = self.delta_adc_cluster_ch
 		self.trans_grid.bins_per_ch_x = self.binsperx
 		self.trans_grid.bins_per_ch_y = self.binspery
 		self.trans_grid.efficiency_subdiv = self.efficiency_subdiv

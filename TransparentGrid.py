@@ -65,6 +65,7 @@ class TransparentGrid:
 		self.phbins_neg = 240
 		self.phmin_neg = -2000
 		self.phmax_neg = 2000
+		self.delta_adc_cluster_ch = 5
 		self.neg_cut_snr = 410
 		self.neg_cut_adc = 4100
 		self.evs_before_sat_cut = 0
@@ -187,6 +188,7 @@ class TransparentGrid:
 		object_dic['phbins'] = self.phbins
 		object_dic['phmin'] = self.phmin
 		object_dic['phmax'] = self.phmax
+		object_dic['delta_adc_cluster_ch'] = self.delta_adc_cluster_ch
 		object_dic['phbins_neg'] = self.phbins_neg
 		object_dic['phmin_neg'] = self.phmin_neg
 		object_dic['phmax_neg'] = self.phmax_neg
@@ -274,6 +276,8 @@ class TransparentGrid:
 			self.phmin_neg = self.pkl['phmin_neg']
 		if 'phmax_neg' in self.pkl.keys():
 			self.phmax_neg = self.pkl['phmax_neg']
+		if 'delta_adc_cluster_ch' in self.pkl.keys():
+			self.delta_adc_cluster_ch = self.pkl['delta_adc_cluster_ch']
 		if 'neg_cut_snr' in self.pkl.keys():
 			self.neg_cut_snr = self.pkl['neg_cut_snr']
 		if 'neg_cut_adc' in self.pkl.keys():
@@ -597,7 +601,7 @@ class TransparentGrid:
 		proj_low = int(RoundInt(RoundInt(self.row_cell_info_diamond['height'] / float(self.cell_resolution), 'f8') / 2.0, 'f8') - (RoundInt(proj_bins / 2.0, 'f8') - 1) + 1)
 		proj_high = proj_low + proj_bins - 1
 		iteration = 0
-		min_delta = self.row_cell_info_diamond['width']
+		min_delta = self.row_cell_info_diamond['width'] / 2.0
 		x_off_shifted, x_min = 0.0, 0.0
 		while (abs(delta_x) > self.delta_offset_threshold and iteration < 100) or iteration < 10:
 			self.xoffset -= np.divide(delta_x, self.row_cell_info_diamond['width'], dtype='f8') * (np.exp(-iteration) * (1 - factor) + factor)
@@ -612,7 +616,7 @@ class TransparentGrid:
 			bins_fit_range = max(RoundInt(2.0 * 7 / self.cell_resolution, 'f8'), 3)
 			fit_px = h_proj_x.Fit('pol2', 'QEFSN', '', max(minx - bins_fit_range * self.cell_resolution / 2.0, -self.row_cell_info_diamond['width'] / 2.0), min(minx + bins_fit_range * self.cell_resolution / 2.0, self.row_cell_info_diamond['width'] / 2.0))
 			x_min = -fit_px.Parameter(1) / (2 * fit_px.Parameter(2))
-			delta_x = 0 - x_min
+			delta_x = 0 - x_min if abs(x_min) < self.row_cell_info_diamond['width'] / 2.0 else delta_x / 10. * np.random.randn()
 			if abs(delta_x) < min_delta:
 				min_delta = abs(delta_x)
 				x_off_shifted = self.xoffset
@@ -641,7 +645,7 @@ class TransparentGrid:
 		proj_low = int(RoundInt(RoundInt(float(self.col_pitch) / self.cell_resolution, 'f8') / 2.0, 'f8') - (RoundInt(proj_bins / 2.0, 'f8') - 1) + 1)
 		proj_high = proj_low + proj_bins - 1
 		iteration = 0
-		min_delta = self.row_cell_info_diamond['height']
+		min_delta = self.row_cell_info_diamond['height'] / 2.0
 		y_off_shifted, y_min = 0.0, 0.0
 		while (abs(delta_y) > self.delta_offset_threshold and iteration < 100) or iteration < 10:
 			self.yoffset -= delta_y * (np.exp(-iteration) * (1 - factor) + factor)
@@ -654,7 +658,7 @@ class TransparentGrid:
 			miny = miny if abs(miny - self.row_cell_info_diamond['height'] / 2.0) > self.cell_resolution * 1.5 else self.row_cell_info_diamond['height'] / 2.0
 			fit_py = h_proj_y.Fit('pol2', 'QEFSN', '', max(miny - 2.5 * self.cell_resolution - 1e-12, -self.row_cell_info_diamond['height'] / 2.0), min(miny + 2.5 * self.cell_resolution + 1e-12, self.row_cell_info_diamond['height'] / 2.0))
 			y_min = -fit_py.Parameter(1) / (2 * fit_py.Parameter(2))
-			delta_y = 0 - y_min
+			delta_y = 0 - y_min if abs(y_min) < self.row_cell_info_diamond['height'] / 2.0 else delta_y / 10. * np.random.randn()
 			if abs(delta_y) < min_delta:
 				min_delta = abs(delta_y)
 				y_off_shifted = self.yoffset

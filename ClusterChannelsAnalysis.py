@@ -15,7 +15,8 @@ class ClusterChannelsAnalysis:
 		# self.min_snr_neg, self.max_snr_neg, self.delta_snr = -64.25, 0.25, 0.125
 		self.min_snr, self.max_snr = -650, 650
 		self.min_adc, self.max_adc = -6500, 6500
-		self.delta_adc, self.delta_snr = 20, 2
+		self.trans_grid = trans_grid
+		self.delta_adc, self.delta_snr = self.trans_grid.delta_adc_cluster_ch, self.trans_grid.delta_adc_cluster_ch / 10.
 		self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -322.5, 322.5, 0.5
 		# self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise = -32.25, 32.25, 0.5
 		# self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = -3.225, 3.225, 0.05
@@ -23,7 +24,6 @@ class ClusterChannelsAnalysis:
 		self.neg_cut_lines = {}
 		self.trash = []
 		self.w = 0
-		self.trans_grid = trans_grid
 		self.num_strips = numstrips
 		self.cluster_size = clustersize
 		self.noise_ana = noise_ana
@@ -85,15 +85,15 @@ class ClusterChannelsAnalysis:
 			tempcuts = self.ph_cuts('PH_Ch{i}'.format(i=ch), isFriend)
 			minz, maxz = self.minz['PH_Ch{i}_{t}'.format(i=ch, t=typ.lower())], self.maxz['PH_Ch{i}_{t}'.format(i=ch, t=typ.lower())]
 			delta = self.delta_adc if typ == 'adc' else self.delta_snr
-			hist_limits = GetSymmetric1DLimits(minz, maxz, delta, 2)
-			plot_limits = GetSymmetric1DLimits(minz, maxz, delta, 1, False)
+			hist_limits = GetSymmetric1DLimits(minz, maxz, delta, 2) if ch == 0 else GetSymmetric1DLimits(-min(abs(minz), abs(maxz)), min(abs(minz), abs(maxz)), delta, 2)
+			plot_limits = GetSymmetric1DLimits(minz, maxz, delta, 1, False) if ch == 0 else GetSymmetric1DLimits(-min(abs(minz), abs(maxz)), min(abs(minz), abs(maxz)), delta, 1)
 			hname = 'PH_Ch{i}_{t}_{s}'.format(i=ch, s=suffix, t=typ.lower()) if not isFriend else 'PH_Ch{i}_buffer_{v}_{t}_{s}'.format(v=self.trans_grid.noise_friend_buffer, i=ch, s=suffix, t=typ.lower())
 			DrawHisto(hname, hist_limits, plot_limits, delta, self.ph_ch_var(ch, 'Ch', typ=='snr', isFriend), 'PH cluster ch{i} [{t}]'.format(i=ch, t=typ.upper()), tempcuts)
 
 			tempcuts = self.ph_cuts('PH_H{i}'.format(i=ch+1), isFriend)
 			minz, maxz = self.minz['PH_H{i}_{t}'.format(i=ch+1, t=typ.lower())], self.maxz['PH_H{i}_{t}'.format(i=ch+1, t=typ.lower())]
-			hist_limits = GetSymmetric1DLimits(minz, maxz, delta, 2)
-			plot_limits = GetSymmetric1DLimits(minz, maxz, delta, 1, False)
+			hist_limits = GetSymmetric1DLimits(minz, maxz, delta, 2) if ch == 0 else GetSymmetric1DLimits(-min(abs(minz), abs(maxz)), min(abs(minz), abs(maxz)), delta, 2)
+			plot_limits = GetSymmetric1DLimits(minz, maxz, delta, 1, False) if ch == 0 else GetSymmetric1DLimits(-min(abs(minz), abs(maxz)), min(abs(minz), abs(maxz)), delta, 1)
 			hname = 'PH_H{i}_{t}_{s}'.format(i=ch + 1, s=suffix, t=typ.lower()) if not isFriend else 'PH_H{i}_buffer_{v}_{t}_{s}'.format(v=self.trans_grid.noise_friend_buffer, i=ch+1, s=suffix, t=typ.lower())
 			DrawHisto(hname, hist_limits, plot_limits, delta, self.ph_ch_var(ch+1, 'H', typ=='snr', isFriend), 'PH highest {i}{sf} ch [{t}]'.format(i=ch + 1, t=typ.upper(), sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), tempcuts)
 
