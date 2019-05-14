@@ -84,7 +84,7 @@ class GridAreas:
 		if 0 <= col < self.num_cols:
 			if (col % 2 == 0) and (0 <= row < self.num_rows_even) or (col % 2 != 0) and (0 <= row < self.num_rows_odd):
 				self.badAreas_index.append((col, row))
-				dia_cols.cols[col].cells[row].cutg.SetLineColor(ro.kBlue)
+				dia_cols.cols[col].cells[row].cutg.SetLineColor(ro.kBlack)
 				self.badAreas_diamond.append(dia_cols.cols[col].cells[row].cutg)
 				self.badAreas_diamond_centers.append(dia_cols.cols[col].cells[row].cutg_center)
 				tempbad = [cut.GetName() for cut in self.badAreas_diamond]
@@ -162,7 +162,7 @@ class GridAreas:
 		It also stores the {good,bad}AreasCutNames_simplified_diamond with the cut string used to select these areas in the analysis
 		:return:
 		"""
-		def CreateTCutGDic(polygon_dic, color0=ro.kRed, color1=ro.kBlue):
+		def CreateTCutGDic(polygon_dic, color0=ro.kRed, color1=ro.kBlack):
 			"""
 			This method creates new TCutGs for the polygon_dic
 			:param polygon_dic: Its a dictionary that contains the information of the polygons under 'polygons' and the names of the polygons under 'names'
@@ -209,11 +209,11 @@ class GridAreas:
 			return '(' + '||'.join(list_names) + ')'
 
 		good_polygons_dic = self.SimplifyAreas(self.goodAreas_diamond, [], [], prefix='g')
-		self.goodAreas_simplified_diamond = CreateTCutGDic(good_polygons_dic, ro.kRed, ro.kBlue)
+		self.goodAreas_simplified_diamond = CreateTCutGDic(good_polygons_dic, ro.kRed, ro.kBlack)
 		self.goodAreasCutNames_simplified_diamond = ReturnNameCutGWithHoles(self.goodAreas_simplified_diamond)
 
 		bad_polygons_dic = self.SimplifyAreas(self.badAreas_diamond, [], [], prefix='b')
-		self.badAreas_simplified_diamond = CreateTCutGDic(bad_polygons_dic, ro.kBlue, ro.kRed)
+		self.badAreas_simplified_diamond = CreateTCutGDic(bad_polygons_dic, ro.kBlack, ro.kRed)
 		self.badAreasCutNames_simplified_diamond = ReturnNameCutGWithHoles(self.badAreas_simplified_diamond)
 
 		self.GetGoodAndBadChannels()
