@@ -63,7 +63,7 @@ class CurrentsMonitor:
 		ro.gStyle.SetNumberContours(999)
 
 	def Configure(self):
-
+		pass
 
 	def ClearBuffer(self):
 		cont = True
