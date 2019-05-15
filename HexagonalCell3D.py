@@ -7,7 +7,7 @@ class HexagonalCell3D(Cell3D):
 	def __init__(self, col_num=0, row_num=0, height=0, width_pitch_ratio=0, run=0):
 		Cell3D.__init__(self, col_num, row_num, sides=6, height=height, width_pitch_ratio=width_pitch_ratio, run=run)
 		self.col_3d_rx = min(self.p - self.w / 2.0, self.w / 4.0)
-		self.col_3d_ry = np.divide(np.sqrt(np.add(np.power(self.h, 2, dtype='f8'), 4 * np.power(min(self.col_3d_rx, self.w - self.p), 2, dtype='f8')), dtype='f8'), 4, dtype='f8')
+		self.col_3d_ry = min(self.h / (2.0 * np.sqrt(3, dtype='f8')), self.h * self.w / (4.0 * np.sqrt(np.power(self.w, 2, dtype='f8') - 4.0 * np.power(self.w - self.p, 2, dtype='f8'), dtype='f8')))
 
 	def CreateTCutG(self):
 		tempx = self.GetXCoordinatesPolygon(self.xcenter)
