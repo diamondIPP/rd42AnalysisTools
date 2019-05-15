@@ -168,7 +168,7 @@ class NegativeChargesAnalysis:
 		suffix = self.suffix[cells]
 		tempc = self.negN_chs_cut(self.cluster_size, 'Ch', typ == 'snr', isFriend)
 		for ch in (self.strips_for_analysis + 1):
-			hname = 'PH{c}_H_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix) if not isFriend else 'PH{c}_H_buffer_{v}_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix, v=self.trans_grid.noise_friend_buffer)
+			hname = 'PH{c}_H_cell_map_neg_events_{t}_{s}'.format(c=ch, t=typ, s=suffix) if not isFriend else 'PH{c}_H_buffer_{v}_cell_map_neg_events_{t}_{s}'.format(c=ch, t=typ, s=suffix, v=self.trans_grid.noise_friend_buffer)
 			PlotCellsProfiles(hname, self.phN_chs_var(ch, 'H', typ == 'snr', isFriend), 'PH{c} highest chs [{t}]'.format(c=ch, t=typ.upper()), tempc)
 			# hname = 'PH{c}_Ch_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix) if not isFriend else 'PH{c}_Ch_buffer_{v}_cell_map_neg_events_snr_{s}'.format(c=ch, s=suffix, v=self.trans_grid.noise_friend_buffer)
 			# PlotCellsProfiles(hname, self.phN_chs_var(ch, 'Ch', typ == 'snr', isFriend), 'PH{c} cluster chs [{t}]'.format(c=ch, t=typ.upper()), tempc)

@@ -1134,7 +1134,7 @@ class TransparentGrid:
 		self.line['threshold_' + typ].SetLineStyle(2)
 		self.line['threshold_' + typ].Draw('same')
 
-	def DrawMeanPHCellsHisto(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4800, deltax=50, draw_opt='e hist', supress0=True):
+	def DrawMeanPHCellsHisto(self, var='clusterChargeN', typ='adc', xmin=0, xmax=4800, deltax=50, draw_opt='e hist', supress0=False):
 		"""
 		This method plots the PH distribution of variable 'var' of type 'typ' with at least 10 bins
 		:param var: variable of type 'typ' used for the distribution
@@ -1166,7 +1166,7 @@ class TransparentGrid:
 			SetDefault1DStats(self.histo[nameh])
 			if(self.histo[nameh].FindLastBinAbove() - self.histo[nameh].FindFirstBinAbove() + 1) < 5:
 				self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax * 0.8, draw_opt, supress0)
-			elif GetHistoAverageBinContent(self.histo[nameh])<8:
+			elif GetHistoAverageBinContent(self.histo[nameh]) < np.sqrt(self.histo[nameh].GetEntries(), dtype='f8'):
 				self.DrawMeanPHCellsHisto(var, typ, xmin, xmax, deltax * 1.2, draw_opt, supress0)
 		else:
 			self.GetMeanPHPerCell(var, typ)
