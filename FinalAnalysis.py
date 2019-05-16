@@ -190,9 +190,9 @@ class FinalAnalysis:
 		:param isFriend: if true, it will use the data from a pedTree friend
 		:return:
 		"""
-		def DrawEfficiencyGraphs(name, var, cells, cuts, typ='adc', show_only_95=True):
+		def DrawEfficiencyGraphs(name, var, cells, cuts, typ='adc', show_only_99=True):
 			xmin, xmax, deltax = (self.trans_grid.phmin, self.trans_grid.phmax, self.eff_step) if typ == 'adc' else (self.trans_grid.phmin / 10., self.trans_grid.phmax / 10., self.eff_step / 10.)
-			ymin = 0.95 if show_only_95 else 0
+			ymin = 0.99 if show_only_99 else 0
 			self.trans_grid.DrawEfficiencyGraph(name, var, cells, cuts, xmin, xmax, deltax, typ, ymin)
 			self.PosCanvas(name)
 
@@ -294,7 +294,7 @@ class FinalAnalysis:
 					PlotCellsProfiles(hname, self.phN_chs_var(ch, chtype, typ == 'snr', isFriend), minz, maxz, 'PH{c} {ct} chs [{t}]'.format(c=ch, t=typ.upper(), ct='cluster' if chtype == 'Ch' else 'highest'), tempc)
 
 	def DoFinalAnalysis(self, typ='adc', cummulative_chs=None, isFriend=False):
-		self.eff_step = eff_step_opts[np.abs(eff_step_opts - (self.trans_grid.threshold / 16.)).argmin()] if self.trans_grid.threshold != 0 else 50.
+		self.eff_step = eff_step_opts[np.abs(eff_step_opts - (self.trans_grid.threshold / 80.)).argmin()] if self.trans_grid.threshold != 0 else 10.
 		if cummulative_chs:
 			self.analysis_cummulative_ch = cummulative_chs
 		self.DefineSatRegion(before=0, after=1)

@@ -26,7 +26,8 @@ ph_bins_options = np.array((25, 30, 32, 40, 50, 60, 64, 75, 80, 100, 120, 150, 1
 eff_delta_options = np.array((8.2, 10, 10.25, 12.5, 16.4, 20, 20.5, 25, 32.8, 41, 50, 51.25, 82), 'float64')
 
 class TransparentGrid:
-	def __init__(self, dir='', run=25209, col_pitch=50.0):
+	def __init__(self, dir='', run=0, col_pitch=0):
+		isempty = True if dir == '' and run == 0 and col_pitch == 0 else False
 		ro.gStyle.SetPalette(55)
 		ro.gStyle.SetNumberContours(99)
 		ro.gStyle.SetOptStat(11)
@@ -106,9 +107,10 @@ class TransparentGrid:
 		self.gridTextDiamond = None
 		self.doubleLangaus = {}
 		self.lg1, self.lg2 = ro.TF1(), ro.TF1()
-		self.CheckFoldersAndFiles()
-		self.OpenFileAndGetTree()
-		self.FindDiamondChannelLimits()
+		if not isempty:
+			self.CheckFoldersAndFiles()
+			self.OpenFileAndGetTree()
+			self.FindDiamondChannelLimits()
 		self.list_neg_cuts_clusters = {}
 		self.list_neg_cuts_noise = {}
 		self.mean_ph_cell_dic = {'snr': {}, 'adc': {}}
@@ -218,14 +220,13 @@ class TransparentGrid:
 			if not os.path.isdir('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
 				os.makedirs('{d}/{r}/{s}'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
 			picklepath = '{d}/{r}/{s}/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
-
 			pickle.dump(object_dic, open(picklepath, 'wb'))
 
 		else:
 			if not os.path.isdir('{d}/{r}/default'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)):
 				os.makedirs('{d}/{r}/default'.format(d=self.dir, r=self.run, s=self.pkl_sbdir))
-				picklepath = '{d}/{r}/default/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
-				pickle.dump(object_dic, open(picklepath, 'wb'))
+			picklepath = '{d}/{r}/default/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
+			pickle.dump(object_dic, open(picklepath, 'wb'))
 
 		print 'Saved pickle :D'
 

@@ -203,6 +203,60 @@ class ClusterChannelsAnalysis:
 					tempcuts = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.AndCuts([self.ph_cuts('PH_H{c1}'.format(c1=ch+1), isFriend), self.ph_cuts('PH_Ch{c2}'.format(c2=ch2), isFriend)]), cells=cells)
 					DrawHistogram('PH_H{c1}_Vs_PH_Ch{c2}_{t}'.format(c1=ch+1, c2=ch2, t=typ.lower()), 'PH cluster ch{c2} [{t}]'.format(c2=ch2, t=typ.upper()), ymin2, ymax2, 'PH highest {c1}{sf} ch [{t}]'.format(c1=ch+1, t=typ.upper(), sf='st' if ch == 0 else 'nd' if ch == 1 else 'rd' if ch == 2 else 'th'), self.ph_ch_var(ch2, 'Ch', typ=='snr', isFriend), self.ph_ch_var(ch+1, 'H', typ=='snr', isFriend), tempcuts, typ)
 
+	def DoStudyBla(self):
+		deltax = 5
+		xmin = -500
+		xmax = 500
+		ymin = -500
+		ymax = 3000
+		deltay = 50
+		hlims1D = GetSymmetric1DLimits(xmin, xmax, deltax, 1)
+		hlimsy2D = Get1DLimits(ymin, ymax, deltay)
+		colorsopt = {0: ro.kBlack, 1: ro.kBlue, 2: ro.kRed}
+
+		tempch = {}
+		hname = {}
+		hnamesc = {}
+		hbothname = {}
+		for cells in ['bad', '', 'all', 'good']:
+			tempch[cells] = {}
+			hname[cells] = {}
+			hnamesc[cells] = {}
+			for ch in xrange(1, self.cluster_size):
+				tempc = self.ph_cuts('PH_Ch{c}'.format(c=ch), False)
+				tempch[cells][ch] = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.AndCuts([tempc, 'clusterChannel{c}==clusterChannelHighest{n}'.format(c=ch, n=self.cluster_size)]), cells=cells)
+				hname[cells][ch] = 'PH_Ch{c}_with_Ch{c}_lowest_{s}'.format(c=ch, s=self.suffix[cells])
+				hnamesc[cells][ch] = 'PH_Ch{c}_with_Ch{c}_lowest_scaled_{s}'.format(c=ch, s=self.suffix[cells])
+				self.trans_grid.DrawHisto1D(hname[cells][ch], hlims1D['min'], hlims1D['max'], deltax, self.ph_ch_var(ch, 'Ch', False, False), 'PH cluster ch{c} [ADC]'.format(c=ch), tempch[cells][ch])
+				self.PosCanvas(hname[cells][ch])
+				self.trans_grid.histo[hnamesc[cells][ch]] = self.trans_grid.histo[hname[cells][ch]].Clone('h_' + hnamesc[cells][ch])
+				self.trans_grid.histo[hnamesc[cells][ch]].SetTitle('h_' + hnamesc[cells][ch])
+				self.trans_grid.histo[hnamesc[cells][ch]].SetLineColor(colorsopt[ch])
+				self.trans_grid.histo[hnamesc[cells][ch]].Scale(1.0 / self.trans_grid.histo[hnamesc[cells][ch]].GetMaximum())
+
+			hbothname[cells] = 'PH_Ch1_and_PH_Ch2_lowest_overlaid_and_scaled_{s}'.format(s=self.suffix[cells])
+			self.trans_grid.canvas[hbothname[cells]] = ro.TCanvas('c_' + hbothname[cells], 'c_' + hbothname[cells], 1)
+			self.trans_grid.histo[hnamesc[cells][2]].SetTitle(hbothname[cells])
+			self.trans_grid.histo[hnamesc[cells][2]].Draw()
+			# self.trans_grid.histo[hnamesc[1]].Scale(self.trans_grid.histo[hnamesc[2]].GetBinContent(self.trans_grid.histo[hnamesc[1]].GetMaximumBin()) / self.trans_grid.histo[hnamesc[1]].GetMaximum())
+			self.trans_grid.histo[hnamesc[cells][1]].SetTitle(hbothname[cells])
+			self.trans_grid.histo[hnamesc[cells][1]].Draw('same')
+			SetDefault1DCanvasSettings(self.trans_grid.canvas[hbothname[cells]])
+			self.trans_grid.canvas[hbothname[cells]].SetLogy()
+			self.PosCanvas(hbothname[cells])
+
+			satOpts = [True, False]
+			for satOpt in satOpts:
+				for ch in xrange(1, self.cluster_size):
+					tempc = tempch[cells][ch] if satOpt else self.trans_grid.cuts_man.AndCuts([tempch[cells][ch], '(diaChADC[clusterChannelHighest1]!=4095)'])
+					hname1 = 'PH_H1_vs_PH_Ch{c}_lowest_{s}'.format(s=self.suffix[cells], c=ch) if satOpt else 'PH_H1_vs_PH_Ch{c}_lowest_no_sat_{s}'.format(s=self.suffix[cells], c=ch)
+					self.trans_grid.DrawHisto2D(hname1, hlims1D['min'], hlims1D['max'], deltax, 'PH cluster ch{c} when lowest [ADC]'.format(c=ch), hlimsy2D['min'], hlimsy2D['max'], deltay, 'PH highest ch [ADC]', self.ph_ch_var(ch, 'Ch', False, False), self.ph_ch_var(1, 'H', False, False), tempc)
+					self.PosCanvas(hname1)
+					hname1 = 'PH2_H_vs_PH_Ch{c}_lowest_{s}'.format(s=self.suffix[cells], c=ch) if satOpt else 'PH2_H_vs_PH_Ch{c}_lowest_no_sat_{s}'.format(s=self.suffix[cells], c=ch)
+					self.trans_grid.DrawHisto2D(hname1, hlims1D['min'], hlims1D['max'], deltax, 'PH cluster ch{c} when lowest [ADC]'.format(c=ch), hlimsy2D['min'], hlimsy2D['max'], deltay, 'PH2 highest chs [ADC]', self.ph_ch_var(ch, 'Ch', False, False), self.phN_chs_var(2, 'H', False, False), tempc)
+					self.PosCanvas(hname1)
+
+
 	def DoClusterStudies(self, cells='all', typ='adc', isFriend=False):
 		self.SetStripsForAnalysis()
 		self.Do2DProfileMaps(cells)

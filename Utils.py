@@ -487,6 +487,9 @@ def SetDefault1DCanvasSettings(canvas):
 	canvas.SetTicky()
 	ro.gPad.Update()
 
+def SetDefault2DCanvasSettings(canvas, histo):
+	pass
+
 def GetHistoAverageBinContent(histo):
 	sumbc = 0
 	bins = 0

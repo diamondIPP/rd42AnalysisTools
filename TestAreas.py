@@ -7,6 +7,7 @@ from TransparentGrid import TransparentGrid
 from ClusterChannelsAnalysis import ClusterChannelsAnalysis
 from NoiseAnalysis import NoiseAnalysis
 from CenterCellAnalysis import CenterCellAnalysis
+from CellsAnalysis import CellsAnalysis
 from NegativeChargesAnalysis import NegativeChargesAnalysis
 from SaturationAnalysis import SaturationAnalysis
 from FinalAnalysis import FinalAnalysis
@@ -75,6 +76,7 @@ class TestAreas:
 			self.ReadConfigFile()
 		self.trans_grid = TransparentGrid(self.dir, self.run, self.col_pitch)
 		self.cluster_ch_ana = None
+		self.cell_ana = None
 		self.noise_ana = None
 		self.center_cells_ana = None
 		self.neg_ana = None
@@ -248,6 +250,7 @@ class TestAreas:
 		else:
 			self.trans_grid.cell_resolution = self.cell_resolution
 			self.trans_grid.SavePickle()
+		self.cell_ana = CellsAnalysis(self.trans_grid)
 		self.noise_ana = NoiseAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 		self.cluster_ch_ana = ClusterChannelsAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
 		self.trans_grid.FindMaxMinVarz()
