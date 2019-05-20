@@ -226,7 +226,7 @@ class ClusterChannelsAnalysis:
 			hnameshift[cells] = {}
 			for ch in xrange(1, self.cluster_size):
 				tempc = self.ph_cuts('PH_Ch{c}'.format(c=ch), False)
-				tempch[cells][ch] = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.AndCuts([tempc, 'clusterChannel{c}==clusterChannelHighest{n}'.format(c=ch, n=self.cluster_size)]), cells=cells)
+				tempch[cells][ch] = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.AndCuts([tempc, '(clusterChannel{c}==clusterChannelHighest{n})'.format(c=ch, n=self.cluster_size)]), cells=cells)
 				hname[cells][ch] = 'PH_Ch{c}_with_Ch{c}_lowest_{s}'.format(c=ch, s=self.suffix[cells])
 				hnamesc[cells][ch] = 'PH_Ch{c}_with_Ch{c}_lowest_scaled_{s}'.format(c=ch, s=self.suffix[cells])
 				hnameshift[cells][ch] = 'PH_Ch{c}_with_Ch{c}_lowest_shifted_{s}'.format(c=ch, s=self.suffix[cells])
@@ -272,6 +272,7 @@ class ClusterChannelsAnalysis:
 			legend = self.trans_grid.canvas[hbothnameshift[cells]].BuildLegend()
 			self.trans_grid.canvas[hbothnameshift[cells]].SetLogy()
 			SetDefault1DCanvasSettings(self.trans_grid.canvas[hbothnameshift[cells]])
+			self.PosCanvas(hbothnameshift[cells])
 
 			satOpts = [True, False]
 			for satOpt in satOpts:
@@ -283,6 +284,19 @@ class ClusterChannelsAnalysis:
 					hname1 = 'PH2_H_vs_PH_Ch{c}_lowest_{s}'.format(s=self.suffix[cells], c=ch) if satOpt else 'PH2_H_vs_PH_Ch{c}_lowest_no_sat_{s}'.format(s=self.suffix[cells], c=ch)
 					self.trans_grid.DrawHisto2D(hname1, hlims1D['min'], hlims1D['max'], deltax, 'PH cluster ch{c} when lowest [ADC]'.format(c=ch), hlimsy2D['min'], hlimsy2D['max'], deltay, 'PH2 highest chs [ADC]', self.ph_ch_var(ch, 'Ch', False, False), self.phN_chs_var(2, 'H', False, False), tempc)
 					self.PosCanvas(hname1)
+					deltax2 = 0.01
+					deltay2 = 5
+					hlims1V2 = GetSymmetric1DLimits(-1, 1, deltax2)
+					hlimsyV2 = GetSymmetric1DLimits(-500, 500, deltay2)
+					tempc = tempch[cells][ch] if satOpt else self.trans_grid.cuts_man.AndCuts([tempch[cells][ch], '(diaChADC[clusterChannelHighest1]!=4095)'])
+					tempc = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=tempc, cells=cells)
+					hname1 = 'PH_Ch{c}_Vs_Ratio_PH_Ch{c}_PH_Ch0_with_PH_Ch{c}_lowest_with_sat_{s}'.format(c=ch, s=self.suffix[cells]) if satOpt else 'PH_Ch{c}_Vs_Ratio_PH_Ch{c}_PH_Ch0_with_PH_Ch{c}_lowest_no_sat_{s}'.format(c=ch, s=self.suffix[cells])
+					self.trans_grid.DrawHisto2D(hname1, hlims1V2['min'], hlims1V2['max'], deltax2, 'PH_Ch{c}/PH_Ch0'.format(c=ch), hlimsyV2['min'], hlimsyV2['max'], deltay2, 'PH_Ch'+str(ch), 'diaChSignal[clusterChannel{c}]/diaChSignal[clusterChannel0]'.format(c=ch), 'diaChSignal[clusterChannel{c}]'.format(c=ch), tempc)
+					SetDefault1DCanvasSettings(self.trans_grid.canvas[hname1])
+					self.trans_grid.canvas[hname1].SetLogz()
+					# self.trans_grid.FitPol(hname1, 1, 0, True)
+					self.PosCanvas(hname1)
+
 
 
 	def DoClusterStudies(self, cells='all', typ='adc', isFriend=False):

@@ -1864,7 +1864,7 @@ class TransparentGrid:
 			self.histo[name].GetFunction('f_gaus_' + name).Draw('same')
 			ro.gPad.Update()
 
-	def FitPol(self, name, num_pol=0):
+	def FitPol(self, name, num_pol=0, y0=0, fix_y0=False):
 		"""
 		Method used to fit a polynomial function of degree num_pol
 		:param name: name of the histogram to be fitted
@@ -1880,6 +1880,8 @@ class TransparentGrid:
 			func.SetLineStyle(1)
 			func.SetLineColor(ro.kRed)
 			func.SetLineWidth(2)
+			if fix_y0:
+				func.FixParameter(0, y0)
 			self.fits[name] = self.histo[name].Fit('f_pol{num}_{n}'.format(num=num_pol, n=name), 'QIEBMS', 'goff', xmin, xmax)
 			self.histo[name].GetFunction('f_pol{num}_{n}'.format(num=num_pol, n=name)).Draw('same')
 			ro.gPad.Update()
