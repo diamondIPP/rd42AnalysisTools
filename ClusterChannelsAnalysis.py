@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import ROOT as ro
 import numpy as np
 import ipdb, os
@@ -217,21 +216,27 @@ class ClusterChannelsAnalysis:
 		tempch = {}
 		hname = {}
 		hnamesc = {}
+		hnameshift = {}
 		hbothname = {}
+		hbothnameshift = {}
 		for cells in ['bad', '', 'all', 'good']:
 			tempch[cells] = {}
 			hname[cells] = {}
 			hnamesc[cells] = {}
+			hnameshift[cells] = {}
 			for ch in xrange(1, self.cluster_size):
 				tempc = self.ph_cuts('PH_Ch{c}'.format(c=ch), False)
 				tempch[cells][ch] = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.AndCuts([tempc, 'clusterChannel{c}==clusterChannelHighest{n}'.format(c=ch, n=self.cluster_size)]), cells=cells)
 				hname[cells][ch] = 'PH_Ch{c}_with_Ch{c}_lowest_{s}'.format(c=ch, s=self.suffix[cells])
 				hnamesc[cells][ch] = 'PH_Ch{c}_with_Ch{c}_lowest_scaled_{s}'.format(c=ch, s=self.suffix[cells])
+				hnameshift[cells][ch] = 'PH_Ch{c}_with_Ch{c}_lowest_shifted_{s}'.format(c=ch, s=self.suffix[cells])
 				self.trans_grid.DrawHisto1D(hname[cells][ch], hlims1D['min'], hlims1D['max'], deltax, self.ph_ch_var(ch, 'Ch', False, False), 'PH cluster ch{c} [ADC]'.format(c=ch), tempch[cells][ch])
 				self.PosCanvas(hname[cells][ch])
 				self.trans_grid.histo[hnamesc[cells][ch]] = self.trans_grid.histo[hname[cells][ch]].Clone('h_' + hnamesc[cells][ch])
 				self.trans_grid.histo[hnamesc[cells][ch]].SetTitle('h_' + hnamesc[cells][ch])
 				self.trans_grid.histo[hnamesc[cells][ch]].SetLineColor(colorsopt[ch])
+				self.trans_grid.histo[hnameshift[cells][ch]] = self.trans_grid.histo[hnamesc[cells][ch]].Clone('h_' + hnameshift[cells][ch])
+				self.trans_grid.histo[hnameshift[cells][ch]].SetStats(0)
 				self.trans_grid.histo[hnamesc[cells][ch]].Scale(1.0 / self.trans_grid.histo[hnamesc[cells][ch]].GetMaximum())
 
 			hbothname[cells] = 'PH_Ch1_and_PH_Ch2_lowest_overlaid_and_scaled_{s}'.format(s=self.suffix[cells])
@@ -244,6 +249,29 @@ class ClusterChannelsAnalysis:
 			SetDefault1DCanvasSettings(self.trans_grid.canvas[hbothname[cells]])
 			self.trans_grid.canvas[hbothname[cells]].SetLogy()
 			self.PosCanvas(hbothname[cells])
+
+			hbothnameshift[cells] = 'PH_Ch1_sifted_and_PH_Ch2_scaled_lowest_overalid_{s}'.format(s=self.suffix[cells])
+			maxbinch1 = self.trans_grid.histo[hnameshift[cells][1]].GetMaximumBin()
+			maxbinch2 = self.trans_grid.histo[hnameshift[cells][2]].GetMaximumBin()
+			if maxbinch2 > maxbinch1:
+				for i in np.arange(int(self.trans_grid.histo[hnameshift[cells][1]].GetNbinsX()), int(maxbinch2 - maxbinch1), -1):
+					self.trans_grid.histo[hnameshift[cells][1]].SetBinContent(i, self.trans_grid.histo[hnameshift[cells][1]].GetBinContent(i - int(maxbinch2 - maxbinch1)))
+				for i in np.arange(1, int(maxbinch2 - maxbinch1) + 1):
+					self.trans_grid.histo[hnameshift[cells][1]].SetBinContent(i, 0)
+			elif maxbinch1 > maxbinch2:
+				for i in np.arange(1, int(self.trans_grid.histo[hnameshift[cells][1]].GetNbinsX() - int(maxbinch1 - maxbinch2)) + 1, 1):
+					self.trans_grid.histo[hnameshift[cells][1]].SetBinContent(i, self.trans_grid.histo[hnameshift[cells][1]].GetBinContent(i + int(maxbinch1 - maxbinch2)))
+				for i in np.arange(int(self.trans_grid.histo[hnameshift[cells][1]].GetNbinsX()) - int(maxbinch1 - maxbinch2) + 1, int(self.trans_grid.histo[hnameshift[cells][1]].GetNbinsX()) + 1, 1):
+					self.trans_grid.histo[hnameshift[cells][1]].SetBinContent(i, 0)
+			self.trans_grid.histo[hnameshift[cells][2]].Scale(self.trans_grid.histo[hnameshift[cells][1]].GetMaximum() / self.trans_grid.histo[hnameshift[cells][2]].GetMaximum())
+			self.trans_grid.canvas[hbothnameshift[cells]] = ro.TCanvas('c_' + hbothnameshift[cells], 'c_' + hbothnameshift[cells], 1)
+			self.trans_grid.histo[hnameshift[cells][1]].SetTitle('PH_Ch{c}_with_Ch{c}_lowest_shifted_{s}'.format(c=1, s=self.suffix[cells]))
+			self.trans_grid.histo[hnameshift[cells][2]].SetTitle('PH_Ch{c}_with_Ch{c}_lowest_scaled_{s}'.format(c=2, s=self.suffix[cells]))
+			self.trans_grid.histo[hnameshift[cells][1]].Draw()
+			self.trans_grid.histo[hnameshift[cells][2]].Draw('same')
+			legend = self.trans_grid.canvas[hbothnameshift[cells]].BuildLegend()
+			self.trans_grid.canvas[hbothnameshift[cells]].SetLogy()
+			SetDefault1DCanvasSettings(self.trans_grid.canvas[hbothnameshift[cells]])
 
 			satOpts = [True, False]
 			for satOpt in satOpts:
