@@ -225,8 +225,8 @@ class ClusterChannelsAnalysis:
 			hnamesc[cells] = {}
 			hnameshift[cells] = {}
 			for ch in xrange(1, self.cluster_size):
-				tempc = self.ph_cuts('PH_Ch{c}'.format(c=ch), False)
-				tempch[cells][ch] = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=self.trans_grid.cuts_man.AndCuts([tempc, '(clusterChannel{c}==clusterChannelHighest{n})'.format(c=ch, n=self.cluster_size)]), cells=cells)
+				tempc = self.trans_grid.cuts_man.AndCuts([self.ph_cuts('PH_Ch{c}'.format(c=ch), False), self.trans_grid.cuts_man.cluster_ch_lowest[ch]])
+				tempch[cells][ch] = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=tempc, cells=cells)
 				hname[cells][ch] = 'PH_Ch{c}_with_Ch{c}_lowest_{s}'.format(c=ch, s=self.suffix[cells])
 				hnamesc[cells][ch] = 'PH_Ch{c}_with_Ch{c}_lowest_scaled_{s}'.format(c=ch, s=self.suffix[cells])
 				hnameshift[cells][ch] = 'PH_Ch{c}_with_Ch{c}_lowest_shifted_{s}'.format(c=ch, s=self.suffix[cells])

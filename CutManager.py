@@ -36,6 +36,9 @@ class CutManager:
 
 		self.any_saturated = '(diaChADC=={s})'.format(s=self.sat_adc)
 		self.non_saturated = '(diaChADC!={s})'.format(s=self.sat_adc)
+		self.highest_saturated = '(diaChADC[clusterChannelHighest1]=={s})'.format(s=self.sat_adc)
+		self.highest_not_saturated = '(diaChADC[clusterChannelHighest1]!={s})'.format(s=self.sat_adc)
+		self.cluster_ch_lowest = {ch: '(clusterChannel{ch}==clusterChannelHighest{n})'.format(ch=ch, n=self.cluster_size) for ch in xrange(self.cluster_size)}
 		self.valid_ped_sigma = '(diaChPedSigmaCmc>0)'
 		self.valid_ped_friend_sigma = '(pedTree.diaChPedSigmaCmc>0)'
 		self.even_pred_chs = '(TMath::Floor(diaChXPred+0.5)%2==0)'
