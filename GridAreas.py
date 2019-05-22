@@ -84,7 +84,7 @@ class GridAreas:
 		if 0 <= col < self.num_cols:
 			if (col % 2 == 0) and (0 <= row < self.num_rows_even) or (col % 2 != 0) and (0 <= row < self.num_rows_odd):
 				self.badAreas_index.append((col, row))
-				dia_cols.cols[col].cells[row].cutg.SetLineColor(ro.kBlack)
+				dia_cols.cols[col].cells[row].cutg.SetLineColor(ro.kGray)
 				self.badAreas_diamond.append(dia_cols.cols[col].cells[row].cutg)
 				self.badAreas_diamond_centers.append(dia_cols.cols[col].cells[row].cutg_center)
 				tempbad = [cut.GetName() for cut in self.badAreas_diamond]

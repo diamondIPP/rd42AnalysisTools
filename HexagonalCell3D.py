@@ -17,7 +17,8 @@ class HexagonalCell3D(Cell3D):
 		self.cutg.SetNameTitle(tempname, tempname)
 		self.cutg.SetVarX('diaChXPred')
 		self.cutg.SetVarY('diaChYPred')
-		self.cutg.SetLineColor(ro.kBlack)
+		self.cutg.SetLineColor(ro.kGray)
+		self.cutg.SetLineWidth(2)
 
 		self.SetCutReadOut(tempname)
 
@@ -36,7 +37,8 @@ class HexagonalCell3D(Cell3D):
 		self.cutg_center.SetNameTitle(tempname, tempname)
 		self.cutg_center.SetVarX('diaChXPred')
 		self.cutg_center.SetVarY('diaChYPred')
-		self.cutg_center.SetLineColor(ro.kViolet)
+		self.cutg_center.SetLineColor(ro.kRed)
+		self.cutg_center.SetLineWidth(2)
 
 	def GetXCoordinatesPolygon(self, xcenter=0, fraction=1.0):
 		return np.add(xcenter, np.multiply(np.divide(np.array([-(2.0 * self.p - self.w), -self.w, -(2.0 * self.p - self.w), 2.0 * self.p - self.w, self.w, 2.0 * self.p - self.w, -(2.0 * self.p - self.w)], 'f8'), 2.0, dtype='f8'), fraction, dtype='f8'), dtype='f8')
