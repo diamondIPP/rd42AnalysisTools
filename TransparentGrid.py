@@ -837,7 +837,9 @@ class TransparentGrid:
 		self.profile[name].GetYaxis().SetTitle(yname)
 		if 'goff' not in plot_option:
 			if name in self.canvas.keys():
-				self.canvas[name].Close()
+				if self.canvas[name]:
+					self.canvas[name].Close()
+				del self.canvas[name]
 			self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
 			self.canvas[name].cd()
 		list_cuts = ['transparentEvent'] if transp_ev else []
@@ -880,7 +882,9 @@ class TransparentGrid:
 		self.profile[name].GetZaxis().SetTitle(zname)
 		if 'goff' not in plot_option:
 			if name in self.canvas.keys():
-				self.canvas[name].Close()
+				if self.canvas[name]:
+					self.canvas[name].Close()
+				del self.canvas[name]
 			self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
 			self.canvas[name].cd()
 		list_cuts = [self.cuts_man.transp_ev] if transp_ev else []
@@ -933,7 +937,9 @@ class TransparentGrid:
 		self.histo[name_occupancy].GetZaxis().SetTitle('entries')
 		if 'goff' not in plot_option:
 			if name_occupancy in self.canvas.keys():
-				self.canvas[name_occupancy].Close()
+				if self.canvas[name_occupancy]:
+					self.canvas[name_occupancy].Close()
+				del self.canvas[name_occupancy]
 			self.canvas[name_occupancy] = ro.TCanvas('c_' + name_occupancy, 'c_' + name_occupancy, 1)
 			self.canvas[name_occupancy].cd()
 			self.histo[name_occupancy].Draw(plot_option)
@@ -966,7 +972,9 @@ class TransparentGrid:
 		self.histo[name].GetYaxis().SetTitle(yname)
 		self.histo[name].GetZaxis().SetTitle('entries')
 		if name in self.canvas.keys():
-			self.canvas[name].Close()
+			if self.canvas[name]:
+				self.canvas[name].Close()
+			del self.canvas[name]
 		self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
 		self.canvas[name].cd()
 		list_cuts = [self.cuts_man.transp_ev] if transp_ev else []
@@ -1004,7 +1012,9 @@ class TransparentGrid:
 		temp_cuts = '&&'.join(list_cuts)
 		if 'goff' not in option:
 			if name in self.canvas.keys():
-				self.canvas[name].Close()
+				if self.canvas[name]:
+					self.canvas[name].Close()
+				del self.canvas[name]
 			self.canvas[name] = ro.TCanvas('c_' + name, 'c_' + name, 1)
 			self.canvas[name].cd()
 		self.trans_tree.Draw('{v}>>h_{n}'.format(v=var, n=name), temp_cuts, option)
