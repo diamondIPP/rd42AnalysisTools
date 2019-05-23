@@ -544,6 +544,22 @@ def Get1DLimits(xmin, xmax, deltax, scale=1, oddbins=True):
 	minx, maxx = deltax * RoundInt(xmin / float(deltax)), deltax * RoundInt(xmax / float(deltax))
 	return {'min': scale * minx - deltax / 2.0, 'max': scale * maxx + deltax / 2.0} if oddbins else {'min': scale * minx, 'max': scale * maxx}
 
+def ReduceHistoContent(histo, amount, makeInt=True):
+	hname = histo.GetName()
+	hname_reduced = 'h_reduced_' + hname[2:] if hname.startswith('h_') else 'h_reduced_' + hname
+	histor = histo.Clone(hname_reduced)
+	histor.SetTitle(hname_reduced)
+	amountr = RoundInt(amount) if makeInt else amount
+	for bini in xrange(histo.GetNbinsX() * histo.GetNbinsY() + 1):
+		binic = histo.GetBinContent(bini)
+		if binic == 0:
+			continue
+		elif binic > amountr:
+			histor.AddBinContent(bini, -amountr)
+		else:
+			histor.SetBinContent(bini, 0)
+	return histor
+
 def PositionCanvas(trans_grid, canvas_name, w_pos, window_shift=3):
 	if canvas_name in trans_grid.canvas.keys():
 		trans_grid.canvas[canvas_name].SetWindowPosition(w_pos, w_pos)

@@ -23,5 +23,12 @@ class DiamondColumns:
 	def GetColXCenter(self, col):
 		return self.cols[col].xcenter
 
+	def GetColNumRowNumOfPoint(self, x, y):
+		for col in self.cols:
+			col_row = col.GetColNumRowNumOfPoint(x, y)
+			if col_row != [-999, -999]:
+				return col_row
+		return [-999, -999]
+
 if __name__ == '__main__':
 	z = DiamondColumns()

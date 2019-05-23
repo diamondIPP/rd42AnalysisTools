@@ -49,6 +49,10 @@ class CutManager:
 		self.sat_evts = None
 		self.sat_evts_region = '(satRegion)'
 		self.not_sat_evts_region = '(!satRegion)'
+		self.cut_00 = ''
+		self.cut_x1 = ''
+		self.cut_good_ratio_region = ''
+		self.cut_bad_ratio_region = ''
 
 		self.noise_cuts = {t: '' for t in ['all', 'good', 'bad']}
 		self.noise_friend_cuts = {t: '' for t in ['all', 'good', 'bad']}
@@ -144,6 +148,11 @@ class CutManager:
 		elif varKey.endswith('H'):
 			return self.GetValidPedNChsCut(int(varKey.strip('PH').strip('_H')), 'H', isFriend, '&&')
 
+	def SetQualityRatioCuts(self, mux1, sx1, mux2, sx2, muy1, sy1, muy2, sy2, varch0='diaChSignal[clusterChannel0]', varch1='diaChSignal[clusterChannel1]', varch2='diaChSignal[clusterChannel2]'):
+		self.cut_00 = '((TMath::Abs({n1}/{d}-{x1})<={sx1})&&(TMath::Abs({n2}/{d}-{y1})<={sy1}))'.format(x1=mux1, y1=muy1, sx1=sx1, sy1=sy1, n1=varch1, n2=varch2, d=varch0)
+		self.cut_x1 = '((TMath::Abs({n2}/{d}-{y2})<={sy2})&&({n1}/{d}>={x2}-{sx2}/2))'.format(n1=varch1, n2=varch2, d=varch0, y2=muy2, sy2=sy2, x2=mux2, sx2=sx2)
+		self.cut_good_ratio_region = self.OrCuts([self.cut_00, self.cut_x1])
+		self.cut_bad_ratio_region = self.NotCut(self.cut_good_ratio_region)
 
 	def SetChs(self, goodchs, badchs):
 		self.good_chs = goodchs

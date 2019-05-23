@@ -36,6 +36,8 @@ class TestAreas:
 		self.skip_before_sat = 0
 		self.skip_after_sat = 1
 		self.do_threshold = False
+		self.do_percentile_selection = False
+		self.percentile = 0
 		self.neg_cut_adc = 4100
 		self.neg_cut_snr = 410
 		self.efficiency_subdiv = 1
@@ -113,6 +115,10 @@ class TestAreas:
 					self.threshold = pars.getfloat('SETTINGS', 'threshold')
 				if pars.has_option('SETTINGS', 'do_threshold'):
 					self.do_threshold = pars.getboolean('SETTINGS', 'do_threshold')
+				if pars.has_option('SETTINGS', 'do_percentile_selection'):
+					self.do_percentile_selection = pars.getboolean('SETTINGS', 'do_percentile_selection')
+				if pars.has_option('SETTINGS', 'percentile'):
+					self.percentile = pars.getfloat('SETTINGS', 'percentile')
 				if pars.has_option('SETTINGS', 'saturated_ADC'):
 					self.saturated_ADC = pars.getint('SETTINGS', 'saturated_ADC')
 				if pars.has_option('SETTINGS', 'num_sides'):
@@ -216,6 +222,13 @@ class TestAreas:
 					return
 			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
 			self.SetAnalysis()
+		elif self.do_percentile_selection:
+			if self.percentile == 0:
+				self.percentile = 80
+			self.trans_grid.ResetAreas()
+			print 'Select areas with a cell above the {p} percentile of all the cells'.format(p=self.percentile)
+			self.trans_grid.FindCellsQuality()
+
 		elif len(self.rows) + len(self.cols) + len(self.cells) > 0:
 			self.trans_grid.ResetAreas()
 			for row in self.rows:
@@ -318,6 +331,11 @@ class TestAreas:
 		self.trans_grid.fits['PH2_H_map_with_borders_py'] = self.trans_grid.histo['PH2_H_map_with_borders_py'].Fit('box_fcn', 'QIEBMSL', 'goff', self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((minbiny))), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinLowEdge(int((maxbiny))))
 		self.PositionCanvas('PH2_H_map_with_borders_py')
 		ro.gPad.Update()
+
+	def DoQualityStudyHistograms(self):
+		if self.trans_grid.cuts_man.cut_00 == '' or self.trans_grid.cuts_man.cut_x1 == '':
+			self.trans_grid.FindCellsQuality()
+
 
 	def DoCellHistograms(self, typ='adc'):
 		self.trans_grid.mean_ph_cell_dic[typ] = {}

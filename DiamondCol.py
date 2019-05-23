@@ -36,5 +36,12 @@ class DiamondCol:
 		ycenters = self.GetYCenters()
 		return np.append([ycenters.size * [self.xcenter]], [ycenters], axis=0).T
 
+	def GetColNumRowNumOfPoint(self, x, y):
+		for cell in self.cells:
+			colrow = cell.GetColNumRowNumOfPoint(x, y)
+			if colrow != [-999, -999]:
+				return colrow
+		return [-999, -999]
+
 if __name__ == '__main__':
 	z = DiamondCol()

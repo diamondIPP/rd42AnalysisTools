@@ -33,5 +33,8 @@ class Cell3D:
 	def GetDistanceToCenter(self, x, y):
 		return np.sqrt(np.add(np.power(np.subtract(x, self.xcenter, dtype='f8'), 2, dtype='f8'), np.power(np.subtract(y, self.ycenter, dtype='f8'), 2, dtype='f8')), dtype='f8')
 
+	def GetColNumRowNumOfPoint(self, x, y):
+		return [self.col_num, self.row_num] if self.cutg.IsInside(x, y) == 1 else [-999, -999]
+
 if __name__ == '__main__':
 	z = Cell3D()
