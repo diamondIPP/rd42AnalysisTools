@@ -130,24 +130,24 @@ class CellsAnalysis:
 
 	def FindCellsQuality(self):
 		print 'Get relative charge ratio of neighbor channels...'
-		self.Draw2DChargeRatioWithNeighborStrips('all')
-		hname = 'relative_charge_ratio_neighbor_chs_no_cuts_{s}'.format(s=self.suffix['all'])
+		hname = self.Draw2DChargeRatioWithNeighborStrips('all', suffix='{s}_no_cuts'.format(s=self.suffix['all']))
 		# Reduced the bin content to ignore the bins with lower than 5% of the histogram Maximum
 		threshold = self.trans_grid.histo[hname].GetMaximum() / 20.
-		histor = ReduceHistoContent(self.histo[hname], threshold, True)
+		histor = ReduceHistoContent(self.trans_grid[hname], threshold, True)
 		hname_reduced = histor.GetName()[2:]
-		self.histo[hname_reduced] = histor
+		self.trans_grid.histo[hname_reduced] = histor
 		print 'Project in vertigal axis...'
 		# Project reduced histogram in vertical axis to find the peak(s) of the distribution
 		historpy = histor.ProjectionY('h_' + hname_reduced + '_py', 0, -1, 'e')
-		self.histo[hname_reduced + '_py'] = historpy
+		self.trans_grid.histo[hname_reduced + '_py'] = historpy
 		historpy.SetTitle('h_' + hname_reduced + '_py')
 		historpy.GetXaxis().SetRangeUser(historpy.GetMean() - 2.5 * historpy.GetRMS(), historpy.GetMean() + 2.5 * historpy.GetRMS())
-		self.canvas[hname_reduced + '_py'] = ro.TCanvas('c_' + hname_reduced + '_py', 'c_' + hname_reduced + '_py', 1)
+		self.trans_grid.canvas[hname_reduced + '_py'] = ro.TCanvas('c_' + hname_reduced + '_py', 'c_' + hname_reduced + '_py', 1)
 		historpy.Draw('e hist')
 		SetDefault1DStats(historpy)
-		self.FitTwoGaus(hname_reduced + '_py')
-		fitpy = self.fits[hname_reduced + '_py']
+		self.PosCanvas(hname_reduced + '_py')
+		self.trans_grid.FitTwoGaus(hname_reduced + '_py')
+		fitpy = self.trans_grid.fits[hname_reduced + '_py']
 		fitpyparams = fitpy.GetParams()
 		fitpyparams = np.array([fitpyparams[it] for it in xrange(6)], 'f8')
 		if fitpyparams[1] < fitpyparams[4]:
@@ -164,14 +164,15 @@ class CellsAnalysis:
 		print 'Project in horizontal axis...'
 		# Project reduced histogram around the lowest gaussian peak on the horizontal axis
 		historpx = histor.ProjectionX('h_' + hname_reduced + '_px', 0, -1, 'e')
-		self.histo[hname_reduced + '_px'] = historpx
+		self.trans_grid.histo[hname_reduced + '_px'] = historpx
 		historpx.SetTitle('h_' + hname_reduced + '_px')
 		historpx.GetXaxis().SetRangeUser(historpx.GetMean() - 2.5 * historpx.GetRMS(), historpx.GetMean() + 2.5 * historpx.GetRMS())
-		self.canvas[hname_reduced + '_px'] = ro.TCanvas('c_' + hname_reduced + '_px', 'c_' + hname_reduced + '_px', 1)
+		self.trans_grid.canvas[hname_reduced + '_px'] = ro.TCanvas('c_' + hname_reduced + '_px', 'c_' + hname_reduced + '_px', 1)
 		historpx.Draw('e hist')
+		self.PosCanvas(hname_reduced + '_px')
 		SetDefault1DStats(historpx)
-		self.FitTwoGaus(hname_reduced + '_px')
-		fitpx = self.fits[hname_reduced + '_px']
+		self.trans_grid.FitTwoGaus(hname_reduced + '_px')
+		fitpx = self.trans_grid.fits[hname_reduced + '_px']
 		fitpxparams = fitpx.GetParams()
 		fitpxparams = np.array([fitpxparams[it] for it in xrange(6)], 'f8')
 		if fitpxparams[2] < fitpxparams[5]:
@@ -186,114 +187,37 @@ class CellsAnalysis:
 			sx2 = fitpxparams[2]
 		print 'Setting cuts...', ; sys.stdout.flush()
 		# Create Cuts to select good and bad regions in the ph ch ratio space
-		self.cuts_man.SetQualityRatioCuts(mux1, sx1, mux2, sx2, muy1, sy1, muy2, sy2, varch0=self.GetPHChVar(0, 'Ch'), varch1=self.GetPHChVar(1, 'Ch'), varch2=self.GetPHChVar(2, 'Ch'))
+		self.trans_grid.cuts_man.SetQualityRatioCuts(mux1, sx1, mux2, sx2, muy1, sy1, muy2, sy2, varch0=self.trans_grid.GetPHChVar(0, 'Ch'), varch1=self.trans_grid.GetPHChVar(1, 'Ch'), varch2=self.trans_grid.GetPHChVar(2, 'Ch'))
 		print 'Done'
 		print 'Create charge maps of tracks inside or outside the created regions in the channel pulse height ratio space...'
 		# Create charge maps of tracks that are inside the good and bad regions in the ph ch ratio space
-		self.DrawChargeMapsTracksFromQualityCuts('all')
-		hname_good = 'PH_Ch0_tracks_good_ph_ch_ratio_region_{s}'.format(s=self.suffix['all'])
-		hname_bad = 'PH_Ch0_tracks_bad_ph_ch_ratio_region_{s}'.format(s=self.suffix['all'])
-		# Calculate ratio between well behaved tracks and bad behaved tracks
-		print 'Calculate ratio of number of tracks inside and outside the cuts'
-		hname_ratio = 'ratio_tracks_good_over_bad_ph_ch_ratio_region_{s}'.format(s=self.suffix['all'])
-		hname_denom = 'tracks_bad_ph_ch_ratio_region_{s}'.format(s=self.suffix['all'])
-		histo_ratio = self.histo['hit_map_' + hname_good].Clone('h_' + hname_ratio)
-		histo_ratio.SetTitle('h_' + hname_ratio)
-		histo_denom = self.histo['hit_map_' + hname_bad].Clone('h_' + hname_denom)
-		histo_denom.SetTitle('h_' + hname_denom)
-		# for taking into account empty cells:
-		for bini in xrange(1, histo_ratio.GetNbinsX() * histo_ratio.GetNbinsY() + 1):
-			histo_ratio.AddBinContent(bini, 1e-6)
-		for bini in xrange(1, histo_denom.GetNbinsX() * histo_denom.GetNbinsY() + 1):
-			histo_denom.AddBinContent(bini, 1e-6)
-		histo_ratio.Divide(histo_denom)
-		histo_ratio.SetMinimum(0)
-		histo_ratio.SetMaximum(2)
-		for bini in xrange(1, histo_ratio.GetNbinsX() * histo_ratio.GetNbinsY() + 1):
-			binic = histo_ratio.GetBinContent(bini)
-			if binic <= 2:
-				continue
-			else:
-				histo_ratio.SetBinContent(bini, 2)
-		# Show results...
-		print 'Plotting results...', ; sys.stdout.flush()
-		self.canvas[hname_ratio] = ro.TCanvas('c_' + hname_ratio, 'c_' + hname_ratio, 1)
-		self.histo[hname_ratio] = histo_ratio
-		histo_ratio.Draw('colz')
-		self.colorPalleteExec1.Draw()
-		histo_ratio.Draw('colz same')
-		self.DrawTCutGs(hname_ratio, 'diamond')
-		hname2 = 'cells_quality_{s}'.format(s=self.suffix['all'])
-		# numrows = max(self.row_cell_info_diamond['num_even'], self.row_cell_info_diamond['num_odd'])
-		histo_q2 = histo_ratio.Clone('h_' + hname2)
-		histo_q2.SetTitle('h_' + hname2)
-		histo_q2.Reset()
-		histo_q2.GetZaxis().SetTitle('quality [a.u.]')
-		qvalues = np.array([[cell.cutg.IntegralHist(histo_ratio) / abs(cell.cutg.Area()) for cell in col.cells] for col in self.dia_cols.cols], 'f8')
-		bx, by, bz = np.zeros(1, 'i4'), np.zeros(1, 'i4'), np.zeros(1, 'i4')
-		x, y, z = 0, 0, 0
-		for bini in xrange(1, histo_q2.GetNbinsX() * histo_q2.GetNbinsY() + 1):
-			histo_q2.GetBinXYZ(bini, bx, by, bz)
-			x = histo_q2.GetXaxis().GetBinCenter(int(bx))
-			y = histo_q2.GetYaxis().GetBinCenter(int(by))
-			[col, row] = self.dia_cols.GetColNumRowNumOfPoint(x, y)
-			if [col, row] != [-999, -999]:
-				histo_q2.SetBinContent(bini, qvalues[col, row])
-		# self.histo[hname2] = ro.TH2F('h_' + hname2, 'h_' + hname2, 4 + self.num_cols, self.dia_cols.cols[0].xcenter - 5 * self.dia_cols.cols[0].width_pitch_ratio / 2.0, self.dia_cols.cols[-1].xcenter + 5 * self.dia_cols.cols[-1].width_pitch_ratio / 2.0, numrows + 4, )
-		self.canvas[hname2] = ro.TCanvas('c_' + hname2, 'c_' + hname2, 1)
-		self.histo[hname2] = histo_q2
-		histo_q2.Draw('colz')
-		self.colorPalleteExec1.Draw()
-		histo_q2.Draw('colz same')
-		SetDefault2DStats(histo_q2)
-		self.DrawTCutGs(hname2, 'diamond')
-		ro.gStyle.SetPalette(55)
-		ro.gStyle.SetNumberContours(50)
-		histo_q2.SetMaximum()
-		ro.gPad.RedrawAxis()
-		hname1 = 'cells_quality_distribution_{s}'.format(s=self.suffix['all'])
-		histo1 = ro.TH1F('h_' + hname1, 'h_' + hname1, 100, 0, 1)
-		self.histo[hname1] = histo1
-		for value in qvalues.flatten():
-			histo1.Fill(value)
-		self.canvas[hname1] = ro.TCanvas('c_' + hname1, 'c_' + hname1, 1)
-		histo1.Draw('e hist')
-		histo1c = histo1.GetCumulative()
-		histo1c.Sumw2()
-		histo1c.Scale(1.0 / histo1c.GetMaximum())
-		self.histo[hname1 + '_cumulative'] = histo1c
-		self.canvas[hname1 + '_cumulative'] = ro.TCanvas('c_{n}_cumulative'.format(n=hname1), 'c_{n}_cumulative'.format(n=hname1), 1)
-		histo1c.Draw('hist')
-		print 'Done'
+		self.DrawRatioTracksFromQualityCuts('all', suffix='{s}_no_cuts'.format(s=self.suffix['all']))
 
 	def Draw2DChargeRatioWithNeighborStrips(self, cells='all', cuts='', suffix=''):
 		deltax, deltay = 0.0025, 0.0025
 		hlimsx, hlimsy = Get1DLimits(-1, 5, deltax), Get1DLimits(-1, 3, deltay)
-		hname = 'relative_charge_ratio_neighbor_chs_no_cuts_{s}'.format(s=self.suffix[cells])
-		self.DrawHisto2D(hname, hlimsx['min'], hlimsx['max'], deltax, 'PH_Ch1/PH_Ch0', hlimsy['min'], hlimsy['max'], deltay, 'PH_Ch2/PH_Ch0', '{n1}/{n0}'.format(n1=self.GetPHChVar(1, 'Ch'), n0=self.GetPHChVar(0, 'Ch')), '{n2}/{n0}'.format(n2=self.GetPHChVar(2, 'Ch'), n0=self.GetPHChVar(0, 'Ch')), self.cuts_man.all_cells)
+		hname = 'relative_charge_ratio_neighbor_chs'
+		hname = hname if suffix == '' else hname + '_' + suffix
+		tempc = self.trans_grid.cuts_man.ConcatenateCutWithCells(cuts, cells)
+		self.trans_grid.DrawHisto2D(hname, hlimsx['min'], hlimsx['max'], deltax, 'PH_Ch1/PH_Ch0', hlimsy['min'], hlimsy['max'], deltay, 'PH_Ch2/PH_Ch0', '{n1}/{n0}'.format(n1=self.trans_grid.GetPHChVar(1, 'Ch'), n0=self.trans_grid.GetPHChVar(0, 'Ch')), '{n2}/{n0}'.format(n2=self.trans_grid.GetPHChVar(2, 'Ch'), n0=self.trans_grid.GetPHChVar(0, 'Ch')), tempc)
+		self.PosCanvas(hname)
+		return hname
 
-	def DrawChargeMapsTracksFromQualityCuts(self, cells='all', cuts='', suffix=''):
-		if self.cuts_man.cut_good_ratio_region != '' and self.cuts_man.cut_bad_ratio_region != '':
-			hname_good = 'PH_Ch0_tracks_good_ph_ch_ratio_region_{s}'.format(s=self.suffix[cells])
-			hname_bad = 'PH_Ch0_tracks_bad_ph_ch_ratio_region_{s}'.format(s=self.suffix[cells])
-			self.DrawProfile2DDiamond(hname_good, self.GetPHChVar(0, 'Ch'), 'PH cluster channel 0 [ADC]', cells, self.cuts_man.cut_good_ratio_region)
-			self.DrawProfile2DDiamond(hname_bad, self.GetPHChVar(0, 'Ch'), 'PH cluster channel 0 [ADC]', cells, self.cuts_man.cut_bad_ratio_region)
-			self.GetOccupancyFromProfile(hname_good)
-			self.GetOccupancyFromProfile(hname_bad)
-		else:
-			print 'Can\'t do the plots. Must first calculate cut_good_ratio_region and cut_bad_ratio_region which are generated by cut manager. Run First FindCellsQuality in transparent grid'
-
-	def DrawRatioTracksFromQualityCuts(self, cells='all', suffix=''):
-		self.DrawChargeMapsTracksFromQualityCuts(cells)
-		hname_good = 'PH_Ch0_tracks_good_ph_ch_ratio_region_{s}'.format(s=self.suffix[cells])
-		hname_bad = 'PH_Ch0_tracks_bad_ph_ch_ratio_region_{s}'.format(s=self.suffix[cells])
+	def DrawRatioTracksFromQualityCuts(self, cells='all', cuts='', suffix=''):
+		self.DrawChargeMapsTracksFromQualityCuts(cells, cuts, suffix)
+		hname_good = 'PH_Ch0_tracks_good_ph_ch_ratio_region'
+		hname_good += '' if suffix == '' else '_' + suffix
+		hname_bad = 'PH_Ch0_tracks_bad_ph_ch_ratio_region'
+		hname_bad += '' if suffix == '' else '_' + suffix
 		# Calculate ratio between well behaved tracks and bad behaved tracks
 		print 'Calculate ratio of number of tracks inside and outside the cuts'
-		hname_ratio = 'ratio_tracks_good_over_bad_ph_ch_ratio_region_{s}'.format(s=self.suffix[cells])
-		hname_denom = 'tracks_bad_ph_ch_ratio_region_{s}'.format(s=self.suffix[cells])
-		histo_ratio = self.histo['hit_map_' + hname_good].Clone('h_' + hname_ratio)
+		hname_ratio = 'ratio_tracks_good_over_bad_ph_ch_ratio_region'
+		hname_ratio += '' if suffix == '' else '_' + suffix
+		hname_denom = 'tracks_bad_ph_ch_ratio_region'
+		hname_denom += '' if suffix == '' else '_' + suffix
+		histo_ratio = self.trans_grid.histo['hit_map_' + hname_good].Clone('h_' + hname_ratio)
 		histo_ratio.SetTitle('h_' + hname_ratio)
-		histo_denom = self.histo['hit_map_' + hname_bad].Clone('h_' + hname_denom)
+		histo_denom = self.trans_grid.histo['hit_map_' + hname_bad].Clone('h_' + hname_denom)
 		histo_denom.SetTitle('h_' + hname_denom)
 		# for taking into account empty cells:
 		for bini in xrange(1, histo_ratio.GetNbinsX() * histo_ratio.GetNbinsY() + 1):
@@ -311,19 +235,24 @@ class CellsAnalysis:
 				histo_ratio.SetBinContent(bini, 2)
 		# Show results...
 		print 'Plotting results...', ; sys.stdout.flush()
-		self.canvas[hname_ratio] = ro.TCanvas('c_' + hname_ratio, 'c_' + hname_ratio, 1)
-		self.histo[hname_ratio] = histo_ratio
+		self.trans_grid.canvas[hname_ratio] = ro.TCanvas('c_' + hname_ratio, 'c_' + hname_ratio, 1)
+		self.trans_grid.histo[hname_ratio] = histo_ratio
 		histo_ratio.Draw('colz')
-		self.colorPalleteExec1.Draw()
+		self.trans_grid.colorPalleteExec1.Draw()
 		histo_ratio.Draw('colz same')
-		self.DrawTCutGs(hname_ratio, 'diamond')
-		hname2 = 'cells_quality_{s}'.format(s=self.suffix[cells])
-		# numrows = max(self.row_cell_info_diamond['num_even'], self.row_cell_info_diamond['num_odd'])
+		self.trans_grid.DrawTCutGs(hname_ratio, 'diamond')
+		self.PosCanvas(hname_ratio)
+		hname2 = 'cells_quality'
+		hname2 += '' if suffix == '' else '_' + suffix
 		histo_q2 = histo_ratio.Clone('h_' + hname2)
 		histo_q2.SetTitle('h_' + hname2)
 		histo_q2.Reset()
 		histo_q2.GetZaxis().SetTitle('quality [a.u.]')
-		qvalues = np.array([[cell.cutg.IntegralHist(histo_ratio) / abs(cell.cutg.Area()) for cell in col.cells] for col in self.dia_cols.cols], 'f8')
+		self.qvalues[cells] = {}
+		for col in self.trans_grid.dia_cols.cols:
+			self.qvalues[cells][col.col_num] = {}
+			for cell in col.cells:
+				self.qvalues[cells][col.col_num][cell.row_num] = GetAverageInCell(histo_ratio, cell.cutg)
 		bx, by, bz = np.zeros(1, 'i4'), np.zeros(1, 'i4'), np.zeros(1, 'i4')
 		x, y, z = 0, 0, 0
 		for bini in xrange(1, histo_q2.GetNbinsX() * histo_q2.GetNbinsY() + 1):
@@ -332,33 +261,59 @@ class CellsAnalysis:
 			y = histo_q2.GetYaxis().GetBinCenter(int(by))
 			[col, row] = self.dia_cols.GetColNumRowNumOfPoint(x, y)
 			if [col, row] != [-999, -999]:
-				histo_q2.SetBinContent(bini, qvalues[col, row])
-		# self.histo[hname2] = ro.TH2F('h_' + hname2, 'h_' + hname2, 4 + self.num_cols, self.dia_cols.cols[0].xcenter - 5 * self.dia_cols.cols[0].width_pitch_ratio / 2.0, self.dia_cols.cols[-1].xcenter + 5 * self.dia_cols.cols[-1].width_pitch_ratio / 2.0, numrows + 4, )
-		self.canvas[hname2] = ro.TCanvas('c_' + hname2, 'c_' + hname2, 1)
-		self.histo[hname2] = histo_q2
+				histo_q2.SetBinContent(bini, self.qvalues[cells][col][row])
+		self.trans_grid.canvas[hname2] = ro.TCanvas('c_' + hname2, 'c_' + hname2, 1)
+		self.trans_grid.histo[hname2] = histo_q2
 		histo_q2.Draw('colz')
-		self.colorPalleteExec1.Draw()
+		self.trans_grid.colorPalleteExec1.Draw()
 		histo_q2.Draw('colz same')
 		SetDefault2DStats(histo_q2)
-		self.DrawTCutGs(hname2, 'diamond')
+		self.trans_grid.DrawTCutGs(hname2, 'diamond')
+		self.PosCanvas(hname2)
 		ro.gStyle.SetPalette(55)
 		ro.gStyle.SetNumberContours(50)
 		histo_q2.SetMaximum()
 		ro.gPad.RedrawAxis()
-		hname1 = 'cells_quality_distribution_{s}'.format(s=self.suffix[cells])
-		histo1 = ro.TH1F('h_' + hname1, 'h_' + hname1, 100, 0, 1)
-		self.histo[hname1] = histo1
-		for value in qvalues.flatten():
+		hname1 = 'cells_quality_distribution'
+		hname1 += '' if suffix == '' else '_' + suffix
+		histo1 = ro.TH1F('h_' + hname1, 'h_' + hname1, 200, 0, 2)
+		self.trans_grid.histo[hname1] = histo1
+		for value in [val for qcv in self.qvalues[cells].values() for val in qcv.values()]:
 			histo1.Fill(value)
-		self.canvas[hname1] = ro.TCanvas('c_' + hname1, 'c_' + hname1, 1)
+		self.trans_grid.canvas[hname1] = ro.TCanvas('c_' + hname1, 'c_' + hname1, 1)
 		histo1.Draw('e hist')
+		SetDefault1DStats(histo1)
+		SetDefault1DCanvasSettings(self.trans_grid.canvas[hname1])
+		self.PosCanvas(hname1)
 		histo1c = histo1.GetCumulative()
 		histo1c.Sumw2()
 		histo1c.Scale(1.0 / histo1c.GetMaximum())
-		self.histo[hname1 + '_cumulative'] = histo1c
-		self.canvas[hname1 + '_cumulative'] = ro.TCanvas('c_{n}_cumulative'.format(n=hname1), 'c_{n}_cumulative'.format(n=hname1), 1)
+		self.trans_grid.histo[hname1 + '_cumulative'] = histo1c
+		self.trans_grid.canvas[hname1 + '_cumulative'] = ro.TCanvas('c_{n}_cumulative'.format(n=hname1), 'c_{n}_cumulative'.format(n=hname1), 1)
 		histo1c.Draw('hist')
+		SetDefault1DStats(histo1c)
+		SetDefault1DCanvasSettings(self.trans_grid.canvas[hname1 + '_cumulative'])
+		self.PosCanvas(hname1 + '_cumulative')
 		print 'Done'
+
+	def DrawChargeMapsTracksFromQualityCuts(self, cells='all', cuts='', suffix=''):
+		if self.trans_grid.cuts_man.cut_good_ratio_region != '' and self.trans_grid.cuts_man.cut_bad_ratio_region != '':
+			hname_good = 'PH_Ch0_tracks_good_ph_ch_ratio_region'
+			hname_good += '' if suffix == '' else '_' + suffix
+			hname_bad = 'PH_Ch0_tracks_bad_ph_ch_ratio_region'
+			hname_bad += '' if suffix == '' else '_' + suffix
+			tempcg = self.trans_grid.cuts_man.AndCuts([self.trans_grid.cuts_man.cut_good_ratio_region, cuts])
+			tempcb = self.trans_grid.cuts_man.AndCuts([self.trans_grid.cuts_man.cut_bad_ratio_region, cuts])
+			self.trans_grid.DrawProfile2DDiamond(hname_good, self.trans_grid.GetPHChVar(0, 'Ch'), 'PH cluster channel 0 [ADC]', cells, tempcg)
+			self.PosCanvas(hname_good)
+			self.trans_grid.DrawProfile2DDiamond(hname_bad, self.trans_grid.GetPHChVar(0, 'Ch'), 'PH cluster channel 0 [ADC]', cells, tempcb)
+			self.PosCanvas(hname_bad)
+			self.trans_grid.GetOccupancyFromProfile(hname_good)
+			self.PosCanvas('hit_map_' + hname_good)
+			self.trans_grid.GetOccupancyFromProfile(hname_bad)
+			self.PosCanvas('hit_map_' + hname_bad)
+		else:
+			print 'Can\'t do the plots. Must first calculate cut_good_ratio_region and cut_bad_ratio_region which are generated by cut manager. Run First FindCellsQuality in transparent grid'
 
 
 if __name__ == '__main__':

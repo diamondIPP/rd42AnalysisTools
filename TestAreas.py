@@ -86,6 +86,7 @@ class TestAreas:
 		self.final_ana = None
 		self.bias = 0
 		self.suffix = GetSuffixDictionary(self.trans_grid)
+		self.histo_q_1d = None
 
 	def ReadConfigFile(self):
 		def unpack_row_col(string):
@@ -202,6 +203,7 @@ class TestAreas:
 		or by giving a threshold and setting do_threshold as True to automatically select cells above the threshold
 		:return: Nothing
 		"""
+		self.cell_ana = CellsAnalysis(self.trans_grid)
 		if self.do_threshold:
 			if self.threshold == 0:
 				self.trans_grid.FindThresholdCutFromCells('clusterChargeN', 'adc', self.phmin, self.phmax, self.delta_adc / 2.)
@@ -227,7 +229,19 @@ class TestAreas:
 				self.percentile = 80
 			self.trans_grid.ResetAreas()
 			print 'Select areas with a cell above the {p} percentile of all the cells'.format(p=self.percentile)
-			self.trans_grid.FindCellsQuality()
+			self.cell_ana.FindCellsQuality()
+			hname1 = 'cells_quality_distribution_{s}_no_cuts'.format(s=self.suffix['all'])
+			self.trans_grid.SelectByHistogramPercentile(hname1, self.cell_ana.qvalues['all'], self.percentile)
+			print 'Finished selecting by cell\'s quality'
+			self.trans_grid.AddRemainingToBadAreas()
+			print 'Marked the remaining cells as bad'
+			if len(self.trans_grid.gridAreas.goodAreas_diamond < 2):
+				print 'There is only', len(self.trans_grid.gridAreas.goodAreas_diamond), 'cell in the selection. Check the percentiles or the area config file'
+				self.percentile *= 0.9
+				print 'Trying with a new percentile of', self.percentile
+				self.SetTest()
+			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
+			self.SetAnalysis()
 
 		elif len(self.rows) + len(self.cols) + len(self.cells) > 0:
 			self.trans_grid.ResetAreas()
@@ -263,7 +277,6 @@ class TestAreas:
 		else:
 			self.trans_grid.cell_resolution = self.cell_resolution
 			self.trans_grid.SavePickle()
-		self.cell_ana = CellsAnalysis(self.trans_grid)
 		self.noise_ana = NoiseAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
 		self.cluster_ch_ana = ClusterChannelsAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
 		self.trans_grid.FindMaxMinVarz()
@@ -333,9 +346,7 @@ class TestAreas:
 		ro.gPad.Update()
 
 	def DoQualityStudyHistograms(self):
-		if self.trans_grid.cuts_man.cut_00 == '' or self.trans_grid.cuts_man.cut_x1 == '':
-			self.trans_grid.FindCellsQuality()
-
+		pass
 
 	def DoCellHistograms(self, typ='adc'):
 		self.trans_grid.mean_ph_cell_dic[typ] = {}

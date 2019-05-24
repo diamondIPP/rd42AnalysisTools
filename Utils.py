@@ -560,6 +560,9 @@ def ReduceHistoContent(histo, amount, makeInt=True):
 			histor.SetBinContent(bini, 0)
 	return histor
 
+def GetAverageInCell(histo, cutg):
+	return cutg.IngetralHist(histo, 'width') / abs(cutg.Area())
+
 def PositionCanvas(trans_grid, canvas_name, w_pos, window_shift=3):
 	if canvas_name in trans_grid.canvas.keys():
 		trans_grid.canvas[canvas_name].SetWindowPosition(w_pos, w_pos)
