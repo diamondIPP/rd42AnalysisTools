@@ -1191,7 +1191,7 @@ class TransparentGrid:
 			if hist:
 				pval = int(RoundInt(percentile))
 				qval = np.zeros(100, 'f8')
-				percents_vect = np.arange(0, 100, 'f8')
+				percents_vect = np.arange(0, 1, 0.01, dtype='f8')
 				hist.GetQuantiles(100, qval, percents_vect)
 				q_threshold = qval[pval]
 				# select cells taking into account the qvalue trheshold

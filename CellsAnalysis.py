@@ -20,7 +20,7 @@ class CellsAnalysis:
 		self.mean_ph_cell_dic = {typ: {} for typ in ['adc', 'snr']}
 		self.mean_ph_cell_friend_dic = {typ: {} for typ in ['adc', 'snr']}
 		self.suffix = GetSuffixDictionary(self.trans_grid)
-		self.qvalues = {cell: {} for cell in self.suffix.keys()}
+		self.qvalues = {cell: {} for cell in ['', 'all', 'bad', 'good']}
 
 	def PosCanvas(self, canvas_name):
 		self.w = PositionCanvas(self.trans_grid, canvas_name, self.w, self.window_shift)
@@ -128,12 +128,12 @@ class CellsAnalysis:
 			pickle.dump(meanphobj, open('{d}/{r}/{s}/mean_ph_cell_friend_{t}.{r}.pkl'.format(d=self.trans_grid.dir, r=self.trans_grid.run, s=self.trans_grid.pkl_sbdir, t=typ), 'wb'))
 		print 'Done'
 
-	def FindCellsQuality(self):
+	def FindCellsQuality(self, cells='all'):
 		print 'Get relative charge ratio of neighbor channels...'
-		hname = self.Draw2DChargeRatioWithNeighborStrips('all', suffix='{s}_no_cuts'.format(s=self.suffix['all']))
+		hname = self.Draw2DChargeRatioWithNeighborStrips(cells, suffix='{s}_no_cuts'.format(s=self.suffix[cells]))
 		# Reduced the bin content to ignore the bins with lower than 5% of the histogram Maximum
 		threshold = self.trans_grid.histo[hname].GetMaximum() / 20.
-		histor = ReduceHistoContent(self.trans_grid[hname], threshold, True)
+		histor = ReduceHistoContent(self.trans_grid.histo[hname], threshold, True)
 		hname_reduced = histor.GetName()[2:]
 		self.trans_grid.histo[hname_reduced] = histor
 		print 'Project in vertigal axis...'
@@ -141,12 +141,12 @@ class CellsAnalysis:
 		historpy = histor.ProjectionY('h_' + hname_reduced + '_py', 0, -1, 'e')
 		self.trans_grid.histo[hname_reduced + '_py'] = historpy
 		historpy.SetTitle('h_' + hname_reduced + '_py')
-		historpy.GetXaxis().SetRangeUser(historpy.GetMean() - 2.5 * historpy.GetRMS(), historpy.GetMean() + 2.5 * historpy.GetRMS())
+		historpy.GetXaxis().SetRangeUser(historpy.GetMean() - 2 * historpy.GetRMS(), historpy.GetMean() + 2 * historpy.GetRMS())
 		self.trans_grid.canvas[hname_reduced + '_py'] = ro.TCanvas('c_' + hname_reduced + '_py', 'c_' + hname_reduced + '_py', 1)
 		historpy.Draw('e hist')
 		SetDefault1DStats(historpy)
 		self.PosCanvas(hname_reduced + '_py')
-		self.trans_grid.FitTwoGaus(hname_reduced + '_py')
+		self.trans_grid.FitTwoGaus(hname_reduced + '_py', 2)
 		fitpy = self.trans_grid.fits[hname_reduced + '_py']
 		fitpyparams = fitpy.GetParams()
 		fitpyparams = np.array([fitpyparams[it] for it in xrange(6)], 'f8')
@@ -160,18 +160,18 @@ class CellsAnalysis:
 			sy1 = fitpyparams[5]
 			muy2 = fitpyparams[1]
 			sy2 = fitpyparams[2]
-		histor.GetYaxis().SetRangeUser(muy1 - 2.5 * sy1, muy2 + 2.5 * sy2)
+		histor.GetYaxis().SetRangeUser(muy1 - 2. * sy1, muy2 + 2. * sy2)
 		print 'Project in horizontal axis...'
 		# Project reduced histogram around the lowest gaussian peak on the horizontal axis
 		historpx = histor.ProjectionX('h_' + hname_reduced + '_px', 0, -1, 'e')
 		self.trans_grid.histo[hname_reduced + '_px'] = historpx
 		historpx.SetTitle('h_' + hname_reduced + '_px')
-		historpx.GetXaxis().SetRangeUser(historpx.GetMean() - 2.5 * historpx.GetRMS(), historpx.GetMean() + 2.5 * historpx.GetRMS())
+		historpx.GetXaxis().SetRangeUser(historpx.GetMean() - 2 * historpx.GetRMS(), historpx.GetMean() + 2 * historpx.GetRMS())
 		self.trans_grid.canvas[hname_reduced + '_px'] = ro.TCanvas('c_' + hname_reduced + '_px', 'c_' + hname_reduced + '_px', 1)
 		historpx.Draw('e hist')
 		self.PosCanvas(hname_reduced + '_px')
 		SetDefault1DStats(historpx)
-		self.trans_grid.FitTwoGaus(hname_reduced + '_px')
+		self.trans_grid.FitTwoGaus(hname_reduced + '_px', 2)
 		fitpx = self.trans_grid.fits[hname_reduced + '_px']
 		fitpxparams = fitpx.GetParams()
 		fitpxparams = np.array([fitpxparams[it] for it in xrange(6)], 'f8')
@@ -189,12 +189,18 @@ class CellsAnalysis:
 		# Create Cuts to select good and bad regions in the ph ch ratio space
 		self.trans_grid.cuts_man.SetQualityRatioCuts(mux1, sx1, mux2, sx2, muy1, sy1, muy2, sy2, varch0=self.trans_grid.GetPHChVar(0, 'Ch'), varch1=self.trans_grid.GetPHChVar(1, 'Ch'), varch2=self.trans_grid.GetPHChVar(2, 'Ch'))
 		print 'Done'
+		print 'Plot events according to cuts...', ; sys.stdout.flush()
+		hname = self.Draw2DChargeRatioWithNeighborStrips(cells, cuts=self.trans_grid.cuts_man.cut_good_ratio_region, suffix='{s}_good_region'.format(s=self.suffix[cells]))
+		self.PosCanvas(hname)
+		hname = self.Draw2DChargeRatioWithNeighborStrips(cells, cuts=self.trans_grid.cuts_man.cut_bad_ratio_region, suffix='{s}_bad_region'.format(s=self.suffix[cells]))
+		self.PosCanvas(hname)
+		print 'Done'
 		print 'Create charge maps of tracks inside or outside the created regions in the channel pulse height ratio space...'
 		# Create charge maps of tracks that are inside the good and bad regions in the ph ch ratio space
-		self.DrawRatioTracksFromQualityCuts('all', suffix='{s}_no_cuts'.format(s=self.suffix['all']))
+		self.DrawRatioTracksFromQualityCuts(cells, suffix='{s}_no_cuts'.format(s=self.suffix[cells]))
 
 	def Draw2DChargeRatioWithNeighborStrips(self, cells='all', cuts='', suffix=''):
-		deltax, deltay = 0.0025, 0.0025
+		deltax, deltay = 0.004, 0.004
 		hlimsx, hlimsy = Get1DLimits(-1, 5, deltax), Get1DLimits(-1, 3, deltay)
 		hname = 'relative_charge_ratio_neighbor_chs'
 		hname = hname if suffix == '' else hname + '_' + suffix
@@ -238,8 +244,8 @@ class CellsAnalysis:
 		self.trans_grid.canvas[hname_ratio] = ro.TCanvas('c_' + hname_ratio, 'c_' + hname_ratio, 1)
 		self.trans_grid.histo[hname_ratio] = histo_ratio
 		histo_ratio.Draw('colz')
-		self.trans_grid.colorPalleteExec1.Draw()
-		histo_ratio.Draw('colz same')
+		# self.trans_grid.colorPalleteExec1.Draw()
+		# histo_ratio.Draw('colz same')
 		self.trans_grid.DrawTCutGs(hname_ratio, 'diamond')
 		self.PosCanvas(hname_ratio)
 		hname2 = 'cells_quality'
@@ -265,18 +271,19 @@ class CellsAnalysis:
 		self.trans_grid.canvas[hname2] = ro.TCanvas('c_' + hname2, 'c_' + hname2, 1)
 		self.trans_grid.histo[hname2] = histo_q2
 		histo_q2.Draw('colz')
-		self.trans_grid.colorPalleteExec1.Draw()
-		histo_q2.Draw('colz same')
+		# self.trans_grid.colorPalleteExec1.Draw()
+		# histo_q2.Draw('colz same')
 		SetDefault2DStats(histo_q2)
 		self.trans_grid.DrawTCutGs(hname2, 'diamond')
 		self.PosCanvas(hname2)
-		ro.gStyle.SetPalette(55)
-		ro.gStyle.SetNumberContours(50)
 		histo_q2.SetMaximum()
 		ro.gPad.RedrawAxis()
+		# ro.gStyle.SetPalette(55)
+		# ro.gStyle.SetNumberContours(50)
 		hname1 = 'cells_quality_distribution'
 		hname1 += '' if suffix == '' else '_' + suffix
-		histo1 = ro.TH1F('h_' + hname1, 'h_' + hname1, 200, 0, 2)
+		ncells = self.dia_cols.num_cols * max(self.trans_grid.row_cell_info_diamond['num_even'], self.trans_grid.row_cell_info_diamond['num_odd'])
+		histo1 = ro.TH1F('h_' + hname1, 'h_' + hname1, ncells, 0, 2)
 		self.trans_grid.histo[hname1] = histo1
 		for value in [val for qcv in self.qvalues[cells].values() for val in qcv.values()]:
 			histo1.Fill(value)

@@ -229,13 +229,13 @@ class TestAreas:
 				self.percentile = 80
 			self.trans_grid.ResetAreas()
 			print 'Select areas with a cell above the {p} percentile of all the cells'.format(p=self.percentile)
-			self.cell_ana.FindCellsQuality()
-			hname1 = 'cells_quality_distribution_{s}_no_cuts'.format(s=self.suffix['all'])
-			self.trans_grid.SelectByHistogramPercentile(hname1, self.cell_ana.qvalues['all'], self.percentile)
+			self.cell_ana.FindCellsQuality(cells='')
+			hname1 = 'cells_quality_distribution_{s}_no_cuts'.format(s=self.suffix[''])
+			self.trans_grid.SelectByHistogramPercentile(hname1, self.cell_ana.qvalues[''], self.percentile)
 			print 'Finished selecting by cell\'s quality'
 			self.trans_grid.AddRemainingToBadAreas()
 			print 'Marked the remaining cells as bad'
-			if len(self.trans_grid.gridAreas.goodAreas_diamond < 2):
+			if len(self.trans_grid.gridAreas.goodAreas_diamond) < 2:
 				print 'There is only', len(self.trans_grid.gridAreas.goodAreas_diamond), 'cell in the selection. Check the percentiles or the area config file'
 				self.percentile *= 0.9
 				print 'Trying with a new percentile of', self.percentile
@@ -526,6 +526,10 @@ class TestAreas:
 		self.DoBorderPlots()
 		for typ in ['adc', 'snr']:
 			if typ in types:
+				self.cell_ana.FindCellsQuality('all')
+				ro.gStyle.SetPalette(55)
+				self.cell_ana.FindCellsQuality('good')
+				ro.gStyle.SetPalette(55)
 				self.DoCellHistograms(typ)
 				self.DoNoiseStudies(cells, typ, isFriend)
 				self.DoClusterStudies(cells, typ, isFriend)

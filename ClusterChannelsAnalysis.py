@@ -305,6 +305,7 @@ class ClusterChannelsAnalysis:
 		self.DoStrips2DHistograms(cells, typ=typ, isFriend=isFriend)
 		self.DoPHStripCorrelations(cells, typ=typ, isFriend=isFriend)
 		self.Do1DHistograms(cells, False, typ=typ, isFriend=isFriend)
+		self.DoStudyBla()
 		# self.Do1DHistograms(cells, True, typ='adc')
 
 	def SetStripsForAnalysis(self, arr=None):
