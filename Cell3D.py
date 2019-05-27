@@ -30,6 +30,21 @@ class Cell3D:
 		# self.cutg_read_out = '(({cn})&&(({ry}*(diaChXPred-{x0}))^2+({rx}*(diaChYPred-{y0}))^2<({rx}*{ry})^2))'.format(cn=cutCellName, x0=self.xcenter, y0=self.ycenter, rx=self.col_3d_rx, ry=self.col_3d_ry)
 		self.cutg_read_out = '(({cn})&&(({ry}*(diaChXPred-{x0}))^2+({rx}*(diaChYPred-{y0}))^2<({rxrySq}))'.format(cn=cutCellName, x0=self.xcenter, y0=self.ycenter, rx=self.col_3d_rx, ry=self.col_3d_ry, rxrySq=np.power(self.col_3d_rx * self.col_3d_ry, 2.0, dtype='f8'))
 
+	def GetCutRO(self):
+		return '(({ry}*(x0))^2+({rx}*(y0))^2<({rxrySq}))'.format(ry=self.col_3d_ry, rx=self.col_3d_rx, rxrySq=np.power(self.col_3d_rx * self.col_3d_ry, 2.0, dtype='f8'))
+
+	def GetCutBiasCol(self, bias_col_num=0):
+		if bias_col_num < self.sides:
+			tempx = self.GetXCoordinatesPolygon(0, 1)
+			tempy = self.GetYCoordinatesPolygon(0, 1)
+			return '(({ry}*(x0-{tx0}))^2+({rx}*(y0-{ty0}))^2<({rxrySq}))'.format(ry=self.col_3d_ry, rx=self.col_3d_rx, tx0=tempx[bias_col_num], ty0=tempy[bias_col_num], rxrySq=np.power(self.col_3d_rx * self.col_3d_ry, 2.0, dtype='f8'))
+
+	def GetXCoordinatesPolygon(self, xcenter=0, fraction=1.0):
+		pass
+
+	def GetYCoordinatesPolygon(self, ycenter=0, fraction=1.0):
+		pass
+
 	def GetDistanceToCenter(self, x, y):
 		return np.sqrt(np.add(np.power(np.subtract(x, self.xcenter, dtype='f8'), 2, dtype='f8'), np.power(np.subtract(y, self.ycenter, dtype='f8'), 2, dtype='f8')), dtype='f8')
 

@@ -63,6 +63,10 @@ class CutManager:
 		self.out_central_polygon_region = {}
 		self.between_central_polygon_regions = {}
 
+		self.ro_3Dcol_cut = ''
+		self.bias_3Dcol_cut = []
+		self.bias_all_3Dcol_cut = ''
+
 	def CreateBetweenCentralPlygonRegionsCut(self):
 		if len(self.in_central_polygon_region.keys()) > 1 and len(self.out_central_polygon_region.keys()) > 1:
 			percentages = np.sort(self.in_central_polygon_region.keys())
@@ -170,6 +174,11 @@ class CutManager:
 	def SetCellsCenters(self, selection, not_selection):
 		self.selected_cells_centers = self.selected_cells_centers.format(s=selection)
 		self.not_selected_cells_centers = self.not_selected_cells_centers.format(ns=not_selection)
+
+	def Set3DColumnsCuts(self, dia_cols):
+		self.ro_3Dcol_cut = dia_cols.cols[0].cells[0].GetCutRO()
+		self.bias_3Dcol_cut = [dia_cols.cols[0].cells[0].GetCutBiasCol(col_n) for col_n in xrange(dia_cols.sides)]
+		self.bias_all_3Dcol_cut = self.OrCuts(self.bias_3Dcol_cut)
 
 	def SetNoiseCuts(self):
 		self.noise_cuts = {'all': self.AndCuts([self.valid_ped_sigma, self.not_in_transp_cluster_not_masked]), 'good': self.AndCuts([self.valid_ped_sigma, self.not_in_transp_cluster_not_masked, self.good_chs_cut]), 'bad': self.AndCuts([self.valid_ped_sigma, self.not_in_transp_cluster_not_masked, self.only_bad_chs_cut])}

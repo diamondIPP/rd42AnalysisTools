@@ -690,6 +690,7 @@ class TransparentGrid:
 		self.CreateTCutGsDiamond()
 		self.CreateGridText()
 		self.SetupCutManager()
+		self.cuts_man.Set3DColumnsCuts(self.dia_cols)
 
 	def CreateTCutGsDiamond(self):
 		"""
