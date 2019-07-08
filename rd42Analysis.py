@@ -43,7 +43,7 @@ class RD42Analysis:
 		self.eta_corr_limit = 0.0005
 		self.max_transparent_cluster_size = 10
 		self.num_highest_transparent_cluster = 5
-		self.chi2 = 5
+		self.chi2 = None
 		self.trans_chi2 = None
 		self.trans_align = False
 		self.data_dir = ''
@@ -67,6 +67,7 @@ class RD42Analysis:
 		self.delete_old = False
 		self.first_event = 0
 		self.num_events = 0
+		self.alignment_events = None
 		self.do_pedestal = False
 		self.do_cluster = False
 		self.do_cross_talk = False
@@ -114,6 +115,8 @@ class RD42Analysis:
 						self.total_events = pars.getint('RUN', 'events')
 					else:
 						ExitMessage('Must specify events under [RUN]. Exiting...')
+					if pars.has_option('RUN', 'alignment_events'):
+						self.alignment_events = pars.getint('RUN', 'alignment_events')
 					if pars.has_option('RUN', 'dut_name'):
 						self.dut_name = pars.get('RUN', 'dut_name')
 					if pars.has_option('RUN', 'dut_volt'):
@@ -184,7 +187,7 @@ class RD42Analysis:
 						self.do_cluster = pars.getboolean('ANALYSIS', 'do_cluster')
 					if pars.has_option('ANALYSIS', 'do_cross_talk_calc'):
 						if self.cross_talk_correction_path is None:
-							print 'Will do feed through (cross_talk) correction because the path to the executable has not been specified in cross_talk_correction_path.'
+							print 'Will not do feed through (cross_talk) correction because the path to the executable has not been specified in cross_talk_correction_path.'
 						else:
 							self.do_cross_talk = pars.getboolean('ANALYSIS', 'do_cross_talk_calc')
 					if pars.has_option('ANALYSIS', 'do_selection'):
@@ -197,6 +200,7 @@ class RD42Analysis:
 						self.do_3d = pars.getboolean('ANALYSIS', 'do_3d')
 
 				self.num_events = self.total_events if self.num_events == 0 else self.num_events
+				self.alignment_events = RoundInt(self.num_events / 10.0) if not self.alignment_events else self.alignment_events
 				return
 		ExitMessage('Input file "{i}" does not exist. Must input a valid file. Exiting'.format(i=in_file))
 
@@ -343,7 +347,7 @@ class RD42Analysis:
 					if 'alignment_chi2' not in lines_params:
 						ftemp.write('alignment_chi2 = {ch}\n'.format(ch=self.chi2))
 					if 'alignment_training_track_number' not in lines_params:
-						ftemp.write('alignment_training_track_number = {e}\n'.format(e=int(round(self.num_events) / 10.0)))
+						ftemp.write('alignment_training_track_number = {e}\n'.format(e=int(self.alignment_events)))
 					if '3dShortAnalysis' not in lines_params:
 						ftemp.write('3dShortAnalysis = {v};\n'.format(v=int(self.do_3d)))
 					if '3dLongAnalysis' not in lines_params:
@@ -384,9 +388,12 @@ class RD42Analysis:
 						elif line.startswith('num_highest_trans'):
 							ftemp.write('num_highest_transparent_cluster = {d}\n'.format(d=self.num_highest_transparent_cluster))
 						elif line.startswith('alignment_chi2'):
-							ftemp.write('alignment_chi2 = {ch}\n'.format(ch=self.chi2))
+							if self.chi2:
+								ftemp.write('alignment_chi2 = {ch}\n'.format(ch=self.chi2))
+							else:
+								ftemp.write(line)
 						elif line.startswith('alignment_training_track_numb'):
-							ftemp.write('alignment_training_track_number = {e}\n'.format(e=int(round(self.num_events)/10.0)))
+							ftemp.write('alignment_training_track_number = {e}\n'.format(e=int(self.alignment_events)))
 						elif line.startswith('3dShortAna'):
 							ftemp.write('3dShortAnalysis = {v};\n'.format(v=int(self.do_3d)))
 						elif line.startswith('3dLongAna'):
@@ -405,7 +412,10 @@ class RD42Analysis:
 						elif line.startswith('pulse_height_num_b'):
 							ftemp.write('pulse_height_num_bins = {nb}\n'.format(nb=self.ph_dia_bins))
 						elif line.startswith('yOffset3'):
-							ftemp.write('yOffset3D = {v}\n'.format(v=self.yOffset))
+							if self.yOffset != 0:
+								ftemp.write('yOffset3D = {v}\n'.format(v=self.yOffset))
+							else:
+								ftemp.write(line)
 						elif line.startswith('eta_corr_lim'):
 							ftemp.write('eta_corr_limit = {v}\n'.format(v=self.eta_corr_limit))
 						else:
@@ -436,10 +446,15 @@ class RD42Analysis:
 		else:
 			print 'With verbose'
 		with open(os.devnull, 'w') as FNULL:
+			command = ['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir, '-o', self.out_dir + '/' + self.subdir, '-i', self.data_dir + '/' + str(self.run)]
+			if self.do_3d:
+				command.append('-3d')
+				command.append('1')
+			print command
 			if self.batch:
-				self.sub_pro = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir, '-o', self.out_dir + '/' + self.subdir, '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, stdout=FNULL, stderr=subp.STDOUT,close_fds=True)
+				self.sub_pro = subp.Popen(command, bufsize=-1, stdin=subp.PIPE, stdout=FNULL, stderr=subp.STDOUT,close_fds=True)
 			else:
-				self.sub_pro = subp.Popen(['{p}/diamondAnalysis'.format(p=self.StripTelescopeAnalysis_path), '-r', '{d}/{sd}/RunList_{r}.ini'.format(d=self.run_lists_dir, sd=self.subdir, r=self.run), '-s', self.settings_dir + '/' + self.subdir, '-o', self.out_dir + '/' + self.subdir, '-i', self.data_dir + '/' + str(self.run)], bufsize=-1, stdin=subp.PIPE, close_fds=True)
+				self.sub_pro = subp.Popen(command, bufsize=-1, stdin=subp.PIPE, close_fds=True)
 			while self.sub_pro.poll() is None:
 				time.sleep(2)
 			if self.sub_pro.poll() == 0:

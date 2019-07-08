@@ -71,17 +71,18 @@ class NoiseAnalysis:
 		self.trans_grid.trans_tree.Draw('{v}>>temph0'.format(v=varzdic['adc']), temp_cut_noise, 'goff')
 		mean, sigma = temph.GetMean(), temph.GetRMS()
 		temph.Delete()
-		self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = (ni / float(sigma) for ni in [self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise])
-		if typ == 'snr':
-			self.trans_grid.DrawHisto1D(name + '_snr', self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, varzdic['snr'], varname='Signal not in cluster [SNR]', cuts=temp_cut_noise, option='e hist')
-			self.trans_grid.FitGaus(name + '_snr')
-			self.trans_grid.histo[name + '_snr'].GetXaxis().SetRangeUser(-3.2, 3.2)
-			self.PosCanvas(name + '_snr')
-		else:
-			self.trans_grid.DrawHisto1D(name + '_adc', self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, varzdic['adc'], varname='Signal not in cluster [ADC]', cuts=temp_cut_noise, option='e hist')
-			self.trans_grid.FitGaus(name + '_adc')
-			self.trans_grid.histo[name + '_adc'].GetXaxis().SetRangeUser(-32, 32)
-			self.PosCanvas(name + '_adc')
+		if sigma > 0:
+			self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise = (ni / float(sigma) for ni in [self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise])
+			if typ == 'snr':
+				self.trans_grid.DrawHisto1D(name + '_snr', self.min_snr_noise, self.max_snr_noise, self.delta_snr_noise, varzdic['snr'], varname='Signal not in cluster [SNR]', cuts=temp_cut_noise, option='e hist')
+				self.trans_grid.FitGaus(name + '_snr')
+				self.trans_grid.histo[name + '_snr'].GetXaxis().SetRangeUser(-3.2, 3.2)
+				self.PosCanvas(name + '_snr')
+			else:
+				self.trans_grid.DrawHisto1D(name + '_adc', self.min_adc_noise, self.max_adc_noise, self.delta_adc_noise, varzdic['adc'], varname='Signal not in cluster [ADC]', cuts=temp_cut_noise, option='e hist')
+				self.trans_grid.FitGaus(name + '_adc')
+				self.trans_grid.histo[name + '_adc'].GetXaxis().SetRangeUser(-32, 32)
+				self.PosCanvas(name + '_adc')
 
 	def PlotNoiseNotInCluster(self, cells='all', typ='adc', doNC=False, isFriend=False):
 		suffix = self.suffix[cells]

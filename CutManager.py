@@ -34,8 +34,8 @@ class CutManager:
 		self.not_in_transp_cluster = self.NotCut(self.in_transp_cluster)
 		self.not_in_transp_cluster_not_masked = self.AndCuts([self.not_in_transp_cluster, self.not_masked_chs])
 
-		self.any_saturated = '(diaChADC=={s})'.format(s=self.sat_adc)
-		self.non_saturated = '(diaChADC!={s})'.format(s=self.sat_adc)
+		self.any_saturated = '(diaChADC>={s})'.format(s=self.sat_adc)
+		self.non_saturated = '(diaChADC<{s})'.format(s=self.sat_adc)
 		self.highest_saturated = '(diaChADC[clusterChannelHighest1]=={s})'.format(s=self.sat_adc)
 		self.highest_not_saturated = '(diaChADC[clusterChannelHighest1]!={s})'.format(s=self.sat_adc)
 		self.cluster_ch_lowest = {ch: '(clusterChannel{ch}==clusterChannelHighest{n})'.format(ch=ch, n=self.cluster_size) for ch in xrange(self.cluster_size)}
@@ -104,7 +104,14 @@ class CutManager:
 
 	def GetNotSatChCut(self, ch, typ='Ch'):
 		varch = 'clusterChannel' + str(ch) if typ == 'Ch' else 'clusterChannelHighest' + str(ch) if typ == 'H' else str(ch)
-		return self.AndCuts([self.not_sat_evts_region, '(diaChADC[{c}]<{t})'.format(c=varch, t=self.sat_adc)])
+		return self.OrCuts([self.not_sat_evts_region, '(diaChADC[{c}]<{t})'.format(c=varch, t=self.sat_adc)])
+		# return self.AndCuts([self.not_sat_evts_region, '(diaChADC[{c}]<{t})'.format(c=varch, t=self.sat_adc)])
+
+	def GetSatNotInCluster(self):
+		temp = []
+		for chi in xrange(1, self.cluster_size + 1):
+			temp.append('(diaChADC[{c}]<{t})'.format(c='clusterChannelHighest' + str(chi), t=self.sat_adc))
+		return self.AndCuts([self.sat_evts_region, self.AndCuts(temp)])
 
 	def GetNotSatNChsCut(self, n, typ='H', op='&&'):
 		temp = []

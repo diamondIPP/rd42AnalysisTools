@@ -1931,17 +1931,18 @@ class TransparentGrid:
 		if name in self.histo.keys():
 			if name in self.canvas.keys():
 				self.canvas[name].cd()
-			xmin, xmax = self.histo[name].GetXaxis().GetBinLowEdge(self.histo[name].FindFirstBinAbove()), self.histo[name].GetXaxis().GetBinLowEdge(self.histo[name].FindLastBinAbove() + 1)
-			func = ro.TF1('f_pol{num}_{n}'.format(num=num_pol, n=name), 'pol{n}'.format(n=num_pol), xmin, xmax)
-			func.SetNpx(1000)
-			func.SetLineStyle(1)
-			func.SetLineColor(ro.kRed)
-			func.SetLineWidth(2)
-			if fix_y0:
-				func.FixParameter(0, y0)
-			self.fits[name] = self.histo[name].Fit('f_pol{num}_{n}'.format(num=num_pol, n=name), 'QIEBMS', 'goff', xmin, xmax)
-			self.histo[name].GetFunction('f_pol{num}_{n}'.format(num=num_pol, n=name)).Draw('same')
-			ro.gPad.Update()
+			if self.histo[name].GetRMS() > 0:
+				xmin, xmax = self.histo[name].GetXaxis().GetBinLowEdge(self.histo[name].FindFirstBinAbove()), self.histo[name].GetXaxis().GetBinLowEdge(self.histo[name].FindLastBinAbove() + 1)
+				func = ro.TF1('f_pol{num}_{n}'.format(num=num_pol, n=name), 'pol{n}'.format(n=num_pol), xmin, xmax)
+				func.SetNpx(1000)
+				func.SetLineStyle(1)
+				func.SetLineColor(ro.kRed)
+				func.SetLineWidth(2)
+				if fix_y0:
+					func.FixParameter(0, y0)
+				self.fits[name] = self.histo[name].Fit('f_pol{num}_{n}'.format(num=num_pol, n=name), 'QIEBMS', 'goff', xmin, xmax)
+				self.histo[name].GetFunction('f_pol{num}_{n}'.format(num=num_pol, n=name)).Draw('same')
+				ro.gPad.Update()
 
 
 	def SaveCanvasInlist(self, list):

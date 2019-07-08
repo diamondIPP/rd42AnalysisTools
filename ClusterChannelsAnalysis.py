@@ -211,7 +211,7 @@ class ClusterChannelsAnalysis:
 		deltay = 50
 		hlims1D = GetSymmetric1DLimits(xmin, xmax, deltax, 1)
 		hlimsy2D = Get1DLimits(ymin, ymax, deltay)
-		colorsopt = {0: ro.kBlack, 1: ro.kBlue, 2: ro.kRed}
+		colorsopt = {0: ro.kBlack, 1: ro.kBlue, 2: ro.kRed, 3: ro.kOrange, 4: ro.kMagenta, 5: ro.kViolet, 6: ro.kGreen, 7: ro.kBlue+2, 8: ro.kRed+2, 9: ro.kOrange+7, 10: ro.kMagenta+2}
 
 		tempch = {}
 		hname = {}
@@ -224,7 +224,7 @@ class ClusterChannelsAnalysis:
 			hname[cells] = {}
 			hnamesc[cells] = {}
 			hnameshift[cells] = {}
-			for ch in xrange(1, self.cluster_size):
+			for ch in list(set(range(1, self.num_strips) + [self.cluster_size - 1])):
 				tempc = self.trans_grid.cuts_man.AndCuts([self.ph_cuts('PH_Ch{c}'.format(c=ch), False), self.trans_grid.cuts_man.cluster_ch_lowest[ch]])
 				tempch[cells][ch] = self.trans_grid.cuts_man.ConcatenateCutWithCells(cut=tempc, cells=cells)
 				hname[cells][ch] = 'PH_Ch{c}_with_Ch{c}_lowest_{s}'.format(c=ch, s=self.suffix[cells])
@@ -276,7 +276,7 @@ class ClusterChannelsAnalysis:
 
 			satOpts = [True, False]
 			for satOpt in satOpts:
-				for ch in xrange(1, self.cluster_size):
+				for ch in list(set(range(1, self.num_strips) + [self.cluster_size - 1])):
 					tempc = tempch[cells][ch] if satOpt else self.trans_grid.cuts_man.AndCuts([tempch[cells][ch], '(diaChADC[clusterChannelHighest1]!=4095)'])
 					hname1 = 'PH_H1_vs_PH_Ch{c}_lowest_{s}'.format(s=self.suffix[cells], c=ch) if satOpt else 'PH_H1_vs_PH_Ch{c}_lowest_no_sat_{s}'.format(s=self.suffix[cells], c=ch)
 					self.trans_grid.DrawHisto2D(hname1, hlims1D['min'], hlims1D['max'], deltax, 'PH cluster ch{c} when lowest [ADC]'.format(c=ch), hlimsy2D['min'], hlimsy2D['max'], deltay, 'PH highest ch [ADC]', self.ph_ch_var(ch, 'Ch', False, False), self.ph_ch_var(1, 'H', False, False), tempc)

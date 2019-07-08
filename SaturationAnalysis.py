@@ -37,6 +37,8 @@ class SaturationAnalysis:
 
 		self.sat_N_ch_cut = self.trans_grid.cuts_man.GetSatNChsCut
 
+		self.sat_not_in_cluster = self.trans_grid.cuts_man.GetSatNotInCluster
+
 		self.sat_evts_region_cut = self.trans_grid.cuts_man.sat_evts_region
 		self.not_sat_evts_region_cut = self.trans_grid.cuts_man.not_sat_evts_region
 
@@ -90,6 +92,11 @@ class SaturationAnalysis:
 		minz, maxz = min(self.minz['PH1_H_{t}'.format(t=typ.lower())], 0), self.maxz['PH1_H_{t}'.format(t=typ.lower())]
 		hname = 'PH_sat_ch_map_{b}_before_{a}_after_{t}'.format(b=before, a=after, t=typ.lower()) if not isFriend else 'PH_buffer_{v}_sat_ch_map_{b}_before_{a}_after_{t}'.format(b=before, a=after, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
 		DrawProfile2D(hname, self.phN_chs_var(1, 'H', typ == 'snr', isFriend), minz, maxz, 'PH sat ch [{t}]'.format(t=typ.upper()), tempc, 1, 'highest ch', 'clusterChannelHighest1')
+
+		tempc = self.sat_not_in_cluster()
+		minz, maxz = min(self.minz['PH{n}_H_{t}'.format(n=self.num_strips, t=typ.lower())], 0), self.maxz['PH{n}_H_{t}'.format(n=self.num_strips, t=typ.lower())]
+		hname = 'PH{n}_H_pred_hit_sat_events_not_in_cluster_map_{b}_before_{a}_after_{t}'.format(n=self.num_strips, b=before, a=after, t=typ.lower()) if not isFriend else 'PH{n}_H_buffer_{v}_pred_hit_sat_events_not_in_cluster_map_{b}_before_{a}_after_{t}'.format(n=self.num_strips, b=before, a=after, t=typ.lower(), v=self.trans_grid.noise_friend_buffer)
+		DrawProfile2D(hname, self.phN_chs_var(self.num_strips, 'H', typ == 'snr', isFriend), minz, maxz, 'PH{n} highest chs [{t}]'.format(n=self.num_strips, t=typ.upper()), tempc, getOccupancy=True)
 
 	def Do1DPHHistos(self, cells='all', before=0, after=1, typ='adc', isFriend=False):
 		"""

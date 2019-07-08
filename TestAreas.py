@@ -666,6 +666,8 @@ class TestAreas:
 		self.trans_grid.CreateTCutGs()
 		self.trans_grid.AddFriendWithCells(self.trans_grid.row_cell_info_diamond['x_off'], self.trans_grid.row_cell_info_diamond['y_off'])
 
+		self.suffix = GetSuffixDictionary(self.trans_grid)
+
 if __name__ == '__main__':
 	parser = OptionParser()
 	parser.add_option('-r', '--run', dest='run', type='int', default=0, help='run number to be analysed (e.g. 25209)')
