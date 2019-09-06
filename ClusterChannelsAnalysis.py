@@ -239,40 +239,41 @@ class ClusterChannelsAnalysis:
 				self.trans_grid.histo[hnameshift[cells][ch]].SetStats(0)
 				self.trans_grid.histo[hnamesc[cells][ch]].Scale(1.0 / self.trans_grid.histo[hnamesc[cells][ch]].GetMaximum())
 
-			hbothname[cells] = 'PH_Ch1_and_PH_Ch2_lowest_overlaid_and_scaled_{s}'.format(s=self.suffix[cells])
-			self.trans_grid.canvas[hbothname[cells]] = ro.TCanvas('c_' + hbothname[cells], 'c_' + hbothname[cells], 1)
-			self.trans_grid.histo[hnamesc[cells][2]].SetTitle(hbothname[cells])
-			self.trans_grid.histo[hnamesc[cells][2]].Draw()
-			# self.trans_grid.histo[hnamesc[1]].Scale(self.trans_grid.histo[hnamesc[2]].GetBinContent(self.trans_grid.histo[hnamesc[1]].GetMaximumBin()) / self.trans_grid.histo[hnamesc[1]].GetMaximum())
-			self.trans_grid.histo[hnamesc[cells][1]].SetTitle(hbothname[cells])
-			self.trans_grid.histo[hnamesc[cells][1]].Draw('same')
-			SetDefault1DCanvasSettings(self.trans_grid.canvas[hbothname[cells]])
-			self.trans_grid.canvas[hbothname[cells]].SetLogy()
-			self.PosCanvas(hbothname[cells])
+                        if self.cluster_size > 2:
+			        hbothname[cells] = 'PH_Ch1_and_PH_Ch2_lowest_overlaid_and_scaled_{s}'.format(s=self.suffix[cells])
+			        self.trans_grid.canvas[hbothname[cells]] = ro.TCanvas('c_' + hbothname[cells], 'c_' + hbothname[cells], 1)
+			        self.trans_grid.histo[hnamesc[cells][2]].SetTitle(hbothname[cells])
+        			self.trans_grid.histo[hnamesc[cells][2]].Draw()
+	        		# self.trans_grid.histo[hnamesc[1]].Scale(self.trans_grid.histo[hnamesc[2]].GetBinContent(self.trans_grid.histo[hnamesc[1]].GetMaximumBin()) / self.trans_grid.histo[hnamesc[1]].GetMaximum())
+		        	self.trans_grid.histo[hnamesc[cells][1]].SetTitle(hbothname[cells])
+			        self.trans_grid.histo[hnamesc[cells][1]].Draw('same')
+			        SetDefault1DCanvasSettings(self.trans_grid.canvas[hbothname[cells]])
+			        self.trans_grid.canvas[hbothname[cells]].SetLogy()
+			        self.PosCanvas(hbothname[cells])
 
-			hbothnameshift[cells] = 'PH_Ch1_sifted_and_PH_Ch2_scaled_lowest_overalid_{s}'.format(s=self.suffix[cells])
-			maxbinch1 = self.trans_grid.histo[hnameshift[cells][1]].GetMaximumBin()
-			maxbinch2 = self.trans_grid.histo[hnameshift[cells][2]].GetMaximumBin()
-			if maxbinch2 > maxbinch1:
-				for i in np.arange(int(self.trans_grid.histo[hnameshift[cells][1]].GetNbinsX()), int(maxbinch2 - maxbinch1), -1):
-					self.trans_grid.histo[hnameshift[cells][1]].SetBinContent(i, self.trans_grid.histo[hnameshift[cells][1]].GetBinContent(i - int(maxbinch2 - maxbinch1)))
-				for i in np.arange(1, int(maxbinch2 - maxbinch1) + 1):
-					self.trans_grid.histo[hnameshift[cells][1]].SetBinContent(i, 0)
-			elif maxbinch1 > maxbinch2:
-				for i in np.arange(1, int(self.trans_grid.histo[hnameshift[cells][1]].GetNbinsX() - int(maxbinch1 - maxbinch2)) + 1, 1):
-					self.trans_grid.histo[hnameshift[cells][1]].SetBinContent(i, self.trans_grid.histo[hnameshift[cells][1]].GetBinContent(i + int(maxbinch1 - maxbinch2)))
-				for i in np.arange(int(self.trans_grid.histo[hnameshift[cells][1]].GetNbinsX()) - int(maxbinch1 - maxbinch2) + 1, int(self.trans_grid.histo[hnameshift[cells][1]].GetNbinsX()) + 1, 1):
-					self.trans_grid.histo[hnameshift[cells][1]].SetBinContent(i, 0)
-			self.trans_grid.histo[hnameshift[cells][2]].Scale(self.trans_grid.histo[hnameshift[cells][1]].GetMaximum() / self.trans_grid.histo[hnameshift[cells][2]].GetMaximum())
-			self.trans_grid.canvas[hbothnameshift[cells]] = ro.TCanvas('c_' + hbothnameshift[cells], 'c_' + hbothnameshift[cells], 1)
-			self.trans_grid.histo[hnameshift[cells][1]].SetTitle('PH_Ch{c}_with_Ch{c}_lowest_shifted_{s}'.format(c=1, s=self.suffix[cells]))
-			self.trans_grid.histo[hnameshift[cells][2]].SetTitle('PH_Ch{c}_with_Ch{c}_lowest_scaled_{s}'.format(c=2, s=self.suffix[cells]))
-			self.trans_grid.histo[hnameshift[cells][1]].Draw()
-			self.trans_grid.histo[hnameshift[cells][2]].Draw('same')
-			legend = self.trans_grid.canvas[hbothnameshift[cells]].BuildLegend()
-			self.trans_grid.canvas[hbothnameshift[cells]].SetLogy()
-			SetDefault1DCanvasSettings(self.trans_grid.canvas[hbothnameshift[cells]])
-			self.PosCanvas(hbothnameshift[cells])
+			        hbothnameshift[cells] = 'PH_Ch1_shifted_and_PH_Ch2_scaled_lowest_overalid_{s}'.format(s=self.suffix[cells])
+			        maxbinch1 = self.trans_grid.histo[hnameshift[cells][1]].GetMaximumBin()
+			        maxbinch2 = self.trans_grid.histo[hnameshift[cells][2]].GetMaximumBin()
+			        if maxbinch2 > maxbinch1:
+				        for i in np.arange(int(self.trans_grid.histo[hnameshift[cells][1]].GetNbinsX()), int(maxbinch2 - maxbinch1), -1):
+					        self.trans_grid.histo[hnameshift[cells][1]].SetBinContent(i, self.trans_grid.histo[hnameshift[cells][1]].GetBinContent(i - int(maxbinch2 - maxbinch1)))
+				        for i in np.arange(1, int(maxbinch2 - maxbinch1) + 1):
+					        self.trans_grid.histo[hnameshift[cells][1]].SetBinContent(i, 0)
+			        elif maxbinch1 > maxbinch2:
+				        for i in np.arange(1, int(self.trans_grid.histo[hnameshift[cells][1]].GetNbinsX() - int(maxbinch1 - maxbinch2)) + 1, 1):
+					        self.trans_grid.histo[hnameshift[cells][1]].SetBinContent(i, self.trans_grid.histo[hnameshift[cells][1]].GetBinContent(i + int(maxbinch1 - maxbinch2)))
+				        for i in np.arange(int(self.trans_grid.histo[hnameshift[cells][1]].GetNbinsX()) - int(maxbinch1 - maxbinch2) + 1, int(self.trans_grid.histo[hnameshift[cells][1]].GetNbinsX()) + 1, 1):
+					        self.trans_grid.histo[hnameshift[cells][1]].SetBinContent(i, 0)
+			        self.trans_grid.histo[hnameshift[cells][2]].Scale(self.trans_grid.histo[hnameshift[cells][1]].GetMaximum() / self.trans_grid.histo[hnameshift[cells][2]].GetMaximum())
+			        self.trans_grid.canvas[hbothnameshift[cells]] = ro.TCanvas('c_' + hbothnameshift[cells], 'c_' + hbothnameshift[cells], 1)
+			        self.trans_grid.histo[hnameshift[cells][1]].SetTitle('PH_Ch{c}_with_Ch{c}_lowest_shifted_{s}'.format(c=1, s=self.suffix[cells]))
+			        self.trans_grid.histo[hnameshift[cells][2]].SetTitle('PH_Ch{c}_with_Ch{c}_lowest_scaled_{s}'.format(c=2, s=self.suffix[cells]))
+			        self.trans_grid.histo[hnameshift[cells][1]].Draw()
+			        self.trans_grid.histo[hnameshift[cells][2]].Draw('same')
+			        legend = self.trans_grid.canvas[hbothnameshift[cells]].BuildLegend()
+			        self.trans_grid.canvas[hbothnameshift[cells]].SetLogy()
+			        SetDefault1DCanvasSettings(self.trans_grid.canvas[hbothnameshift[cells]])
+			        self.PosCanvas(hbothnameshift[cells])
 
 			satOpts = [True, False]
 			for satOpt in satOpts:
@@ -281,9 +282,10 @@ class ClusterChannelsAnalysis:
 					hname1 = 'PH_H1_vs_PH_Ch{c}_lowest_{s}'.format(s=self.suffix[cells], c=ch) if satOpt else 'PH_H1_vs_PH_Ch{c}_lowest_no_sat_{s}'.format(s=self.suffix[cells], c=ch)
 					self.trans_grid.DrawHisto2D(hname1, hlims1D['min'], hlims1D['max'], deltax, 'PH cluster ch{c} when lowest [ADC]'.format(c=ch), hlimsy2D['min'], hlimsy2D['max'], deltay, 'PH highest ch [ADC]', self.ph_ch_var(ch, 'Ch', False, False), self.ph_ch_var(1, 'H', False, False), tempc)
 					self.PosCanvas(hname1)
-					hname1 = 'PH2_H_vs_PH_Ch{c}_lowest_{s}'.format(s=self.suffix[cells], c=ch) if satOpt else 'PH2_H_vs_PH_Ch{c}_lowest_no_sat_{s}'.format(s=self.suffix[cells], c=ch)
-					self.trans_grid.DrawHisto2D(hname1, hlims1D['min'], hlims1D['max'], deltax, 'PH cluster ch{c} when lowest [ADC]'.format(c=ch), hlimsy2D['min'], hlimsy2D['max'], deltay, 'PH2 highest chs [ADC]', self.ph_ch_var(ch, 'Ch', False, False), self.phN_chs_var(2, 'H', False, False), tempc)
-					self.PosCanvas(hname1)
+                                        if self.num_strips > 1:
+					        hname1 = 'PH2_H_vs_PH_Ch{c}_lowest_{s}'.format(s=self.suffix[cells], c=ch) if satOpt else 'PH2_H_vs_PH_Ch{c}_lowest_no_sat_{s}'.format(s=self.suffix[cells], c=ch)
+					        self.trans_grid.DrawHisto2D(hname1, hlims1D['min'], hlims1D['max'], deltax, 'PH cluster ch{c} when lowest [ADC]'.format(c=ch), hlimsy2D['min'], hlimsy2D['max'], deltay, 'PH2 highest chs [ADC]', self.ph_ch_var(ch, 'Ch', False, False), self.phN_chs_var(2, 'H', False, False), tempc)
+					        self.PosCanvas(hname1)
 					deltax2 = 0.01
 					deltay2 = 5
 					hlims1V2 = GetSymmetric1DLimits(-1, 1, deltax2)
