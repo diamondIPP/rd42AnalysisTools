@@ -245,7 +245,7 @@ class TransparentGrid:
 				self.UnfoldPickle()
 				self.loaded_pickle = True
 		else:
-			print 'Coult not find the pickle: {d}/{r}/{s}/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
+			print 'Could not find the pickle: {d}/{r}/{s}/transp_grid.{r}.pkl'.format(d=self.dir, r=self.run, s=self.pkl_sbdir)
 			self.loaded_pickle = False
 
 	def UnfoldPickle(self):
