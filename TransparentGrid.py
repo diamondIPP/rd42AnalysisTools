@@ -1887,10 +1887,12 @@ class TransparentGrid:
 			params = np.array((self.histo[name].GetBinContent(self.histo[name].GetXaxis().FindBin(xmean)), xmean, xrms), 'float64')
 			func.SetParameters(params)
 			for it in xrange(iterations):
-				temp = self.histo[name].Fit('f_gaus_' + name, 'QIEBMSN', 'goff', xmin, xmax)
+				(fitmin, fitmax) = (params[1] - num_sigma * params[2], params[1] + num_sigma * params[2]) if (params[1] - num_sigma * params[2]) < xmax and (params[1] + num_sigma * params[2]) > xmin else (xmin, xmax)
+				temp = self.histo[name].Fit('f_gaus_' + name, 'QIEBMSN', 'goff', fitmin, fitmax)
 				params = np.array((temp.Parameter(0), temp.Parameter(1), temp.Parameter(2)), 'float64')
 				func.SetParameters(params)
-			self.fits[name] = self.histo[name].Fit('f_gaus_' + name, 'QIEBMS', 'goff', params[1] - num_sigma * params[2], params[1] + num_sigma * params[2])
+			(fitmin, fitmax) = (params[1] - num_sigma * params[2], params[1] + num_sigma * params[2]) if (params[1] - num_sigma * params[2]) < xmax and (params[1] + num_sigma * params[2]) > xmin else (xmin, xmax)
+			self.fits[name] = self.histo[name].Fit('f_gaus_' + name, 'QIEBMS', 'goff', fitmin, fitmax)
 			self.histo[name].GetFunction('f_gaus_' + name).Draw('same')
 			ro.gPad.Update()
 
@@ -1917,7 +1919,8 @@ class TransparentGrid:
 				temp = hbla.Fit('f_2_gaus_' + name, 'QIBMSN', 'goff', xmin, xmax)
 				params = np.array((temp.Parameter(0), temp.Parameter(1), temp.Parameter(2), temp.Parameter(3), temp.Parameter(4), temp.Parameter(5)), 'f8')
 				func.SetParameters(params)
-			self.fits[name] = self.histo[name].Fit('f_2_gaus_' + name, 'QIBMS', 'goff', xmean - num_sigma * xrms, xmean + num_sigma * xrms)
+			(fitmin, fitmax) = (xmean - num_sigma * xrms, xmean + num_sigma * xrms) if (xmean - num_sigma * xrms) < xmax and (xmean + num_sigma * xrms) > xmin else (xmin, xmax)
+			self.fits[name] = self.histo[name].Fit('f_2_gaus_' + name, 'QIBMS', 'goff', fitmin, fitmax)
 			self.histo[name].GetFunction('f_2_gaus_' + name).Draw('same')
 			ro.gPad.Update()
 
