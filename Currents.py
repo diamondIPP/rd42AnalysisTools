@@ -56,6 +56,7 @@ class Currents:
         self.hv_channels = []
         self.hv_channels_root = ro.TFile()
         self.hv_channels_tree = ro.TTree()
+        self.hv_chain = ro.TChain(tree_name)
         self.CheckHVChannelsROOTFiles()
 
         self.Histos = {}
@@ -116,7 +117,8 @@ class Currents:
                             numev_i = line.split()[8] if IsInt(line.split()[0]) else line.split()[9]
                             numev_i = 1000 * int(numev_i.strip('K').strip('k')) if 'K' in numev_i or 'k' in numev_i else int(numev_i)
                             hv_folder_i = Get_From_User_Line('HV folder as it is in the currents logs directory for run ' + run_i + ' with voltage ' + str(volt_i) + ' and DUT ' + diam_i, update=False)
-                            temp_runs_info[run_i] = {'dia': diam_i, 'bias': volt_i, 'num_ev': numev_i, 't_ini': -1.0, 't_end': -1.0, 'hv_ch': hv_folder_i}
+                            offset_i = float(Get_From_User_Line('offset to be added on raw files for run ' + run_i, update=False))
+                            temp_runs_info[run_i] = {'dia': diam_i, 'bias': volt_i, 'num_ev': numev_i, 't_ini': -1.0, 't_end': -1.0, 't_offset': offset_i, 'hv_ch': hv_folder_i}
                             print run_i, diam_i, volt_i, numev_i, hv_folder_i
                 self.runs_info = temp_runs_info
                 self.GetDictOfRawFiles()
@@ -160,8 +162,8 @@ class Currents:
                 if run_i in self.runs_info.keys():
                     raws_run_i = [raw_i for raw_i in glob('{d}/{r}/RUN*'.format(d=self.raw_files_dir, r=run_i)) if IsInt(raw_i.split('.')[-2].split('_')[-1])]
                     raws_run_i.sort(key=lambda x: os.path.getmtime(x))
-                    raws_run_i_tf = [os.path.getmtime(raw_i) + self.time_offset for raw_i in raws_run_i]
-                    raws_run_i_ti = [raws_run_i_tf[i - 1] + self.time_offset for i in xrange(1, len(raws_run_i))]
+                    raws_run_i_tf = [os.path.getmtime(raw_i) + self.runs_info[run_i]['t_offset'] for raw_i in raws_run_i]
+                    raws_run_i_ti = [raws_run_i_tf[i - 1] + self.runs_info[run_i]['t_offset'] for i in xrange(1, len(raws_run_i))]
                     try:
                         raws_run_i_ti.insert(0, float(RoundInt((len(raws_run_i) * raws_run_i_tf[0] - raws_run_i_tf[-1]) / float(len(raws_run_i) - 1))))
                     except Exception:
@@ -201,6 +203,8 @@ class Currents:
                 self.hv_channels_root = ro.TFile(self.currents_logs_dir + '/' + hv_ch + '.root', load_option)
                 self.hv_channels_tree = ro.TTree(tree_name, tree_name)
                 self.FillCurrentsTreeOfHVChannelFolder(hv_ch)
+        for hv_ch in self.hv_channels:
+            self.hv_chain.Add(self.currents_logs_dir + '/' + hv_ch + '.root')
 
     def FillCurrentsTreeOfHVChannelFolder(self, hvfolder):
         print 'Filling {t} tree for HV folder {f}'.format(t=self.hv_channels_tree, f=hvfolder)
@@ -209,7 +213,6 @@ class Currents:
             files.sort(key=lambda x: os.path.getmtime(x))
             # create branches
             hv_ch = ro.TString(hvfolder)
-            # hv_ch_time = ro.TDatime()
             hv_ch_time = ro.TTimeStamp()
             hv_ch_volt = np.zeros(1, 'f4')
             hv_ch_curr = np.zeros(1, 'f4')
@@ -251,12 +254,9 @@ class Currents:
                 HMS = line[3].split(':')
                 hour_f, min_f, sec_f = int(HMS[0]), int(HMS[1]), int(HMS[2])
                 volt_f, curr_f = line[4], line[5]
-                # hv_ch_time.Set(year_f, month_f, day_f, hour_f, min_f, sec_f)
                 hv_ch_time.Set(year_f, month_f, day_f, hour_f, min_f, sec_f, 0, False, 0)
                 run_f = self.GuessRunFromRunInfo(hvfolder, hv_ch_time.AsDouble())
                 dia_f = self.runs_info[run_f]['dia'] if run_f in self.runs_info.keys() else 'None'
-                # evi_f, evf_f = self.FindEventIniAndFinFromTimeStamp(hv_ch_time.Convert(), run_f)
-                # evi_f, evf_f = -1, -1
                 # evi_f, evf_f = self.FindEventIniAndFinFromTimeStamp(hv_ch_time.AsDouble(), run_f)
                 hv_ch_volt.fill(volt_f)
                 hv_ch_curr.fill(curr_f)
@@ -267,29 +267,6 @@ class Currents:
                 self.hv_channels_tree.Fill()
                 bar.update(it + 1)
 
-            #
-            # for it, file_i in enumerate(files):
-            #     with open(file_i, 'r') as logf:
-            #         lines_f = logf.readlines()
-            #         # remove lines not used
-            #         list_f = [[line.strip('\n').split()[0], float(line.strip('\n').split()[1]), float(line.strip('\n').split()[2])] for line in lines_f if len(line.strip('\n').split()) > 2 and IsFloat(line.strip('\n').split()[1]) and IsFloat(line.strip('\n').split()[2])]
-            #         hv_ch_dia.Clear()
-            #         for line in list_f:
-            #             HMS = line[0].split(':')
-            #             hour_f, min_f, sec_f = int(HMS[0]), int(HMS[1]), int(HMS[2])
-            #             volt_f, curr_f = line[1], line[2]
-            #             hv_ch_time.Set(year_f, month_f, day_f, hour_f, min_f, sec_f, 0, False, 0)
-            #             run_f = self.GuessRunFromRunInfo(hvfolder, hv_ch_time)
-            #             dia_f = self.runs_info[str(run_f)]['dia'] if str(run_f) in self.runs_info.keys() else 'None'
-            #             evi_f, evf_f = self.FindEventIniAndFinFromTimeStamp(hv_ch_time, run_f)
-            #             hv_ch_volt.fill(volt_f)
-            #             hv_ch_curr.fill(curr_f)
-            #             hv_ch_run.fill(run_f)
-            #             hv_ch_ev_i.fill(evi_f)
-            #             hv_ch_ev_f.fill(evf_f)
-            #             hv_ch_dia.Append(dia_f)
-            #             self.hv_channels_tree.Fill()
-            #             bar.update(it + 1)
             self.hv_channels_root.Write()
             self.hv_channels_root.Close()
             bar.finish()
