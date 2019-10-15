@@ -78,6 +78,22 @@ class RD42RawDiamondGenerator:
 			self.bar.update(ev + 1)
 		self.bar.finish()
 
+		landau_pos_info = ro.TNamed('landau_pos', str(self.landau_pos))
+		landau_sc_info = ro.TNamed('landau_sc', str(self.landau_sc))
+		buff_info = ro.TNamed('buff', str(self.ped_buffer))
+		ped_mean_info = ro.TNamed('ped_mean', str(self.ped_mean))
+		ped_spread_info = ro.TNamed('ped_spread', str(self.ped_spread))
+		noise_info = ro.TNamed('noise', str(self.noise))
+		cm_info = ro.TNamed('commonMode', str(self.cm))
+
+		landau_pos_info.Write()
+		landau_sc_info.Write()
+		buff_info.Write()
+		ped_mean_info.Write()
+		ped_spread_info.Write()
+		noise_info.Write()
+		cm_info.Write()
+
 		self.raw_file.Write()
 		self.raw_file.Close()
 

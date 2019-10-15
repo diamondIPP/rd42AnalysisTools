@@ -8,6 +8,7 @@
 #include <deque>
 #include <TMath.h>
 #include <TLeaf.h>
+#include <TNamed.h>
 #include "time.h"
 
 int main(int argc, char* argv[]) {
@@ -24,15 +25,44 @@ int main(int argc, char* argv[]) {
     StemName.ReplaceAll(".root", "");
     auto *blaf = new TFile(InFileName, "READ");
     auto *tree = (TTree*)blaf->Get("rawTree");
-    uint16_t buff = 500;
+    uint32_t buff = 500;
     auto dets = uint8_t(tree->GetLeaf("adc")->GetLen());
     auto maxEvents = uint32_t(tree->GetEntries());
+    uint16_t saturatedValue = 4095;
+
+    // extra info in input file
+    float_t inLandauPos = 0;
+    float_t inLandauSc = 0;
+    uint32_t inBuff = 0;
+    uint16_t inPedMean = 0;
+    float_t inPedSpread = 0;
+    float_t inNoise = 0;
+    float_t inCM = 0;
+
+    if(blaf->Get("landau_pos"))
+        inLandauPos = strtof(((TNamed *)blaf->Get("landau_pos"))->GetTitle(), nullptr);
+    if(blaf->Get("landau_sc"))
+        inLandauSc = strtof(((TNamed *)blaf->Get("landau_sc"))->GetTitle(), nullptr);
+    if(blaf->Get("inBuff"))
+        inBuff = uint32_t(strtol(((TNamed *)blaf->Get("buff"))->GetTitle(), nullptr, 10));
+    if(blaf->Get("ped_mean"))
+        inPedMean = uint16_t(strtoul(((TNamed *)blaf->Get("ped_mean"))->GetTitle(), nullptr, 10));
+    if(blaf->Get("ped_spread"))
+        inPedSpread = strtof(((TNamed *)blaf->Get("ped_spread"))->GetTitle(), nullptr);
+    if(blaf->Get("noise"))
+        inNoise = strtof(((TNamed *)blaf->Get("noise"))->GetTitle(), nullptr);
+    if(blaf->Get("commonMode"))
+        inCM = strtof(((TNamed *)blaf->Get("commonMode"))->GetTitle(), nullptr);
 
     // define variables to read rawTree
     uint16_t adcs[dets];
     uint32_t event;
 
     // define variables in pedTree
+    uint8_t channels[dets];
+    for(uint8_t deti=0; deti < dets; deti++){
+        channels[deti] = deti;
+    }
     float_t cm;
     float_t ped[dets];
     float_t pedCMC[dets];
@@ -42,6 +72,8 @@ int main(int argc, char* argv[]) {
     float_t signalCMC[dets];
     bool isPed[dets];
     bool isPedCMC[dets];
+    bool isSaturated[dets];
+
 
     // define variables to esetimate noise and pedestals
     std::deque <uint16_t > detADC[dets];
@@ -56,7 +88,7 @@ int main(int argc, char* argv[]) {
     uint16_t numDetSumCMC[dets];
 
     // clear deques
-    for(int det=0; det < dets; det++){
+    for(uint8_t det=0; det < dets; det++){
         detADC[det].clear();
         detADCCMC[det].clear();
         evtIsPed[det].clear();
@@ -83,6 +115,7 @@ int main(int argc, char* argv[]) {
     auto *pedTree = new TTree("pedTree", "pedTree");
 
     // assign branches to pedestal tree
+    pedTree->Branch("channels", &channels, TString::Format("channels[%i]/b", dets));
     pedTree->Branch("cm", &cm, "cm/F");
     pedTree->Branch("ped", &ped, TString::Format("ped[%i]/F", dets));
     pedTree->Branch("pedCMC", &pedCMC, TString::Format("pedCMC[%i]/F", dets));
@@ -92,12 +125,13 @@ int main(int argc, char* argv[]) {
     pedTree->Branch("signalCMC", &signalCMC, TString::Format("signalCMC[%i]/F", dets));
     pedTree->Branch("isPed", &isPed, TString::Format("isPed[%i]/O", dets));
     pedTree->Branch("isPedCMC", &isPedCMC, TString::Format("isPedCMC[%i]/O", dets));
+    pedTree->Branch("isSaturated", &isSaturated, TString::Format("isSaturated[%i]/O", dets));
 
     // Loop over first buffered events:
     std::cout << "Buffer estimation:";std::cout << std::flush;
-    for(int eventi = 0; eventi < buff; eventi++){
+    for(uint32_t eventi = 0; eventi < buff; eventi++){
         tree->GetEvent(eventi);
-        for(int det = 0; det < dets; det ++){
+        for(uint8_t det = 0; det < dets; det ++){
             detADC[det].push_back(adcs[det]);
             evtIsPed[det].push_back(true);
             detSum[det] += adcs[det];
@@ -110,25 +144,26 @@ int main(int argc, char* argv[]) {
             std::cout << int(eventi * 10 / buff); std::cout << std::flush;
     }
     std::cout << std::endl; std::cout<<std::flush;
-    for(int det = 0; det < dets; det++){
+    for(uint8_t det = 0; det < dets; det++){
         ped[det] = float(detSum[det]) / float(numDetSum[det]);
         sigm[det] = float(TMath::Sqrt(float(detSum2[det]) / float(numDetSum[det]) - ped[det] * ped[det]));
     }
     std::cout << "Filling tree... "; std::cout << std::flush;
-    for(int eventi = 0; eventi < buff; eventi++){
+    for(uint32_t eventi = 0; eventi < buff; eventi++){
         tree->GetEvent(eventi);
         uint32_t cmevts = 0;
         cm = 0;
         float_t tempAdc;
-        for(int det = 0; det < dets; det++){
+        for(uint8_t det = 0; det < dets; det++){
             tempAdc = adcs[det];
             signal[det] = tempAdc - ped[det];
             cm += signal[det];
             cmevts ++;
+            isSaturated[det] = bool(adcs[det] >= saturatedValue);
         }
         cm = cmevts > 0? float(cm) / float(cmevts) : 0;
 
-        for(int det = 0; det < dets; det++){
+        for(uint8_t det = 0; det < dets; det++){
             tempAdc = adcs[det] - cm;
             detADCCMC[det].push_back(tempAdc);
             evtIsPedCMC[det].push_back(true);
@@ -170,7 +205,7 @@ int main(int argc, char* argv[]) {
         }
         cm = cmevts > 0? float(cm) / float(cmevts) : 0;
 
-        for(int det = 0; det < dets; det++){
+        for(uint8_t det = 0; det < dets; det++){
             // no cmc
             detADC[det].push_back(adcs[det]);
             tempMean = float(detSum[det] / float(numDetSum[det]));
@@ -195,6 +230,7 @@ int main(int argc, char* argv[]) {
             ped[det] = float(detSum[det] / float(numDetSum[det]));
             sigm[det] = float(TMath::Sqrt(float(detSum2[det] / float(numDetSum[det]) - ped[det] * ped[det])));
             signal[det] = adcs[det] - ped[det];
+            isSaturated[det] = bool(adcs[det] >= saturatedValue);
 
             // with cmc
             detADCCMC[det].push_back(adcs[det] - cm);
@@ -237,7 +273,25 @@ int main(int argc, char* argv[]) {
     pedTree->AddFriend("rawTree", InFileName);
     pedFile->cd();
     pedTree->Write();
-    pedFile->Write();
+
+    // add info to new file
+    auto landauPosInfo = new TNamed("landau_pos", TString::Format("%f", inLandauPos).Data());
+    auto landauScInfo = new TNamed("landau_sc", TString::Format("%f", inLandauSc).Data());
+    auto buffInfo = new TNamed("buff", TString::Format("%d", inBuff).Data());
+    auto pedMeanInfo = new TNamed("ped_mean", TString::Format("%d", inPedMean).Data());
+    auto pedSpreadInfo = new TNamed("ped_spread", TString::Format("%f", inPedSpread).Data());
+    auto noiseInfo = new TNamed("noise", TString::Format("%f", inNoise).Data());
+    auto cmInfo = new TNamed("commonMode", TString::Format("%f", inCM).Data());
+
+    landauPosInfo->Write();
+    landauScInfo->Write();
+    buffInfo->Write();
+    pedMeanInfo->Write();
+    pedSpreadInfo->Write();
+    noiseInfo->Write();
+    cmInfo->Write();
+
+//    pedFile->Write();
 //    delete blaf;
 //    delete pedFile;
 //    pedTree->Delete();
