@@ -1,3 +1,0 @@
-/Users/diegoalejandro/Desktop/mntSnickers/TestDataC.cpp/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/Users/diegoalejandro/Desktop/mntSnickers/TestDataC.cpp/cmake-build-debug/CMakeFiles/edit_cache.dir
-/Users/diegoalejandro/Desktop/mntSnickers/TestDataC.cpp/cmake-build-debug/CMakeFiles/TestDataC_cpp.dir
