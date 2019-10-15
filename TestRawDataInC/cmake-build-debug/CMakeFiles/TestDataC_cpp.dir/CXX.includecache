@@ -1,0 +1,28 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/diegoalejandro/Desktop/mntSnickers/TestDataC.cpp/main.cpp
+iostream
+-
+cstdlib
+-
+sstream
+-
+numeric
+-
+cmath
+-
+TFile.h
+-
+TTree.h
+-
+deque
+-
+TMath.h
+-
+

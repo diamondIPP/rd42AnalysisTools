@@ -1,0 +1,6 @@
+To compile run:
+g++ -o TestDataC main.cpp `root-config --cflags --glibs` -Wall -Wextra
+
+To run:
+./TestDataC <InputRawRootFile.root> threshold
+Where InputRawRootFile should have adc
