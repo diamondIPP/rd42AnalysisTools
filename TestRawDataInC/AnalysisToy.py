@@ -95,7 +95,7 @@ class AnalysisToy:
 		namex, namey, namez = 'event', 'signal_cmc[ADC]', 'entries'
 		self.Draw2DHisto(nameh, varx, vary, xbins, xmin, xmax, ybins, ymin, ymax, cuts, namex, namey, namez)
 
-		self.inputFileInfo['noise'] = self.histo[nameh].GetRMS(2)
+		self.inputFileInfo['noise'] = self.histo[nameh].GetRMS(2) if self.inputFileInfo['noise'] == 0. else self.inputFileInfo['noise']
 
 		nameh = 'commonMode'
 		varx, vary = 'event', 'cm'
@@ -109,7 +109,7 @@ class AnalysisToy:
 		namex, namey, namez = 'event', 'common_mode[ADC]', 'entries'
 		self.Draw2DHisto(nameh, varx, vary, xbins, xmin, xmax, ybins, ymin, ymax, cuts, namex, namey, namez)
 
-		self.inputFileInfo['commonMode'] = self.histo[nameh].GetRMS(2)
+		self.inputFileInfo['commonMode'] = self.histo[nameh].GetRMS(2) if self.inputFileInfo['commonMode'] == 0. else self.inputFileInfo['commonMode']
 
 		nameh = 'signalPH'
 		var = 'signal'
@@ -129,7 +129,7 @@ class AnalysisToy:
 		self.FitLandauish(nameh)
 		ro.gPad.Update()
 
-		self.inputFileInfo['landau_pos'], self.inputFileInfo['landau_sc'] = self.fits[nameh].Parameter(1), self.fits[nameh].Parameter(2)
+		(self.inputFileInfo['landau_pos'], self.inputFileInfo['landau_sc']) = (self.fits[nameh].Parameter(1), self.fits[nameh].Parameter(2)) if self.inputFileInfo['landau_pos'] == 0. and self.inputFileInfo['landau_sc'] == 0. else (self.inputFileInfo['landau_pos'], self.inputFileInfo['landau_sc'])
 
 		nameh = 'signalCMC'
 		var = 'signalCMC'
