@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
         inLandauPos = strtof(((TNamed *)blaf->Get("landau_pos"))->GetTitle(), nullptr);
     if(blaf->Get("landau_sc"))
         inLandauSc = strtof(((TNamed *)blaf->Get("landau_sc"))->GetTitle(), nullptr);
-    if(blaf->Get("inBuff"))
+    if(blaf->Get("buff"))
         inBuff = uint32_t(strtol(((TNamed *)blaf->Get("buff"))->GetTitle(), nullptr, 10));
     if(blaf->Get("ped_mean"))
         inPedMean = uint16_t(strtoul(((TNamed *)blaf->Get("ped_mean"))->GetTitle(), nullptr, 10));
