@@ -70,76 +70,117 @@ class AnalysisToy:
 		print 'Creating plots...', ; sys.stdout.flush()
 		self.OpenPedestalFile()
 
-		self.canvas['signalPedestal'] = ro.TCanvas('c_signalPedestal', 'c_signalPedestal', 1)
-		self.histo['signalPedestal'] = ro.TH2D('h_signalPedestal', 'h_signalPedestal', int(RoundInt(self.events / 1000., 'uint32')), 0, int(1000 * RoundInt(self.events / 1000., 'uint32')), 201, -100.5, 100.5)
-		self.histo['signalPedestal'].GetXaxis().SetTitle('event')
-		self.histo['signalPedestal'].GetYaxis().SetTitle('signal[ADC]')
-		self.histo['signalPedestal'].GetZaxis().SetTitle('entries')
-		self.outTree.Draw('signal:event>>h_signalPedestal', 'isPed', 'colz')
-		if self.histo['signalPedestal'].FindObject('stats'):
-			self.histo['signalPedestal'].FindObject('stats').SeOptStat(2211)
-		self.PosCanvas('signalPedestal')
+		nameh = 'signalPedestal'
+		varx, vary = 'event', 'signal'
+		xbins, fact = 1000000, 100.
+		while(xbins >= 10000):
+			fact *= 10.
+			xbins = int(RoundInt(self.events / fact, 'uint32'))
+		xmin, xmax = 0, int(fact * xbins)
+		ybins, ymin, ymax = 201, -100.5, 100.5
+		cuts = self.CutOrs(['isPed'], [''])
+		namex, namey, namez = 'event', 'signal[ADC]', 'entries'
+		self.Draw2DHisto(nameh, varx, vary, xbins, xmin, xmax, ybins, ymin, ymax, cuts, namex, namey, namez)
 
-		self.canvas['signalPedestalCMC'] = ro.TCanvas('c_signalPedestalCMC', 'c_signalPedestalCMC', 1)
-		self.histo['signalPedestalCMC'] = ro.TH2D('h_signalPedestalCMC', 'h_signalPedestalCMC', int(RoundInt(self.events / 1000., 'uint32')), 0, int(1000 * RoundInt(self.events / 1000., 'uint32')), 201, -100.5, 100.5)
-		self.histo['signalPedestalCMC'].GetXaxis().SetTitle('event')
-		self.histo['signalPedestalCMC'].GetYaxis().SetTitle('signal CMC[ADC]')
-		self.histo['signalPedestalCMC'].GetZaxis().SetTitle('entries')
-		self.outTree.Draw('signalCMC:event>>h_signalPedestalCMC', 'isPedCMC', 'colz')
-		if self.histo['signalPedestalCMC'].FindObject('stats'):
-			self.histo['signalPedestalCMC'].FindObject('stats').SeOptStat(2211)
-		self.PosCanvas('signalPedestalCMC')
+		nameh = 'signalPedestalCMC'
+		varx, vary = 'event', 'signalCMC'
+		xbins, fact = 10000000, 100.
+		while xbins >= 10000:
+			fact *= 10.
+			xbins = int(RoundInt(self.events / fact, 'uint32'))
+		xmin, xmax = 0, int(fact * xbins)
+		ybins, ymin, ymax = 201, -100.5, 100.5
+		cuts = self.CutOrs(['isPedCMC'], [''])
+		namex, namey, namez = 'event', 'signal_cmc[ADC]', 'entries'
+		self.Draw2DHisto(nameh, varx, vary, xbins, xmin, xmax, ybins, ymin, ymax, cuts, namex, namey, namez)
 
-		self.canvas['commonMode'] = ro.TCanvas('c_commonMode', 'c_commonMode', 1)
-		self.histo['commonMode'] = ro.TH2D('h_commonMode', 'h_commonMode', int(RoundInt(self.events / 1000., 'uint32')), 0, int(1000 * RoundInt(self.events / 1000., 'uint32')), 201, -100.5, 100.5)
-		self.histo['commonMode'].GetXaxis().SetTitle('event')
-		self.histo['commonMode'].GetYaxis().SetTitle('common mode [ADC]')
-		self.histo['commonMode'].GetZaxis().SetTitle('entries')
-		self.outTree.Draw('cm:event>>h_commonMode', 'isPedCMC', 'colz')
-		if self.histo['commonMode'].FindObject('stats'):
-			self.histo['commonMode'].FindObject('stats').SeOptStat(2211)
-		self.PosCanvas('commonMode')
+		self.inputFileInfo['noise'] = self.histo[nameh].GetRMS(2)
 
-		self.canvas['signalPH'] = ro.TCanvas('c_signalPH', 'c_signalPH', 1)
-		self.histo['signalPH'] = ro.TH1D('h_signalPH', 'h_signalPH', 500, 0, 5000)
-		self.histo['signalPH'].GetXaxis().SetTitle('signalPH[ADC]')
-		self.histo['signalPH'].GetYaxis().SetTitle('entries')
-		self.outTree.Draw('signal>>h_signalPH', '(isPed==0)&&(isSaturated==0)', 'e hist')
-		# self.histo['signalPH'].FindObject('stats').SetOptFit(1)
-		SetDefault1DCanvasSettings(self.canvas['signalPH'])
-		ro.gPad.Update()
-		SetDefault1DStats(self.histo['signalPH'])
-		self.FitLandauish('signalPH')
-		ro.gPad.Update()
-		self.PosCanvas('signalPH')
+		nameh = 'commonMode'
+		varx, vary = 'event', 'cm'
+		xbins, fact = 10000000, 100.
+		while xbins >= 10000:
+			fact *= 10.
+			xbins = int(RoundInt(self.events / fact, 'uint32'))
+		xmin, xmax = 0, int(fact * xbins)
+		ybins, ymin, ymax = 201, -100.5, 100.5
+		cuts = self.CutOrs(['isPedCMC'], [''])
+		namex, namey, namez = 'event', 'common_mode[ADC]', 'entries'
+		self.Draw2DHisto(nameh, varx, vary, xbins, xmin, xmax, ybins, ymin, ymax, cuts, namex, namey, namez)
 
-		self.canvas['signalPHCMC'] = ro.TCanvas('c_signalPHCMC', 'c_signalPHCMC', 1)
-		self.histo['signalPHCMC'] = ro.TH1D('h_signalPHCMC', 'h_signalPHCMC', 500, 0, 5000)
-		self.histo['signalPHCMC'].GetXaxis().SetTitle('signalPHCMC[ADC]')
-		self.histo['signalPHCMC'].GetYaxis().SetTitle('entries')
-		self.outTree.Draw('signalCMC>>h_signalPHCMC', '(isPedCMC==0)&&(isSaturated==0)', 'e hist')
-		# self.histo['signalPHCMC'].FindObject('stats').SetOptFit(1)
-		SetDefault1DCanvasSettings(self.canvas['signalPHCMC'])
-		ro.gPad.Update()
-		SetDefault1DStats(self.histo['signalPHCMC'])
-		self.FitLandauish('signalPHCMC')
-		ro.gPad.Update()
-		self.PosCanvas('signalPHCMC')
+		self.inputFileInfo['commonMode'] = self.histo[nameh].GetRMS(2)
 
-		self.canvas['signalCMC'] = ro.TCanvas('c_signalCMC', 'c_signalCMC', 1)
-		self.histo['signalCMC'] = ro.TH1D('h_signalCMC', 'h_signalCMC', 5000, -100, 4900)
-		self.histo['signalCMC'].GetXaxis().SetTitle('signalCMC[ADC]')
-		self.histo['signalCMC'].GetYaxis().SetTitle('entries')
-		self.outTree.Draw('signalCMC>>h_signalCMC', 'isSaturated==0', 'e hist')
-		# self.histo['signalCMC'].FindObject('stats').SetOptFit(1)
-		SetDefault1DCanvasSettings(self.canvas['signalCMC'])
-		self.canvas['signalCMC'].SetLogy()
+		nameh = 'signalPH'
+		var = 'signal'
+		xbins, xmin, xmax = 500, 0, 5000
+		cuts = self.CutAnds(['isPed', 'isSaturated'], ['==0', '==0'])
+		namex, namey = 'signal_ph[ADC]', 'entries'
+		self.Draw1DHisto(nameh, var, xbins, xmin, xmax, cuts, namex, namey)
+		self.FitLandauish(nameh)
 		ro.gPad.Update()
-		SetDefault1DStats(self.histo['signalCMC'])
-		self.FitLandauishAndPed('signalCMC')
+
+		nameh = 'signalPHCMC'
+		var = 'signalCMC'
+		xbins, xmin, xmax = 500, 0, 5000
+		cuts = self.CutAnds(['isPedCMC', 'isSaturated'], ['==0', '==0'])
+		namex, namey = 'signal_cmc_ph[ADC]', 'entries'
+		self.Draw1DHisto(nameh, var, xbins, xmin, xmax, cuts, namex, namey)
+		self.FitLandauish(nameh)
 		ro.gPad.Update()
-		self.PosCanvas('signalCMC')
+
+		self.inputFileInfo['landau_pos'], self.inputFileInfo['landau_sc'] = self.fits[nameh].Parameter(1), self.fits[nameh].Parameter(2)
+
+		nameh = 'signalCMC'
+		var = 'signalCMC'
+		xbins, xmin, xmax = 5000, -100, 4900
+		cuts = self.CutAnds(['isSaturated'], ['==0'])
+		namex, namey = 'signal_cmc[ADC]', 'entries'
+		self.Draw1DHisto(nameh, var, xbins, xmin, xmax, cuts, namex, namey)
+		self.canvas[nameh].SetLogy()
+		ro.gPad.Update()
+		self.FitLandauishAndPed(nameh)
+		ro.gPad.Update()
+
 		print 'Done'
+
+	def CutOrs(self, vars=[], vals=[]):
+		return self.CutOp(vars, vals, '||')
+
+	def CutAnds(self, vars=[], vals=[]):
+		return self.CutOp(vars, vals, '&&')
+
+	def CutOp(self, vars=[], vals=[], op='&&'):
+		tvar = []
+		tval = []
+		for var, val in zip(vars, vals):
+			if self.outTree.FindBranch(var):
+				tvar.append(var)
+				tval.append(val)
+		cuts = ['(' + var + val + ')' for var, val in zip(tvar, tval)]
+		return op.join(cuts)
+
+	def Draw2DHisto(self, nameh, varx, vary, xbins, xmin, xmax, ybins, ymin, ymax, cuts, namex, namey, namez='entries'):
+		self.canvas[nameh] = ro.TCanvas('c_' + nameh, 'c_' + nameh, 1)
+		self.histo[nameh] = ro.TH2D('h_' + nameh, 'h_' + nameh, xbins, xmin, xmax, ybins, ymin, ymax)
+		self.histo[nameh].GetXaxis().SetTitle(namex)
+		self.histo[nameh].GetYaxis().SetTitle(namey)
+		self.histo[nameh].GetZaxis().SetTitle(namez)
+		self.outTree.Draw('{y}:{x}>>h_'.format(x=varx, y=vary) + nameh, cuts, 'colz')
+		if self.histo[nameh].FindObject('stats'):
+			self.histo[nameh].FindObject('stats').SeOptStat(2211)
+		self.PosCanvas(nameh)
+
+	def Draw1DHisto(self, nameh, var, xbins, xmin, xmax, cuts, namex, namey='entries'):
+		self.canvas[nameh] = ro.TCanvas('c_' + nameh, 'c_' + nameh, 1)
+		self.histo[nameh] = ro.TH1D('h_' + nameh, 'h_' + nameh, xbins, xmin, xmax)
+		self.histo[nameh].GetXaxis().SetTitle(namex)
+		self.histo[nameh].GetYaxis().SetTitle(namey)
+		self.outTree.Draw('{v}>>h_'.format(v=var) + nameh, cuts, 'e hist')
+		SetDefault1DCanvasSettings(self.canvas[nameh])
+		ro.gPad.Update()
+		SetDefault1DStats(self.histo[nameh])
+		self.PosCanvas(nameh)
+		ro.gPad.Update()
 
 	def OpenPedestalFile(self):
 		self.outFile = ro.TFile('{d}/{f}Ped.root'.format(d=self.fileNamePrefix, f=self.fileNameStem), 'read')
@@ -155,62 +196,62 @@ class AnalysisToy:
 		Function for ROOT of a Landauish function based on moyal distribution
 		"""
 		if name in self.histo.keys():
-			if name in self.canvas.keys():
-				self.canvas[name].cd()
-			xmean, xrms, entries = self.histo[name].GetMean(), self.histo[name].GetRMS(), self.histo[name].GetEntries()
-			if self.inputFileInfo['landau_pos'] == 0. or self.inputFileInfo['landau_sc'] == 0.:
-				xmin, xmax = max(0, xmean - 3 * xrms), xmean + 3 * xrms
-				loc, sc = max(1, xmean - xrms/2.), xrms / 2.
-			else:
-				loc, sc = self.inputFileInfo['landau_pos'], self.inputFileInfo['landau_sc']
-				toyExp = sps.moyal.rvs(loc, sc, int(1e6))
-				xmin, xmax = max(0, toyExp.min() - xrms), toyExp.max() + xrms
-			func = ro.TF1('f_landauish_' + name, '[0]*TMath::Exp(-(x-[1])/(2*[2])-0.5*TMath::Exp(-(x-[1])/[2]))', 0, xmax)
-			func.SetNpx(1000)
-			func.SetLineStyle(2)
-			func.SetLineColor(ro.kRed)
-			func.SetLineWidth(2)
-			params = np.array([entries, loc, sc], 'float64')
-			func.SetParameters(params)
-			func.SetParNames('gain', 'pos', 'scale')
-			for it in xrange(iterations):
-				temp = self.histo[name].Fit('f_landauish_' + name, 'QIEBMSN', 'goff', xmin, xmax)
-				params = np.array((temp.Parameter(0), temp.Parameter(1), temp.Parameter(2)), 'float64')
-				func.SetParameters(params)
-			self.fits[name] = self.histo[name].Fit('f_landauish_' + name, 'QIEBMS', 'goff', xmin, xmax)
-			self.histo[name].GetFunction('f_landauish_' + name).Draw('same')
-			ro.gPad.Update()
+			if self.histo[name]:
+				if self.histo[name].GetEntries() > 0:
+					if name in self.canvas.keys():
+						self.canvas[name].cd()
+					xmean, xrms, entries = self.histo[name].GetMean(), self.histo[name].GetRMS(), self.histo[name].GetEntries()
+					if self.inputFileInfo['landau_pos'] == 0. or self.inputFileInfo['landau_sc'] == 0.:
+						xmin, xmax = max(0, xmean - 3 * xrms), xmean + 5 * xrms
+						loc, sc = max(1, xmean - xrms/2.), xrms / 2.
+					else:
+						loc, sc = self.inputFileInfo['landau_pos'], self.inputFileInfo['landau_sc']
+						toyExp = sps.moyal.rvs(loc, sc, int(1e6))
+						xmin, xmax = max(0, toyExp.min() - xrms), toyExp.max() + xrms
+					func = ro.TF1('f_landauish_' + name, '[0]*TMath::Exp(-(x-[1])/(2*[2])-0.5*TMath::Exp(-(x-[1])/[2]))', 0, self.histo[name].GetBinLowEdge(1 + self.histo[name].FindLastBinAbove(0, 1)))
+					func.SetNpx(1000)
+					func.SetLineStyle(2)
+					func.SetLineColor(ro.kRed)
+					func.SetLineWidth(2)
+					params = np.array([entries, loc, sc], 'float64')
+					func.SetParameters(params)
+					func.SetParNames('gain', 'pos', 'scale')
+					for it in xrange(iterations):
+						temp = self.histo[name].Fit('f_landauish_' + name, 'QIEBMSN', 'goff', xmin, xmax)
+						params = np.array((temp.Parameter(0), temp.Parameter(1), temp.Parameter(2)), 'float64')
+						func.SetParameters(params)
+					self.fits[name] = self.histo[name].Fit('f_landauish_' + name, 'QIEBMS', 'goff', xmin, xmax)
+					self.histo[name].GetFunction('f_landauish_' + name).Draw('same')
+					ro.gPad.Update()
 
 	def FitLandauishAndPed(self, name, iterations=2):
 		"""
 		Function for ROOT of a Landauish function based on moyal distribution
 		"""
 		if name in self.histo.keys():
-			if name in self.canvas.keys():
-				self.canvas[name].cd()
-			xmean, xrms, entries = self.histo[name].GetMean(), self.histo[name].GetRMS(), self.histo[name].GetEntries()
-			if self.inputFileInfo['landau_pos'] == 0. or self.inputFileInfo['landau_sc'] == 0.:
-				loc, sc = 1000., 100.
-				sigm = 10.
-			else:
-				loc, sc = self.inputFileInfo['landau_pos'], self.inputFileInfo['landau_sc']
-				sigm = self.inputFileInfo['noise']
-			xmin, xmax = self.histo[name].GetBinLowEdge(self.histo[name].FindFirstBinAbove(0, 1)), self.histo[name].GetBinLowEdge(1 + self.histo[name].FindLastBinAbove(0, 1))
-			func = ro.TF1('f_ped_landauish_' + name, '[0]*TMath::Exp(-(x-[1])/(2*[2])-0.5*TMath::Exp(-(x-[1])/[2]))+gaus(3)', xmin, xmax)
-			func.SetNpx(1000)
-			func.SetLineStyle(2)
-			func.SetLineColor(ro.kRed)
-			func.SetLineWidth(2)
-			params = np.array([entries/10., loc, sc, entries, 0., sigm], 'float64')
-			func.SetParameters(params)
-			func.SetParNames('Lgain', 'Lpos', 'Lscale', 'Ggain', 'Gpos', 'Gsigma')
-			for it in xrange(iterations):
-				temp = self.histo[name].Fit('f_ped_landauish_' + name, 'QIEBMSN', 'goff', xmin, xmax)
-				params = np.array((temp.Parameter(0), temp.Parameter(1), temp.Parameter(2), temp.Parameter(3), temp.Parameter(4), temp.Parameter(5)), 'float64')
-				func.SetParameters(params)
-			self.fits[name] = self.histo[name].Fit('f_ped_landauish_' + name, 'QIEBMS', 'goff', xmin, xmax)
-			self.histo[name].GetFunction('f_ped_landauish_' + name).Draw('same')
-			ro.gPad.Update()
+			if self.histo[name]:
+				if self.histo[name].GetEntries() > 0:
+					if name in self.canvas.keys():
+						self.canvas[name].cd()
+					xmean, xrms, entries = self.histo[name].GetMean(), self.histo[name].GetRMS(), self.histo[name].GetEntries()
+					(loc, sc) = (1000., 100.) if self.inputFileInfo['landau_pos'] == 0. or self.inputFileInfo['landau_sc'] == 0. else (self.inputFileInfo['landau_pos'], self.inputFileInfo['landau_sc'])
+					sigm = 10. if self.inputFileInfo['noise'] == 0. else self.inputFileInfo['noise']
+					xmin, xmax = self.histo[name].GetBinLowEdge(self.histo[name].FindFirstBinAbove(0, 1)), self.histo[name].GetBinLowEdge(1 + self.histo[name].FindLastBinAbove(0, 1))
+					func = ro.TF1('f_ped_landauish_' + name, '[0]*TMath::Exp(-(x-[1])/(2*[2])-0.5*TMath::Exp(-(x-[1])/[2]))+gaus(3)', xmin, xmax)
+					func.SetNpx(1000)
+					func.SetLineStyle(2)
+					func.SetLineColor(ro.kRed)
+					func.SetLineWidth(2)
+					params = np.array([entries/10., loc, sc, entries, 0., sigm], 'float64')
+					func.SetParameters(params)
+					func.SetParNames('Lgain', 'Lpos', 'Lscale', 'Ggain', 'Gpos', 'Gsigma')
+					for it in xrange(iterations):
+						temp = self.histo[name].Fit('f_ped_landauish_' + name, 'QIEBMSN', 'goff', xmin, xmax)
+						params = np.array((temp.Parameter(0), temp.Parameter(1), temp.Parameter(2), temp.Parameter(3), temp.Parameter(4), temp.Parameter(5)), 'float64')
+						func.SetParameters(params)
+					self.fits[name] = self.histo[name].Fit('f_ped_landauish_' + name, 'QIEBMS', 'goff', xmin, xmax)
+					self.histo[name].GetFunction('f_ped_landauish_' + name).Draw('same')
+					ro.gPad.Update()
 
 	def SavePlots(self):
 		if not os.path.isdir('{d}/{p}'.format(d=self.fileNamePrefix, p=self.fileNameStem)):
