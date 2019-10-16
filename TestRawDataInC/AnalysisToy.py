@@ -68,12 +68,13 @@ class AnalysisToy:
 
 	def CreatePlots(self):
 		print 'Creating plots...', ; sys.stdout.flush()
+		self.time = time.time()
 		self.OpenPedestalFile()
 
 		nameh = 'signalPedestal'
 		varx, vary = 'event', 'signal'
 		xbins, fact = 1000000, 100.
-		while(xbins >= 10000):
+		while xbins >= 10000:
 			fact *= 10.
 			xbins = int(RoundInt(self.events / fact, 'uint32'))
 		xmin, xmax = 0, int(fact * xbins)
@@ -141,7 +142,7 @@ class AnalysisToy:
 		self.FitLandauishAndPed(nameh)
 		ro.gPad.Update()
 
-		print 'Done'
+		print 'Done in', time.time() - self.time, 'seconds'
 
 	def CutOrs(self, vars=[], vals=[]):
 		return self.CutOp(vars, vals, '||')
@@ -260,7 +261,6 @@ class AnalysisToy:
 			if self.canvas.has_key(canvas):
 				if self.canvas[canvas]:
 					self.canvas[canvas].SaveAs('{d}/{p}/{c}.png'.format(d=self.fileNamePrefix, p=self.fileNameStem, c=canvas))
-					# self.canvas[canvas].Print('{d}/{r}/{sd}/{c}.png'.format(d=self.dir, r=self.run, sd=self.pkl_sbdir, c=canvas))
 					self.canvas[canvas].SaveAs('{d}/{p}/{c}.root'.format(d=self.fileNamePrefix, p=self.fileNameStem, c=canvas))
 
 
@@ -269,11 +269,16 @@ def main():
 	parser.add_option('-i', '--input', dest='input', type='string', help='input file with raw data')
 	parser.add_option('-t', '--threshold', dest='threshold', type='float', default=5, help='threshold in sigmas for pedestal determination')
 	parser.add_option('-f', '--force', dest='force', default=False, action='store_true', help='toggles overwrite output file if it already exists')
+	parser.add_option('-b', '--batch', dest='batch', default=False, action='store_true', help='enables batch mode (no print)')
 
 	(options, args) = parser.parse_args()
 	infile = str(options.input)
 	threshold = float(options.threshold)
 	force = bool(options.force)
+	bat = bool(options.batch)
+
+	if bat:
+		ro.gROOT.SetBatch(ro.kTRUE)
 
 	anaT = AnalysisToy(infile, threshold)
 	if force or not anaT.boolIsOutFile:
