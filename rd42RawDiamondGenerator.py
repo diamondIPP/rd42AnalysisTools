@@ -31,12 +31,12 @@ cm_axis = {'min': -100, 'max': 100}
 
 
 class RD42RawDiamondGenerator:
-	def __init__(self, testnum, chs=10, events=1000000, landau_pos=100., landau_sc=20., noise=8., cm=9., buff=500):
+	def __init__(self, testnum, chs=10, events=1000000, landau_pos=100., landau_sc=20., noise=8., cm=9., buff=500, frac=0.1):
 		print 'Creating RD42 Raw Data'
 		self.test_num = testnum
 		self.ped_mean = 1000
 		self.ped_spread = 100
-		self.event_probab = 0.1
+		self.event_probab = frac
 		self.chs = chs
 		self.ped_buffer = buff
 		self.maxEvents = events + self.ped_buffer
@@ -62,15 +62,15 @@ class RD42RawDiamondGenerator:
 		print 'Filling tree "rawTree" in file testData{n}.root:'.format(n=self.test_num)
 		self.bar = CreateProgressBarUtils(self.maxEvents)
 		self.bar.start()
+		cmev = sps.norm.rvs(0, self.cm, self.maxEvents)
 		for ev in xrange(self.maxEvents):
 			self.evt.fill(ev)
-			cmev = sps.norm.rvs(0, self.cm)
 			noiseev = sps.norm.rvs(0, self.noise, self.chs)
-			adcev = [self.peds[it] + noiseev[it] + cmev for it in xrange(self.chs)]
+			adcev = [self.peds[it] + noiseev[it] + cmev[ev] for it in xrange(self.chs)]
 			if ev >= self.ped_buffer:
 				hit = (sps.uniform.rvs(0, 1) <= self.event_probab)
-				hitch = int(np.floor(sps.uniform.rvs(0, self.chs)))
 				if hit:
+					hitch = int(np.floor(sps.uniform.rvs(0, self.chs)))
 					adcev[hitch] += sps.moyal.rvs(self.landau_pos, self.landau_sc)
 					adcev[hitch] = 4095 if adcev[hitch] > 4095 else adcev[hitch]
 			np.putmask(self.adcs, np.ones(self.chs, '?'), np.array(adcev, 'uint16'))
@@ -110,6 +110,7 @@ def main():
 	parser.add_option('--noise', dest='noise', type='float', default=8, help='inherent noise of each channel in adcs')
 	parser.add_option('--cm', dest='cm', type='float', default=9, help='common mode distribution that effects each event (in adcs)')
 	parser.add_option('--buffer', dest='buffer', type='int', default=500, help='initial events without hits, just noise')
+	parser.add_option('--fraction', dest='fraction', type='float', default=0.1, help='fraction of events that are hit')
 
 	(options, args) = parser.parse_args()
 	testnum = int(options.testnum)
@@ -120,8 +121,10 @@ def main():
 	noise = float(options.noise)
 	cm = float(options.cm)
 	buff = int(options.buffer)
+	frac = float(options.fraction)
+	frac = frac if 0 <= frac <= 1 else 0.1
 
-	rawGen = RD42RawDiamondGenerator(testnum=testnum, chs=chs, events=events, landau_pos=landau_pos, landau_sc=landau_sc, noise=noise, cm=cm, buff=buff)
+	rawGen = RD42RawDiamondGenerator(testnum=testnum, chs=chs, events=events, landau_pos=landau_pos, landau_sc=landau_sc, noise=noise, cm=cm, buff=buff, frac=frac)
 	return rawGen
 
 if __name__ == '__main__':
