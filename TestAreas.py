@@ -56,6 +56,8 @@ class TestAreas:
 		self.w = 0
 		self.num_rows_even = 0
 		self.num_rows_odd = 0
+		self.up_even = 0
+		self.up_odd = 0
 		self.rows_pitch = 0
 		self.cells_width = 0
 		self.saturated_ADC = 0
@@ -182,6 +184,10 @@ class TestAreas:
 					self.rows_pitch = pars.getfloat('ROWS', 'height')
 				if pars.has_option('ROWS', 'width'):
 					self.cells_width = pars.getfloat('ROWS', 'width')
+				if pars.has_option('ROWS', 'up_even'):
+					self.up_even = pars.getfloat('ROWS', 'up_even')
+				if pars.has_option('ROWS', 'up_odd'):
+					self.up_odd = pars.getfloat('ROWS', 'up_odd')
 			if pars.has_section('COLUMNS'):
 				if pars.has_option('COLUMNS', 'cols'):
 					cols = pars.get('COLUMNS', 'cols')
@@ -196,16 +202,18 @@ class TestAreas:
 					self.rcells = unpack_row_col(rcells)
 			print 'Done'
 
-	def SetTest(self):
+	def SetTest(self, onlyPH=False):
 		"""
 		This method selects the cells to take into account from the region from the selection analysis.
 		This is done either by giving a detailed list of coloumns, rows or cells in the config file,
 		or by giving a threshold and setting do_threshold as True to automatically select cells above the threshold
 		:return: Nothing
 		"""
+		print 'Setting test'
 		self.cell_ana = CellsAnalysis(self.trans_grid)
 		if self.do_threshold:
 			if self.threshold == 0:
+				print 'Finding a threshold depending on the cells phs'
 				self.trans_grid.FindThresholdCutFromCells('clusterChargeN', 'adc', self.phmin, self.phmax, self.delta_adc / 2.)
 				self.threshold = self.trans_grid.threshold
 			self.trans_grid.ResetAreas()
@@ -219,11 +227,11 @@ class TestAreas:
 				if self.do_threshold:
 					self.threshold = int(RoundInt(self.threshold * 0.75))
 					print 'Trying with a new threshold of', self.threshold
-					self.SetTest()
+					self.SetTest(onlyPH)
 				else:
 					return
 			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
-			self.SetAnalysis()
+			self.SetAnalysis(onlyPH)
 		elif self.do_percentile_selection:
 			if self.percentile == 0:
 				self.percentile = 80
@@ -239,9 +247,9 @@ class TestAreas:
 				print 'There is only', len(self.trans_grid.gridAreas.goodAreas_diamond), 'cell in the selection. Check the percentiles or the area config file'
 				self.percentile *= 0.9
 				print 'Trying with a new percentile of', self.percentile
-				self.SetTest()
+				self.SetTest(onlyPH)
 			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
-			self.SetAnalysis()
+			self.SetAnalysis(onlyPH)
 
 		elif len(self.rows) + len(self.cols) + len(self.cells) > 0:
 			self.trans_grid.ResetAreas()
@@ -260,11 +268,11 @@ class TestAreas:
 			self.trans_grid.AddRemainingToBadAreas()
 			print 'Marked the remaining cells as bad'
 			self.trans_grid.gridAreas.SimplifyGoodAndBadAreas()
-			self.SetAnalysis()
+			self.SetAnalysis(onlyPH)
 		else:
 			print 'Enter a correct settings file for the test area in variable config_file and re run ReadConfigFile before setting the test...'
 
-	def SetAnalysis(self):
+	def SetAnalysis(self, onlyPH=False):
 		self.SetCutsInCutManager()
 		# Update cell resolution value for analysis
 		if self.cell_resolution == 0:
@@ -283,7 +291,7 @@ class TestAreas:
 		self.neg_ana = NegativeChargesAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
 		self.sat_ana = SaturationAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana)
 		self.center_cells_ana = CenterCellAnalysis(self.trans_grid, self.num_strips, self.cluster_size)
-		self.final_ana = FinalAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana, self.center_cells_ana)
+		self.final_ana = FinalAnalysis(self.trans_grid, self.num_strips, self.cluster_size, self.noise_ana, self.center_cells_ana, onlyPH)
 
 	def SetCutsInCutManager(self):
 		print 'Setting cuts in cut manager...', ; sys.stdout.flush()
@@ -301,7 +309,7 @@ class TestAreas:
 
 	def DoBorderPlots(self):
 		"""
-		This Method creates a 2D Profile Map of all the transparent events showing the cells divistion and which cells will be used for the analysis.
+		This Method creates a 2D Profile Map of all the transparent events showing the cells divition and which cells will be used for the analysis.
 		Then it makes a projection in the Y axis and shows the fit that it was used to determine the edges Y limits.
 		:return: Nothing
 		"""
@@ -324,16 +332,16 @@ class TestAreas:
 		self.PositionCanvas('PH2_H_map_with_borders')
 		self.trans_grid.canvas['PH2_H_map_with_borders_py'].cd()
 		self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().SetRangeUser(miny, maxy)
-		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-({l}))/[1])+1)/2-[2]*(TMath::Erf((x-{u})/[3])+1)/2+[4]'.format(l=np.array([self.trans_grid.row_cell_info_diamond['0_even'], self.trans_grid.row_cell_info_diamond['0_odd']]).mean(), u=np.array([self.trans_grid.row_cell_info_diamond['up_even'], self.trans_grid.row_cell_info_diamond['up_even']]).mean()), miny, maxy)
+		func = ro.TF1('box_fcn', '[0]*(TMath::Erf((x-({l}))/[1])+1)/2-[2]*(TMath::Erf((x-{u})/[3])+1)/2+[4]'.format(l=np.array([self.trans_grid.row_cell_info_diamond['0_even'] - self.trans_grid.row_cell_info_diamond['height'], self.trans_grid.row_cell_info_diamond['0_odd'] - self.trans_grid.row_cell_info_diamond['height']]).mean(), u=np.array([self.trans_grid.row_cell_info_diamond['up_even'] + self.trans_grid.row_cell_info_diamond['height'], self.trans_grid.row_cell_info_diamond['up_odd']  + self.trans_grid.row_cell_info_diamond['height']]).mean()), miny, maxy)
 		func.SetNpx(10000)
 		zmin, zmax = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetMinimum(), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetMaximum()
 		y1bin, y2bin = self.trans_grid.histo['PH2_H_map_with_borders_py'].FindFirstBinAbove((zmin + zmax) / 2.0), self.trans_grid.histo['PH2_H_map_with_borders_py'].FindLastBinAbove((zmin + zmax) / 2.0) + 1
 		y1, y2 = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinCenter(y1bin), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetXaxis().GetBinCenter(y2bin)
 		z0, z1, z2 = self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinContent(int((minbiny))), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinContent(int((y1bin + y2bin) / 2.0)), self.trans_grid.histo['PH2_H_map_with_borders_py'].GetBinContent(int((maxbiny)))
 		func.SetParLimits(0, abs(z1 - z0) / 10.0, 10.0 * abs(z1 - z0))
-		func.SetParLimits(1, 0.1, 50)
+		func.SetParLimits(1, 0.01 * self.trans_grid.row_cell_info_diamond['height'], 1 * self.trans_grid.row_cell_info_diamond['height'])
 		func.SetParLimits(2, abs(z1 - z2) / 10.0, 10.0 * abs(z1 - z2))
-		func.SetParLimits(3, 0.1, 50)
+		func.SetParLimits(3, 0.01 * self.trans_grid.row_cell_info_diamond['height'], 1 * self.trans_grid.row_cell_info_diamond['height'])
 		func.SetParLimits(4, -100.0 * abs(z0), 100 * abs(z0))
 		params = np.array((abs(z1 - z0), 20, abs(z1 - z2), 20, z0), 'float64')
 		func.SetParameters(params)
@@ -511,7 +519,7 @@ class TestAreas:
 	def SaveCanvas(self):
 		self.trans_grid.SaveCanvasInlist(self.trans_grid.canvas.keys())
 
-	def DoAutomatic(self, cells='good', types=['adc'], isFriend=False, SaveAllPlots=False, isFirst=False):
+	def DoAutomatic(self, cells='good', types=['adc'], isFriend=False, SaveAllPlots=False, isFirst=False, onlyPH=False):
 		"""
 		Makes a complete analysis
 		:param cells: Specify which cells to analyse. Options are: "good": selected cells, "bad": not selected cells, "all": all the cells in the transparent grid
@@ -519,6 +527,7 @@ class TestAreas:
 		:param isFriend: This flag is to do the analysis with a different pedestal calculation whose data is stored in a pedTree which should be a friend of the transparentTree. The method AddFriendWithNewPedestalBuffer should have been used before.
 		:param SaveAllPlots: If true, all the plots created and which have a corresponding Canvas, will be stored as png and root files
 		:param isFirst: If it is true, then the analysis will stop after DoClusterStudies, so that the user can select accurate values for neg_cut_adc and neg_cut_snr and then save the pickle.
+		:param onlyPH: If it is true, then the analysis will only recreate the PH plots..
 		:return: Nothing
 		"""
 
@@ -526,17 +535,19 @@ class TestAreas:
 		self.DoBorderPlots()
 		for typ in ['adc', 'snr']:
 			if typ in types:
-				self.cell_ana.FindCellsQuality('all')
-				ro.gStyle.SetPalette(55)
-				self.cell_ana.FindCellsQuality('good')
-				ro.gStyle.SetPalette(55)
-				self.DoCellHistograms(typ)
-				self.DoNoiseStudies(cells, typ, isFriend)
-				self.DoClusterStudies(cells, typ, isFriend)
+				if not onlyPH:
+					self.cell_ana.FindCellsQuality('all')
+					ro.gStyle.SetPalette(55)
+					self.cell_ana.FindCellsQuality('good')
+					ro.gStyle.SetPalette(55)
+					self.DoCellHistograms(typ)
+					self.DoNoiseStudies(cells, typ, isFriend)
+					self.DoClusterStudies(cells, typ, isFriend)
 				if not isFirst:
-					self.DoNegativeEventsStudies(cells, typ, isFriend)
-					self.DoSaturationStudies(cells, typ, isFriend)
-					self.DoFinalStudies(typ, cummulative_chs=[self.num_strips], isFriend=isFriend)
+					if not onlyPH:
+						self.DoNegativeEventsStudies(cells, typ, isFriend)
+						self.DoSaturationStudies(cells, typ, isFriend)
+					self.DoFinalStudies(typ, cummulative_chs=self.final_ana.analysis_cummulative_ch, isFriend=isFriend)
 				# self.DoCenterCellStudies(cells)
 				# self.DoCenterCellSaturationStudies(cells)
 		# self.PlotTestClusterStudies(cells)
@@ -569,8 +580,12 @@ class TestAreas:
 			self.trans_grid.delta_adc_cluster_ch = self.trans_grid.delta_adc_cluster_ch if self.delta_adc_cluster_ch == 0 else self.delta_adc_cluster_ch
 			self.trans_grid.row_cell_info_diamond['num_even'] = self.trans_grid.row_cell_info_diamond['num_even'] if self.num_rows_even == 0 else self.num_rows_even
 			self.trans_grid.row_cell_info_diamond['num_odd'] = self.trans_grid.row_cell_info_diamond['num_odd'] if self.num_rows_odd == 0 else self.num_rows_odd
+			self.trans_grid.row_cell_info_diamond['up_even'] = self.trans_grid.row_cell_info_diamond['up_even'] if self.up_even == 0 else self.up_even
+			self.trans_grid.row_cell_info_diamond['up_odd'] = self.trans_grid.row_cell_info_diamond['up_odd'] if self.up_odd == 0 else self.up_odd
 			self.trans_grid.row_cell_info_diamond['height'] = self.trans_grid.row_cell_info_diamond['height'] if self.rows_pitch == 0 else self.rows_pitch
 			self.trans_grid.row_cell_info_diamond['width'] = self.trans_grid.row_cell_info_diamond['width'] if self.cells_width == 0 else self.cells_width
+			self.trans_grid.row_cell_info_diamond['0_even'] = self.trans_grid.row_cell_info_diamond['0_even'] if self.up_even == 0 else self.up_even - self.trans_grid.row_cell_info_diamond['num_even'] * self.trans_grid.row_cell_info_diamond['height']
+			self.trans_grid.row_cell_info_diamond['0_odd'] = self.trans_grid.row_cell_info_diamond['0_odd'] if self.up_odd == 0 else self.up_odd - self.trans_grid.row_cell_info_diamond['num_odd'] * self.trans_grid.row_cell_info_diamond['height']
 			self.trans_grid.num_sides = self.trans_grid.num_sides if self.num_sides == 0 else self.num_sides
 
 			self.trans_grid.SetupCutManager()
@@ -675,6 +690,7 @@ if __name__ == '__main__':
 	parser.add_option('-c', '--config', dest='config', default='', type='string', help='gives the path to a config file for the test area')
 	parser.add_option('-t', '--type', dest='typ', default='[adc]', type='string', help='selects a type of analysis to run automatically. Options are [adc], [adc,snr], or [snr] order does not matter.')
 	parser.add_option('-f', '--first', dest='first', default=False, action='store_true', help='Use when negative cuts are unknown. Will do analysis until cluster channel part.')
+	parser.add_option('-p', '--ph', dest='ph', default=False, action='store_true', help='Enables update PH plots only')
 	parser.add_option('-b', '--batch', dest='batch', default=False, action='store_true', help='Enables batch mode')
 
 	(options, args) = parser.parse_args()
@@ -684,12 +700,12 @@ if __name__ == '__main__':
 	typ = str(options.typ).strip('[').strip(']').split(',')
 	first = bool(options.first)
 	bat = bool(options.batch)
-
+	ph = bool(options.ph)
 	if bat:
 		ro.gROOT.SetBatch(ro.kTRUE)
 	t = TestAreas(config, run)
 	t.SetTransparentGrid(first)
-	t.SetTest()
+	t.SetTest(onlyPH=ph)
 	if autom:
-		t.DoAutomatic('good', types=typ if not first else ['adc', 'snr'], SaveAllPlots=True, isFirst=first)
+		t.DoAutomatic('good', types=typ if not first else ['adc', 'snr'], SaveAllPlots=True, isFirst=first, onlyPH=ph)
 

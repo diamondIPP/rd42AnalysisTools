@@ -52,17 +52,17 @@ def CreateDefaultSettingsFile(diri, run_no, events, dut_name='default', dut_volt
 		f.write('Dia_channel_not_connected = {}\n\n')
 		f.write('Dia_channel_noisy = {}\n\n')
 		f.write('D0X_channel_screen_channels = {0,255}\n')
-		f.write('D0Y_channel_screen_channels = {0,1,2,127,255}\n')
+		f.write('D0Y_channel_screen_channels = {0,1,2,255}\n')
 		f.write('D1X_channel_screen_channels = {0,1,214,215,232,233}\n')
-		f.write('D1Y_channel_screen_channels = {127,255}\n')
+		f.write('D1Y_channel_screen_channels = {255}\n')
 		f.write('D2X_channel_screen_channels = {0,255}\n')
-		f.write('D2Y_channel_screen_channels = {0,127,255}\n')
-		f.write('D3X_channel_screen_channels = {0,1,2,3,127,255}\n')
+		f.write('D2Y_channel_screen_channels = {0,255}\n')
+		f.write('D3X_channel_screen_channels = {0,1,2,3,255}\n')
 		f.write('D3Y_channel_screen_channels = {0,1,2,3,246,247,253,254,255}\n\n')
 		f.write('Si_Pedestal_Hit_Factor = 5\n')
 		f.write('Di_Pedestal_Hit_Factor = 3\n\n')
 		f.write('DO_CMC = 1\n\n')
-		f.write('clusterSeedFactors = {16,20,20,20,18,18,14,10,5}\n')
+		f.write('clusterSeedFactors = {16,20,20,20,18,18,14,10,4}\n')
 		f.write('clusterHitFactors = {10,16,14,14,14,14,12,10,3}\n\n')
 		f.write('UseAutoFidCut = 0\n')
 		f.write('nDiamonds = 1\n')
@@ -417,7 +417,7 @@ def DeleteDirectoryContents(dir):
 				print(e)
 		print 'Done'
 
-def AddLineToStats(canvas, oldStatName='stats', newStatName='mystats', key='Mean_{Fit}', value=0, samplelinekey='Mean'):
+def AddLineToStats(canvas, oldStatName='stats', newStatName='mystats', key='Mean_{Fit}', value=0., samplelinekey='Mean'):
 	if canvas:
 		ps = canvas.GetPrimitive(oldStatName)
 		ps.SetName(newStatName)

@@ -8,7 +8,7 @@ __author__ = 'DA'
 
 option_list = ['raw', 'pedestal', 'cluster', 'selection', 'alignment', 'transparent']
 
-link_list = {'raw': ['rawData.{r}.root'], 'pedestal': ['pedestalData.{r}.root', 'pedestalAnalysis'], 'cluster': ['clusterData.{r}.root', 'clustering', 'etaCorrection.{r}.root'], 'selection': ['selectionData.{r}.root', 'selections', 'selectionAnalysis'], 'alignment': ['alignment.{r}.root', 'alignment'], 'transparent': ['transparentAnalysis']}
+link_list = {'raw': ['rawData.{r}.root'], 'pedestal': ['pedestalData.{r}.root', 'pedestalAnalysis'], 'cluster': ['clusterData.{r}.root', 'clustering', 'etaCorrection.{r}.root'], 'selection': ['selectionData.{r}.root', 'selections', 'selectionAnalysis'], 'alignment': ['alignment.{r}.root', 'alignment'], 'transparent': ['transparentAnalysis', 'transparent.{r}.root']}
 copy_list = {'cluster': ['crossTalkCorrectionFactors.{r}.txt']}
 
 class LinkFiles:
@@ -102,6 +102,7 @@ if __name__ == '__main__':
 	upto = str(options.upto)
 	if upto not in option_list:
 		print '-u (--upto) option must be one of these: "raw", "pedestal", "cluster", "selection", "alignment", "transparent". Exiting'
+		print 'you gave:', upto
 		exit(os.EX_CONFIG)
 
 	if not os.path.isdir(sdir):

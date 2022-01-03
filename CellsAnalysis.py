@@ -136,7 +136,7 @@ class CellsAnalysis:
 		histor = ReduceHistoContent(self.trans_grid.histo[hname], threshold, True)
 		hname_reduced = histor.GetName()[2:]
 		self.trans_grid.histo[hname_reduced] = histor
-		print 'Project in vertigal axis...'
+		print 'Project in vertical axis...'
 		# Project reduced histogram in vertical axis to find the peak(s) of the distribution
 		historpy = histor.ProjectionY('h_' + hname_reduced + '_py', 0, -1, 'e')
 		self.trans_grid.histo[hname_reduced + '_py'] = historpy
